@@ -1,0 +1,6 @@
+{
+  "name": "StudyPulse",
+  "description": "Premium study desk watch, focus productivity system, 20-20-20 eye care, hydration reminders, study planner, and statistics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
