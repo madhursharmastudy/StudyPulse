@@ -197,6 +197,21 @@ fun StudyWatchRootApp() {
                                     coroutineScope.launch {
                                         app.repository.deleteTopic(id)
                                     }
+                                },
+                                onUpdateDefaultStudyDuration = { dur ->
+                                    coroutineScope.launch { app.settingsRepository.updateDefaultStudyDuration(dur) }
+                                },
+                                onUpdateEyeStudyInterval = { mins ->
+                                    coroutineScope.launch { app.settingsRepository.updateEyeStudyInterval(mins) }
+                                },
+                                onUpdateEyeRestDuration = { secs ->
+                                    coroutineScope.launch { app.settingsRepository.updateEyeRestDuration(secs) }
+                                },
+                                onUpdateWaterInterval = { mins ->
+                                    coroutineScope.launch { app.settingsRepository.updateWaterInterval(mins) }
+                                },
+                                onUpdateWaterBreakDuration = { secs ->
+                                    coroutineScope.launch { app.settingsRepository.updateWaterBreakDuration(secs) }
                                 }
                             )
                         }
@@ -215,13 +230,18 @@ fun StudyWatchRootApp() {
                                 assignments = assignments,
                                 revisionItems = revisionItems,
                                 onAddStudyPlan = { coroutineScope.launch { app.repository.insertStudyPlan(it) } },
+                                onUpdateStudyPlan = { coroutineScope.launch { app.repository.updateStudyPlan(it) } },
                                 onTogglePlanCompleted = { id, comp -> coroutineScope.launch { app.repository.setStudyPlanCompleted(id, comp) } },
                                 onDeleteStudyPlan = { id -> coroutineScope.launch { app.repository.deleteStudyPlan(id) } },
                                 onAddExam = { coroutineScope.launch { app.repository.insertExam(it) } },
+                                onUpdateExam = { coroutineScope.launch { app.repository.updateExam(it) } },
                                 onDeleteExam = { id -> coroutineScope.launch { app.repository.deleteExam(id) } },
                                 onAddAssignment = { coroutineScope.launch { app.repository.insertAssignment(it) } },
+                                onUpdateAssignment = { coroutineScope.launch { app.repository.updateAssignment(it) } },
                                 onDeleteAssignment = { id -> coroutineScope.launch { app.repository.deleteAssignment(id) } },
-                                onAddRevisionItem = { coroutineScope.launch { app.repository.insertRevisionItem(it) } }
+                                onAddRevisionItem = { coroutineScope.launch { app.repository.insertRevisionItem(it) } },
+                                onUpdateRevisionItem = { coroutineScope.launch { app.repository.updateRevisionItem(it) } },
+                                onDeleteRevisionItem = { id -> coroutineScope.launch { app.repository.deleteRevisionItem(id) } }
                             )
                         }
                         NavigationTab.STATS -> {

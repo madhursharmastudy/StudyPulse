@@ -121,6 +121,9 @@ interface StudyWatchDao {
     @Query("DELETE FROM study_plans WHERE id = :id")
     suspend fun deleteStudyPlan(id: Long)
 
+    @Update
+    suspend fun updateStudyPlan(plan: StudyPlanEntity)
+
     // ================= EXAMS =================
     @Query("SELECT * FROM exams ORDER BY examTimestamp ASC")
     fun getAllExams(): Flow<List<ExamEntity>>

@@ -199,6 +199,7 @@ class StudyWatchRepository(private val dao: StudyWatchDao) {
 
     // CRUD for Plans, Exams, Assignments, Revision
     suspend fun insertStudyPlan(plan: StudyPlanEntity) = dao.insertStudyPlan(plan)
+    suspend fun updateStudyPlan(plan: StudyPlanEntity) = dao.updateStudyPlan(plan)
     suspend fun setStudyPlanCompleted(id: Long, completed: Boolean) = dao.setStudyPlanCompleted(id, completed)
     suspend fun deleteStudyPlan(id: Long) = dao.deleteStudyPlan(id)
 

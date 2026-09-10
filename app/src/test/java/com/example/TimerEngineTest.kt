@@ -153,4 +153,53 @@ class TimerEngineTest {
         assertEquals(20L, TimerEngine.eyeRestDurationSeconds)
         assertEquals(45 * 60L, TimerEngine.waterIntervalSeconds)
     }
+
+    @Test
+    fun testTimerStateLeakageAfterBreaks() {
+        TimerEngine.startStudySession(
+            subjectId = 1,
+            topicId = 2,
+            subjectName = "Physics",
+            topicName = "Mechanics",
+            durationMinutes = 45
+        )
+
+        var snap = TimerEngine.snapshot.value
+        assertEquals(TimerState.STUDYING, snap.state)
+        assertEquals(45 * 60 * 1000L, snap.plannedDurationMillis)
+        assertEquals(45 * 60 * 1000L, snap.currentTimerDurationMillis)
+
+        // Trigger eye alert
+        TimerEngine.triggerEyeRestAlert()
+        snap = TimerEngine.snapshot.value
+        assertEquals(TimerState.EYE_REST, snap.state)
+        assertEquals(TimerEngine.eyeRestDurationSeconds * 1000L, snap.currentTimerDurationMillis)
+
+        // Complete eye rest and check that duration is restored to planned study session duration
+        TimerEngine.completeEyeRest(autoResumed = true)
+        snap = TimerEngine.snapshot.value
+        assertEquals(TimerState.STUDYING, snap.state)
+        assertEquals(45 * 60 * 1000L, snap.plannedDurationMillis)
+        assertEquals(45 * 60 * 1000L, snap.currentTimerDurationMillis)
+    }
+
+    @Test
+    fun testManualTimerSetting() {
+        TimerEngine.startStudySession(
+            subjectId = 1,
+            topicId = 2,
+            subjectName = "Physics",
+            topicName = "Mechanics",
+            durationMinutes = 45
+        )
+
+        var snap = TimerEngine.snapshot.value
+        assertEquals(45 * 60 * 1000L, snap.plannedDurationMillis)
+
+        // Set planned duration to 60 minutes manually
+        TimerEngine.setPlannedDuration(60)
+        snap = TimerEngine.snapshot.value
+        assertEquals(60 * 60 * 1000L, snap.plannedDurationMillis)
+        assertEquals(60 * 60 * 1000L, snap.currentTimerDurationMillis)
+    }
 }

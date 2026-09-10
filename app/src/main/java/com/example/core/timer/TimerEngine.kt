@@ -205,6 +205,7 @@ object TimerEngine {
         segmentStartMonotonicMillis = now
         segmentPausedMonotonicMillis = 0L
         currentState = TimerState.STUDYING
+        segmentTotalDurationMillis = plannedDurationMillis
 
         AppLogger.i(
             LogFeature.TimerEngine,
@@ -251,12 +252,16 @@ object TimerEngine {
 
     @Synchronized
     fun setPlannedDuration(minutes: Int) {
-        if (currentState == TimerState.IDLE) {
-            plannedDurationMillis = (minutes * 60 * 1000L).coerceAtLeast(60 * 1000L)
+        plannedDurationMillis = (minutes * 60 * 1000L).coerceAtLeast(60 * 1000L)
+        if (currentState == TimerState.STUDYING || currentState == TimerState.PAUSED || currentState.isBreak) {
+            if (currentState == TimerState.STUDYING || currentState == TimerState.PAUSED) {
+                segmentTotalDurationMillis = plannedDurationMillis
+            }
+        } else if (currentState == TimerState.IDLE) {
             segmentTotalDurationMillis = plannedDurationMillis
-            updateSnapshot()
-            notifyStateChange()
         }
+        updateSnapshot()
+        notifyStateChange()
     }
 
     @Synchronized
@@ -380,6 +385,7 @@ object TimerEngine {
         if (eyeAutoResumeEnabled || autoResumed) {
             currentState = TimerState.STUDYING
             segmentStartMonotonicMillis = now
+            segmentTotalDurationMillis = plannedDurationMillis
             AppLogger.i(LogFeature.TimerEngine, "State changed: EYE_REST -> STUDYING", null, currentState.name, sessionUid, timerId)
         } else {
             currentState = TimerState.PAUSED
@@ -419,6 +425,7 @@ object TimerEngine {
 
         currentState = TimerState.STUDYING
         segmentStartMonotonicMillis = now
+        segmentTotalDurationMillis = plannedDurationMillis
         updateSnapshot()
         notifyStateChange()
     }
@@ -486,6 +493,7 @@ object TimerEngine {
         if (waterAutoResumeEnabled || autoResumed) {
             currentState = TimerState.STUDYING
             segmentStartMonotonicMillis = now
+            segmentTotalDurationMillis = plannedDurationMillis
             AppLogger.i(LogFeature.TimerEngine, "State changed: WATER_BREAK -> STUDYING", null, currentState.name, sessionUid, timerId)
         } else {
             currentState = TimerState.PAUSED
@@ -513,6 +521,7 @@ object TimerEngine {
 
         currentState = TimerState.STUDYING
         segmentStartMonotonicMillis = now
+        segmentTotalDurationMillis = plannedDurationMillis
 
         AppLogger.i(
             LogFeature.Hydration,
@@ -557,6 +566,7 @@ object TimerEngine {
 
         currentState = TimerState.STUDYING
         segmentStartMonotonicMillis = now
+        segmentTotalDurationMillis = plannedDurationMillis
         updateSnapshot()
         notifyStateChange()
     }
@@ -600,6 +610,7 @@ object TimerEngine {
         commitActiveElapsed(now)
         currentState = TimerState.STUDYING
         segmentStartMonotonicMillis = now
+        segmentTotalDurationMillis = plannedDurationMillis
 
         AppLogger.i(
             LogFeature.BreakEngine,

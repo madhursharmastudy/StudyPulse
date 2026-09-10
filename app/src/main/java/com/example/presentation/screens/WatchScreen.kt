@@ -42,6 +42,8 @@ import com.example.presentation.components.DeskClockDisplay
 import com.example.presentation.components.FullscreenEyeAlert
 import com.example.presentation.components.FullscreenWaterAlert
 import com.example.ui.theme.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 
 @Composable
 fun WatchScreen(
@@ -60,10 +62,16 @@ fun WatchScreen(
     onDeleteSubject: (Long) -> Unit = {},
     onUpdateTopic: (TopicEntity) -> Unit = {},
     onDeleteTopic: (Long) -> Unit = {},
+    onUpdateDefaultStudyDuration: (Int) -> Unit = {},
+    onUpdateEyeStudyInterval: (Int) -> Unit = {},
+    onUpdateEyeRestDuration: (Int) -> Unit = {},
+    onUpdateWaterInterval: (Int) -> Unit = {},
+    onUpdateWaterBreakDuration: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     var showSubjectPicker by remember { mutableStateOf(false) }
+    var showSetTimerDialog by remember { mutableStateOf(false) }
 
     // Keep screen on in Desk Clock Mode
     DisposableEffect(settings.keepScreenOn) {
@@ -192,24 +200,33 @@ fun WatchScreen(
                 onSubjectClick = { showSubjectPicker = true }
             )
 
-            if (snapshot.state != TimerState.IDLE) {
-                Row(
-                    modifier = Modifier.padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+            Row(
+                modifier = Modifier.padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (snapshot.state != TimerState.IDLE) {
                     TextButton(
                         onClick = { TimerEngine.stop() },
-                        colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary)
+                        colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
+                        modifier = Modifier.testTag("watch_end_session_button")
                     ) {
                         Text("End Session", fontSize = 12.sp)
                     }
                     TextButton(
                         onClick = { TimerEngine.reset() },
-                        colors = ButtonDefaults.textButtonColors(contentColor = TextMuted)
+                        colors = ButtonDefaults.textButtonColors(contentColor = TextMuted),
+                        modifier = Modifier.testTag("watch_reset_button")
                     ) {
                         Text("Reset", fontSize = 12.sp)
                     }
+                }
+                TextButton(
+                    onClick = { showSetTimerDialog = true },
+                    colors = ButtonDefaults.textButtonColors(contentColor = StudyAccent),
+                    modifier = Modifier.testTag("watch_set_timer_button")
+                ) {
+                    Text("Set Timer", fontSize = 12.sp)
                 }
             }
 
@@ -316,6 +333,30 @@ fun WatchScreen(
                 onDeleteSubject = onDeleteSubject,
                 onUpdateTopic = onUpdateTopic,
                 onDeleteTopic = onDeleteTopic
+            )
+        }
+
+        if (showSetTimerDialog) {
+            SetTimerDialog(
+                settings = settings,
+                onDismiss = { showSetTimerDialog = false },
+                onSave = { studyMinutes, eyeIntervalMinutes, eyeRestSeconds, waterIntervalMinutes, waterBreakMinutes ->
+                    // Apply immediately to current running session
+                    TimerEngine.setPlannedDuration(studyMinutes)
+                    TimerEngine.eyeStudyIntervalSeconds = eyeIntervalMinutes * 60L
+                    TimerEngine.eyeRestDurationSeconds = eyeRestSeconds.toLong()
+                    TimerEngine.waterIntervalSeconds = waterIntervalMinutes * 60L
+                    TimerEngine.waterBreakDurationSeconds = waterBreakMinutes * 60L
+
+                    // Persist to datastore (reusing existing update functions)
+                    onUpdateDefaultStudyDuration(studyMinutes)
+                    onUpdateEyeStudyInterval(eyeIntervalMinutes)
+                    onUpdateEyeRestDuration(eyeRestSeconds)
+                    onUpdateWaterInterval(waterIntervalMinutes)
+                    onUpdateWaterBreakDuration(waterBreakMinutes * 60)
+
+                    showSetTimerDialog = false
+                }
             )
         }
     }
@@ -718,10 +759,10 @@ fun SubjectPickerDialog(
 
     var showAddSubjectDialog by remember { mutableStateOf(false) }
     var showAddTopicDialog by remember { mutableStateOf(false) }
-    var showEditSubjectDialog by remember { mutableStateOf(false) }
-    var showDeleteSubjectDialog by remember { mutableStateOf(false) }
-    var showEditTopicDialog by remember { mutableStateOf(false) }
-    var showDeleteTopicDialog by remember { mutableStateOf(false) }
+    var subjectToEdit by remember { mutableStateOf<SubjectEntity?>(null) }
+    var subjectToDelete by remember { mutableStateOf<SubjectEntity?>(null) }
+    var topicToEdit by remember { mutableStateOf<TopicEntity?>(null) }
+    var topicToDelete by remember { mutableStateOf<TopicEntity?>(null) }
 
     val durationPresets = listOf(15, 25, 30, 45, 50, 60, 90, 120)
 
@@ -791,48 +832,38 @@ fun SubjectPickerDialog(
                                 color = if (isSelected) StudyAccent else TextPrimary,
                                 modifier = Modifier.weight(1f)
                             )
-                            if (isSelected) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    if (subject.totalStudySeconds > 0) {
-                                        Text(
-                                            text = "${hours}h ${minutes}m",
-                                            fontSize = 11.sp,
-                                            color = TextSecondary,
-                                            modifier = Modifier.padding(end = 8.dp)
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = { showEditSubjectDialog = true },
-                                        modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Edit,
-                                            contentDescription = "Edit Subject",
-                                            tint = StudyAccent,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    IconButton(
-                                        onClick = { showDeleteSubjectDialog = true },
-                                        modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Delete,
-                                            contentDescription = "Delete Subject",
-                                            tint = Color.Red,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
-                            } else {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 if (subject.totalStudySeconds > 0) {
                                     Text(
                                         text = "${hours}h ${minutes}m",
                                         fontSize = 11.sp,
-                                        color = TextSecondary
+                                        color = TextSecondary,
+                                        modifier = Modifier.padding(end = 4.dp)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = { subjectToEdit = subject },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Edit Subject",
+                                        tint = TextMuted,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(2.dp))
+                                IconButton(
+                                    onClick = { subjectToDelete = subject },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete Subject",
+                                        tint = Color.Red.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(14.dp)
                                     )
                                 }
                             }
@@ -892,28 +923,30 @@ fun SubjectPickerDialog(
                                     color = if (isSelected) StudyAccent else TextPrimary,
                                     modifier = Modifier.weight(1f)
                                 )
-                                if (isSelected) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     IconButton(
-                                        onClick = { showEditTopicDialog = true },
+                                        onClick = { topicToEdit = topic },
                                         modifier = Modifier.size(24.dp)
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Edit,
                                             contentDescription = "Edit Topic",
-                                            tint = StudyAccent,
-                                            modifier = Modifier.size(16.dp)
+                                            tint = TextMuted,
+                                            modifier = Modifier.size(14.dp)
                                         )
                                     }
-                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Spacer(modifier = Modifier.width(2.dp))
                                     IconButton(
-                                        onClick = { showDeleteTopicDialog = true },
+                                        onClick = { topicToDelete = topic },
                                         modifier = Modifier.size(24.dp)
                                     ) {
                                         Icon(
                                             imageVector = Icons.Default.Delete,
                                             contentDescription = "Delete Topic",
-                                            tint = Color.Red,
-                                            modifier = Modifier.size(16.dp)
+                                            tint = Color.Red.copy(alpha = 0.7f),
+                                            modifier = Modifier.size(14.dp)
                                         )
                                     }
                                 }
@@ -1127,12 +1160,12 @@ fun SubjectPickerDialog(
     }
 
     // Edit Subject Dialog
-    if (showEditSubjectDialog && selectedSubject != null) {
-        var editSubjectName by remember(selectedSubject) { mutableStateOf(selectedSubject!!.name) }
-        var editDailyGoalTarget by remember(selectedSubject) { mutableStateOf(selectedSubject!!.dailyGoalMinutes.toString()) }
+    if (subjectToEdit != null) {
+        var editSubjectName by remember(subjectToEdit) { mutableStateOf(subjectToEdit!!.name) }
+        var editDailyGoalTarget by remember(subjectToEdit) { mutableStateOf(subjectToEdit!!.dailyGoalMinutes.toString()) }
 
         AlertDialog(
-            onDismissRequest = { showEditSubjectDialog = false },
+            onDismissRequest = { subjectToEdit = null },
             containerColor = DarkCard,
             title = { Text("Edit Subject", color = TextPrimary) },
             text = {
@@ -1169,14 +1202,16 @@ fun SubjectPickerDialog(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (editSubjectName.isNotBlank() && selectedSubject != null) {
-                            val updated = selectedSubject!!.copy(
+                        if (editSubjectName.isNotBlank() && subjectToEdit != null) {
+                            val updated = subjectToEdit!!.copy(
                                 name = editSubjectName.trim(),
                                 dailyGoalMinutes = editDailyGoalTarget.toIntOrNull() ?: 60
                             )
                             onUpdateSubject(updated)
-                            selectedSubject = updated
-                            showEditSubjectDialog = false
+                            if (selectedSubject?.id == updated.id) {
+                                selectedSubject = updated
+                            }
+                            subjectToEdit = null
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = StudyAccent, contentColor = Color.Black),
@@ -1186,7 +1221,7 @@ fun SubjectPickerDialog(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showEditSubjectDialog = false }) {
+                TextButton(onClick = { subjectToEdit = null }) {
                     Text("Cancel", color = TextSecondary)
                 }
             }
@@ -1194,25 +1229,27 @@ fun SubjectPickerDialog(
     }
 
     // Delete Subject Confirmation Dialog
-    if (showDeleteSubjectDialog && selectedSubject != null) {
+    if (subjectToDelete != null) {
         AlertDialog(
-            onDismissRequest = { showDeleteSubjectDialog = false },
+            onDismissRequest = { subjectToDelete = null },
             containerColor = DarkCard,
             title = { Text("Delete Subject?", color = TextPrimary) },
             text = {
                 Text(
-                    "Are you sure you want to delete \"${selectedSubject!!.name}\"? This will also delete all its associated topics and study history.",
+                    "Are you sure you want to delete \"${subjectToDelete!!.name}\"? This will also delete all its associated topics and study history.",
                     color = TextSecondary
                 )
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        if (selectedSubject != null) {
-                            onDeleteSubject(selectedSubject!!.id)
-                            val remaining = subjects.filter { it.id != selectedSubject!!.id }
-                            selectedSubject = remaining.firstOrNull()
-                            showDeleteSubjectDialog = false
+                        if (subjectToDelete != null) {
+                            onDeleteSubject(subjectToDelete!!.id)
+                            if (selectedSubject?.id == subjectToDelete!!.id) {
+                                val remaining = subjects.filter { it.id != subjectToDelete!!.id }
+                                selectedSubject = remaining.firstOrNull()
+                            }
+                            subjectToDelete = null
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red, contentColor = Color.White),
@@ -1222,7 +1259,7 @@ fun SubjectPickerDialog(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteSubjectDialog = false }) {
+                TextButton(onClick = { subjectToDelete = null }) {
                     Text("Cancel", color = TextSecondary)
                 }
             }
@@ -1230,11 +1267,11 @@ fun SubjectPickerDialog(
     }
 
     // Edit Topic Dialog
-    if (showEditTopicDialog && selectedTopic != null) {
-        var editTopicName by remember(selectedTopic) { mutableStateOf(selectedTopic!!.name) }
+    if (topicToEdit != null) {
+        var editTopicName by remember(topicToEdit) { mutableStateOf(topicToEdit!!.name) }
 
         AlertDialog(
-            onDismissRequest = { showEditTopicDialog = false },
+            onDismissRequest = { topicToEdit = null },
             containerColor = DarkCard,
             title = { Text("Edit Topic", color = TextPrimary) },
             text = {
@@ -1255,11 +1292,13 @@ fun SubjectPickerDialog(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (editTopicName.isNotBlank() && selectedTopic != null) {
-                            val updated = selectedTopic!!.copy(name = editTopicName.trim())
+                        if (editTopicName.isNotBlank() && topicToEdit != null) {
+                            val updated = topicToEdit!!.copy(name = editTopicName.trim())
                             onUpdateTopic(updated)
-                            selectedTopic = updated
-                            showEditTopicDialog = false
+                            if (selectedTopic?.id == updated.id) {
+                                selectedTopic = updated
+                            }
+                            topicToEdit = null
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = StudyAccent, contentColor = Color.Black),
@@ -1269,7 +1308,7 @@ fun SubjectPickerDialog(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showEditTopicDialog = false }) {
+                TextButton(onClick = { topicToEdit = null }) {
                     Text("Cancel", color = TextSecondary)
                 }
             }
@@ -1277,25 +1316,27 @@ fun SubjectPickerDialog(
     }
 
     // Delete Topic Confirmation Dialog
-    if (showDeleteTopicDialog && selectedTopic != null) {
+    if (topicToDelete != null) {
         AlertDialog(
-            onDismissRequest = { showDeleteTopicDialog = false },
+            onDismissRequest = { topicToDelete = null },
             containerColor = DarkCard,
             title = { Text("Delete Topic?", color = TextPrimary) },
             text = {
                 Text(
-                    "Are you sure you want to delete \"${selectedTopic!!.name}\"?",
+                    "Are you sure you want to delete \"${topicToDelete!!.name}\"?",
                     color = TextSecondary
                 )
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        if (selectedTopic != null) {
-                            onDeleteTopic(selectedTopic!!.id)
-                            val remaining = filteredTopics.filter { it.id != selectedTopic!!.id }
-                            selectedTopic = remaining.firstOrNull()
-                            showDeleteTopicDialog = false
+                        if (topicToDelete != null) {
+                            onDeleteTopic(topicToDelete!!.id)
+                            if (selectedTopic?.id == topicToDelete!!.id) {
+                                val remaining = filteredTopics.filter { it.id != topicToDelete!!.id }
+                                selectedTopic = remaining.firstOrNull()
+                            }
+                            topicToDelete = null
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red, contentColor = Color.White),
@@ -1305,10 +1346,191 @@ fun SubjectPickerDialog(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteTopicDialog = false }) {
+                TextButton(onClick = { topicToDelete = null }) {
                     Text("Cancel", color = TextSecondary)
                 }
             }
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SetTimerDialog(
+    settings: AppSettings,
+    onDismiss: () -> Unit,
+    onSave: (
+        studyMinutes: Int,
+        eyeIntervalMinutes: Int,
+        eyeRestSeconds: Int,
+        waterIntervalMinutes: Int,
+        waterBreakMinutes: Int
+    ) -> Unit
+) {
+    var studyMinutesStr by remember { mutableStateOf(settings.defaultStudyDurationMinutes.toString()) }
+    var eyeIntervalStr by remember { mutableStateOf(settings.eyeStudyIntervalMinutes.toString()) }
+    var eyeRestStr by remember { mutableStateOf(settings.eyeRestDurationSeconds.toString()) }
+    var waterIntervalStr by remember { mutableStateOf(settings.waterIntervalMinutes.toString()) }
+    var waterBreakStr by remember { mutableStateOf((settings.waterBreakDurationSeconds / 60).toString()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Set Timer Settings",
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLarge,
+                color = TextPrimary
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Section: Main Study Timer
+                Column {
+                    Text(
+                        text = "STUDY SESSION DURATION",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = StudyAccent
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = studyMinutesStr,
+                        onValueChange = { studyMinutesStr = it },
+                        label = { Text("Study Duration (minutes)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = StudyAccent,
+                            focusedLabelColor = StudyAccent,
+                            unfocusedBorderColor = Color(0xFF333333),
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth().testTag("set_timer_study_input")
+                    )
+                }
+
+                // Section: Eye Rest
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "EYE REST (20-20-20 SYSTEM)",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = EyeCareAccent
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = eyeIntervalStr,
+                            onValueChange = { eyeIntervalStr = it },
+                            label = { Text("Interval (mins)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = EyeCareAccent,
+                                focusedLabelColor = EyeCareAccent,
+                                unfocusedBorderColor = Color(0xFF333333),
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary
+                            ),
+                            modifier = Modifier.weight(1f).testTag("set_timer_eye_interval_input")
+                        )
+                        OutlinedTextField(
+                            value = eyeRestStr,
+                            onValueChange = { eyeRestStr = it },
+                            label = { Text("Rest (secs)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = EyeCareAccent,
+                                focusedLabelColor = EyeCareAccent,
+                                unfocusedBorderColor = Color(0xFF333333),
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary
+                            ),
+                            modifier = Modifier.weight(1f).testTag("set_timer_eye_rest_input")
+                        )
+                    }
+                }
+
+                // Section: Water Break
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "HYDRATION WATER BREAK",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = WaterAccent
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OutlinedTextField(
+                            value = waterIntervalStr,
+                            onValueChange = { waterIntervalStr = it },
+                            label = { Text("Interval (mins)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = WaterAccent,
+                                focusedLabelColor = WaterAccent,
+                                unfocusedBorderColor = Color(0xFF333333),
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary
+                            ),
+                            modifier = Modifier.weight(1f).testTag("set_timer_water_interval_input")
+                        )
+                        OutlinedTextField(
+                            value = waterBreakStr,
+                            onValueChange = { waterBreakStr = it },
+                            label = { Text("Break (mins)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = WaterAccent,
+                                focusedLabelColor = WaterAccent,
+                                unfocusedBorderColor = Color(0xFF333333),
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary
+                            ),
+                            modifier = Modifier.weight(1f).testTag("set_timer_water_break_input")
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val studyMinVal = studyMinutesStr.toIntOrNull() ?: settings.defaultStudyDurationMinutes
+                    val eyeIntVal = eyeIntervalStr.toIntOrNull() ?: settings.eyeStudyIntervalMinutes
+                    val eyeRestVal = eyeRestStr.toIntOrNull() ?: settings.eyeRestDurationSeconds
+                    val waterIntVal = waterIntervalStr.toIntOrNull() ?: settings.waterIntervalMinutes
+                    val waterBreakVal = waterBreakStr.toIntOrNull() ?: (settings.waterBreakDurationSeconds / 60)
+
+                    onSave(studyMinVal, eyeIntVal, eyeRestVal, waterIntVal, waterBreakVal)
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = StudyAccent,
+                    contentColor = Color.Black
+                ),
+                modifier = Modifier.testTag("set_timer_dialog_save")
+            ) {
+                Text("Save & Apply", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = TextMuted),
+                modifier = Modifier.testTag("set_timer_dialog_cancel")
+            ) {
+                Text("Cancel")
+            }
+        },
+        containerColor = DarkCard
+    )
 }

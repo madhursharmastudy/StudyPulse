@@ -39,13 +39,18 @@ fun PlannerScreen(
     assignments: List<AssignmentEntity>,
     revisionItems: List<RevisionItemEntity>,
     onAddStudyPlan: (StudyPlanEntity) -> Unit,
+    onUpdateStudyPlan: (StudyPlanEntity) -> Unit,
     onTogglePlanCompleted: (Long, Boolean) -> Unit,
     onDeleteStudyPlan: (Long) -> Unit,
     onAddExam: (ExamEntity) -> Unit,
+    onUpdateExam: (ExamEntity) -> Unit,
     onDeleteExam: (Long) -> Unit,
     onAddAssignment: (AssignmentEntity) -> Unit,
+    onUpdateAssignment: (AssignmentEntity) -> Unit,
     onDeleteAssignment: (Long) -> Unit,
     onAddRevisionItem: (RevisionItemEntity) -> Unit,
+    onUpdateRevisionItem: (RevisionItemEntity) -> Unit,
+    onDeleteRevisionItem: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(0) }
@@ -127,20 +132,25 @@ fun PlannerScreen(
                 plans = studyPlans,
                 onToggleComplete = onTogglePlanCompleted,
                 onDelete = onDeleteStudyPlan,
+                onUpdate = onUpdateStudyPlan,
                 onAddClick = { showAddPlanDialog = true }
             )
             1 -> ExamsTab(
                 exams = exams,
                 onDelete = onDeleteExam,
+                onUpdate = onUpdateExam,
                 onAddClick = { showAddExamDialog = true }
             )
             2 -> AssignmentsTab(
                 assignments = assignments,
                 onDelete = onDeleteAssignment,
+                onUpdate = onUpdateAssignment,
                 onAddClick = { showAddAssignmentDialog = true }
             )
             3 -> RevisionTab(
-                items = revisionItems
+                items = revisionItems,
+                onDelete = onDeleteRevisionItem,
+                onUpdate = onUpdateRevisionItem
             )
         }
     }
@@ -181,8 +191,12 @@ fun ScheduleTab(
     plans: List<StudyPlanEntity>,
     onToggleComplete: (Long, Boolean) -> Unit,
     onDelete: (Long) -> Unit,
+    onUpdate: (StudyPlanEntity) -> Unit,
     onAddClick: () -> Unit
 ) {
+    var planToEdit by remember { mutableStateOf<StudyPlanEntity?>(null) }
+    var planToDelete by remember { mutableStateOf<StudyPlanEntity?>(null) }
+
     if (plans.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -246,13 +260,41 @@ fun ScheduleTab(
                                 color = TextSecondary
                             )
                         }
-                        IconButton(onClick = { onDelete(plan.id) }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = TextMuted, modifier = Modifier.size(18.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { planToEdit = plan }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextMuted, modifier = Modifier.size(18.dp))
+                            }
+                            IconButton(onClick = { planToDelete = plan }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = TextMuted, modifier = Modifier.size(18.dp))
+                            }
                         }
                     }
                 }
             }
         }
+    }
+
+    if (planToEdit != null) {
+        EditStudyPlanDialog(
+            plan = planToEdit!!,
+            onDismiss = { planToEdit = null },
+            onSave = {
+                onUpdate(it)
+                planToEdit = null
+            }
+        )
+    }
+
+    if (planToDelete != null) {
+        DeleteConfirmationDialog(
+            title = "Delete Study Block?",
+            message = "Are you sure you want to delete this study block for \"${planToDelete!!.subjectName}\"?",
+            onConfirm = {
+                onDelete(planToDelete!!.id)
+                planToDelete = null
+            },
+            onDismiss = { planToDelete = null }
+        )
     }
 }
 
@@ -260,8 +302,12 @@ fun ScheduleTab(
 fun ExamsTab(
     exams: List<ExamEntity>,
     onDelete: (Long) -> Unit,
+    onUpdate: (ExamEntity) -> Unit,
     onAddClick: () -> Unit
 ) {
+    var examToEdit by remember { mutableStateOf<ExamEntity?>(null) }
+    var examToDelete by remember { mutableStateOf<ExamEntity?>(null) }
+
     if (exams.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Button(onClick = onAddClick, colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)) {
@@ -291,19 +337,33 @@ fun ExamsTab(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(exam.title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(AmberSoft)
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "$daysLeft DAYS $hoursLeft HRS LEFT",
-                                    fontWeight = FontWeight.Black,
-                                    fontSize = 11.sp,
-                                    color = AmberAccent
-                                )
+                            Text(
+                                text = exam.title,
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = TextPrimary,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(AmberSoft)
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "$daysLeft DAYS LEFT",
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 11.sp,
+                                        color = AmberAccent
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(onClick = { examToEdit = exam }, modifier = Modifier.size(28.dp)) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextMuted, modifier = Modifier.size(18.dp))
+                                }
+                                IconButton(onClick = { examToDelete = exam }, modifier = Modifier.size(28.dp)) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = TextMuted, modifier = Modifier.size(18.dp))
+                                }
                             }
                         }
 
@@ -334,14 +394,41 @@ fun ExamsTab(
             }
         }
     }
+
+    if (examToEdit != null) {
+        EditExamDialog(
+            exam = examToEdit!!,
+            onDismiss = { examToEdit = null },
+            onSave = {
+                onUpdate(it)
+                examToEdit = null
+            }
+        )
+    }
+
+    if (examToDelete != null) {
+        DeleteConfirmationDialog(
+            title = "Delete Target Exam?",
+            message = "Are you sure you want to delete the exam \"${examToDelete!!.title}\"?",
+            onConfirm = {
+                onDelete(examToDelete!!.id)
+                examToDelete = null
+            },
+            onDismiss = { examToDelete = null }
+        )
+    }
 }
 
 @Composable
 fun AssignmentsTab(
     assignments: List<AssignmentEntity>,
     onDelete: (Long) -> Unit,
+    onUpdate: (AssignmentEntity) -> Unit,
     onAddClick: () -> Unit
 ) {
+    var taskToEdit by remember { mutableStateOf<AssignmentEntity?>(null) }
+    var taskToDelete by remember { mutableStateOf<AssignmentEntity?>(null) }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -367,8 +454,9 @@ fun AssignmentsTab(
                                     .background(if (task.priority == "High") RoseSoft else CyanSoft)
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
+                                val priorityText = task.priority.uppercase()
                                 Text(
-                                    text = task.priority.uppercase(),
+                                    text = priorityText,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 10.sp,
                                     color = if (task.priority == "High") RoseAccent else CyanAccent
@@ -379,61 +467,141 @@ fun AssignmentsTab(
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "${task.subjectName} • Due in $dueDays days • Est: ${task.estimatedMinutes}m",
+                            text = "${task.subjectName} • Due in $dueDays days • Est: ${task.estimatedMinutes}m • ${task.progressPercent}% Done",
                             style = MaterialTheme.typography.bodySmall,
                             color = TextSecondary
                         )
                     }
 
-                    IconButton(onClick = { onDelete(task.id) }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = TextMuted, modifier = Modifier.size(18.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { taskToEdit = task }) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextMuted, modifier = Modifier.size(18.dp))
+                        }
+                        IconButton(onClick = { taskToDelete = task }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = TextMuted, modifier = Modifier.size(18.dp))
+                        }
                     }
                 }
             }
         }
     }
+
+    if (taskToEdit != null) {
+        EditAssignmentDialog(
+            assignment = taskToEdit!!,
+            onDismiss = { taskToEdit = null },
+            onSave = {
+                onUpdate(it)
+                taskToEdit = null
+            }
+        )
+    }
+
+    if (taskToDelete != null) {
+        DeleteConfirmationDialog(
+            title = "Delete Assignment / Task?",
+            message = "Are you sure you want to delete \"${taskToDelete!!.title}\"?",
+            onConfirm = {
+                onDelete(taskToDelete!!.id)
+                taskToDelete = null
+            },
+            onDismiss = { taskToDelete = null }
+        )
+    }
 }
 
 @Composable
-fun RevisionTab(items: List<RevisionItemEntity>) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        items(items) { item ->
-            val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-            val nextDate = sdf.format(Date(item.nextRevisionTimestamp))
+fun RevisionTab(
+    items: List<RevisionItemEntity>,
+    onDelete: (Long) -> Unit,
+    onUpdate: (RevisionItemEntity) -> Unit
+) {
+    var itemToEdit by remember { mutableStateOf<RevisionItemEntity?>(null) }
+    var itemToDelete by remember { mutableStateOf<RevisionItemEntity?>(null) }
 
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
+    if (items.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("No active spaced revisions scheduled", color = TextSecondary)
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            items(items) { item ->
+                val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+                val nextDate = sdf.format(Date(item.nextRevisionTimestamp))
+
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = CharcoalCard),
+                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("${item.subjectName} • ${item.topicName}", fontWeight = FontWeight.Bold, color = TextPrimary)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Next spaced review: $nextDate (Cycle #${item.revisionCount + 1})",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = CyanAccent
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(CharcoalElevated)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("ACTIVE", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = EmeraldAccent)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("${item.subjectName} • ${item.topicName}", fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = if (item.isCompleted) "Completed" else "Next review: $nextDate (Cycle #${item.revisionCount + 1})",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (item.isCompleted) EmeraldAccent else CyanAccent
+                            )
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(CharcoalElevated)
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = if (item.isCompleted) "DONE" else "ACTIVE",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = if (item.isCompleted) EmeraldAccent else AmberAccent
+                                )
+                            }
+                            IconButton(onClick = { itemToEdit = item }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextMuted, modifier = Modifier.size(18.dp))
+                            }
+                            IconButton(onClick = { itemToDelete = item }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = TextMuted, modifier = Modifier.size(18.dp))
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+
+    if (itemToEdit != null) {
+        EditRevisionDialog(
+            item = itemToEdit!!,
+            onDismiss = { itemToEdit = null },
+            onSave = {
+                onUpdate(it)
+                itemToEdit = null
+            }
+        )
+    }
+
+    if (itemToDelete != null) {
+        DeleteConfirmationDialog(
+            title = "Delete Spaced Review?",
+            message = "Are you sure you want to delete this spaced review item for \"${itemToDelete!!.subjectName}\"?",
+            onConfirm = {
+                onDelete(itemToDelete!!.id)
+                itemToDelete = null
+            },
+            onDismiss = { itemToDelete = null }
+        )
     }
 }
 
@@ -654,6 +822,407 @@ fun AddAssignmentDialog(onDismiss: () -> Unit, onAdd: (AssignmentEntity) -> Unit
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        },
+        containerColor = CharcoalCard
+    )
+}
+
+@Composable
+fun EditStudyPlanDialog(
+    plan: StudyPlanEntity,
+    onDismiss: () -> Unit,
+    onSave: (StudyPlanEntity) -> Unit
+) {
+    var subject by remember { mutableStateOf(plan.subjectName) }
+    var topic by remember { mutableStateOf(plan.topicName) }
+    var start by remember { mutableStateOf(plan.startTime) }
+    var end by remember { mutableStateOf(plan.endTime) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(decorFitsSystemWindows = false),
+        title = { Text("Edit Study Block", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = subject,
+                    onValueChange = { subject = it },
+                    label = { Text("Subject") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                )
+                OutlinedTextField(
+                    value = topic,
+                    onValueChange = { topic = it },
+                    label = { Text("Topic / Goal") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = start,
+                        onValueChange = { start = it },
+                        label = { Text("Start") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        modifier = Modifier.weight(1f),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    )
+                    OutlinedTextField(
+                        value = end,
+                        onValueChange = { end = it },
+                        label = { Text("End") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        modifier = Modifier.weight(1f),
+                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(
+                        plan.copy(
+                            startTime = start,
+                            endTime = end,
+                            subjectName = subject,
+                            topicName = topic.ifBlank { "Study Session" }
+                        )
+                    )
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+            ) {
+                Text("SAVE")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        },
+        containerColor = CharcoalCard
+    )
+}
+
+@Composable
+fun EditExamDialog(
+    exam: ExamEntity,
+    onDismiss: () -> Unit,
+    onSave: (ExamEntity) -> Unit
+) {
+    var title by remember { mutableStateOf(exam.title) }
+    var subjects by remember { mutableStateOf(exam.subjectNames) }
+    val initialDays = remember(exam.examTimestamp) {
+        val diff = exam.examTimestamp - System.currentTimeMillis()
+        (diff / (24L * 3600 * 1000L)).toInt().coerceAtLeast(0)
+    }
+    var daysAhead by remember { mutableIntStateOf(initialDays) }
+    var prepPercent by remember { mutableIntStateOf(exam.preparationPercent) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(decorFitsSystemWindows = false),
+        title = { Text("Edit Target Exam", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Exam Name") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                )
+                OutlinedTextField(
+                    value = subjects,
+                    onValueChange = { subjects = it },
+                    label = { Text("Included Subjects") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                )
+                OutlinedTextField(
+                    value = daysAhead.toString(),
+                    onValueChange = { daysAhead = it.toIntOrNull() ?: 0 },
+                    label = { Text("Days until exam") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Next
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                )
+                Spacer(Modifier.height(4.dp))
+                Text("Preparation: $prepPercent%", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Slider(
+                    value = prepPercent.toFloat(),
+                    onValueChange = { prepPercent = it.toInt() },
+                    valueRange = 0f..100f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = AmberAccent,
+                        activeTrackColor = AmberAccent,
+                        inactiveTrackColor = CharcoalElevated
+                    )
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(
+                        exam.copy(
+                            title = title.ifBlank { "Target Exam" },
+                            subjectNames = subjects.ifBlank { "General" },
+                            examTimestamp = System.currentTimeMillis() + (daysAhead * 24L * 3600 * 1000L),
+                            preparationPercent = prepPercent
+                        )
+                    )
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+            ) {
+                Text("SAVE")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        },
+        containerColor = CharcoalCard
+    )
+}
+
+@Composable
+fun EditAssignmentDialog(
+    assignment: AssignmentEntity,
+    onDismiss: () -> Unit,
+    onSave: (AssignmentEntity) -> Unit
+) {
+    var title by remember { mutableStateOf(assignment.title) }
+    var subject by remember { mutableStateOf(assignment.subjectName) }
+    val initialDays = remember(assignment.dueTimestamp) {
+        val diff = assignment.dueTimestamp - System.currentTimeMillis()
+        (diff / (24L * 3600 * 1000L)).toInt().coerceAtLeast(0)
+    }
+    var daysUntil by remember { mutableIntStateOf(initialDays) }
+    var priority by remember { mutableStateOf(assignment.priority) }
+    var progressPercent by remember { mutableIntStateOf(assignment.progressPercent) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(decorFitsSystemWindows = false),
+        title = { Text("Edit Assignment / Task", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Title") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                )
+                OutlinedTextField(
+                    value = subject,
+                    onValueChange = { subject = it },
+                    label = { Text("Subject") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                )
+                OutlinedTextField(
+                    value = daysUntil.toString(),
+                    onValueChange = { daysUntil = it.toIntOrNull() ?: 0 },
+                    label = { Text("Due in (days)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Next
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                )
+                
+                Text("Priority", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("Low", "Medium", "High").forEach { p ->
+                        val isSelected = priority == p
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSelected) AmberSoft else CharcoalElevated)
+                                .clickable { priority = p }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = p,
+                                color = if (isSelected) AmberAccent else TextSecondary,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Progress: $progressPercent%", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Slider(
+                    value = progressPercent.toFloat(),
+                    onValueChange = { progressPercent = it.toInt() },
+                    valueRange = 0f..100f,
+                    colors = SliderDefaults.colors(
+                        thumbColor = AmberAccent,
+                        activeTrackColor = AmberAccent,
+                        inactiveTrackColor = CharcoalElevated
+                    )
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(
+                        assignment.copy(
+                            title = title.ifBlank { "Assignment" },
+                            subjectName = subject,
+                            dueTimestamp = System.currentTimeMillis() + (daysUntil * 24L * 3600 * 1000L),
+                            priority = priority,
+                            progressPercent = progressPercent
+                        )
+                    )
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+            ) {
+                Text("SAVE")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        },
+        containerColor = CharcoalCard
+    )
+}
+
+@Composable
+fun EditRevisionDialog(
+    item: RevisionItemEntity,
+    onDismiss: () -> Unit,
+    onSave: (RevisionItemEntity) -> Unit
+) {
+    val initialDays = remember(item.nextRevisionTimestamp) {
+        val diff = item.nextRevisionTimestamp - System.currentTimeMillis()
+        (diff / (24L * 3600 * 1000L)).toInt().coerceAtLeast(0)
+    }
+    var daysUntil by remember { mutableStateOf(initialDays) }
+    var isCompleted by remember { mutableStateOf(item.isCompleted) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(decorFitsSystemWindows = false),
+        title = { Text("Edit Spaced Review", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("Subject: ${item.subjectName}", color = TextPrimary, fontWeight = FontWeight.Medium)
+                Text("Topic: ${item.topicName}", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                
+                OutlinedTextField(
+                    value = daysUntil.toString(),
+                    onValueChange = { daysUntil = it.toIntOrNull() ?: 0 },
+                    label = { Text("Days until next review") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { isCompleted = !isCompleted }
+                ) {
+                    Checkbox(
+                        checked = isCompleted,
+                        onCheckedChange = { isCompleted = it },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = EmeraldAccent,
+                            uncheckedColor = TextMuted
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Mark as completed", color = TextPrimary)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(
+                        item.copy(
+                            nextRevisionTimestamp = System.currentTimeMillis() + (daysUntil * 24L * 3600 * 1000L),
+                            isCompleted = isCompleted
+                        )
+                    )
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+            ) {
+                Text("SAVE")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        },
+        containerColor = CharcoalCard
+    )
+}
+
+@Composable
+fun DeleteConfirmationDialog(
+    title: String,
+    message: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title, color = TextPrimary, fontWeight = FontWeight.Bold) },
+        text = { Text(message, color = TextSecondary) },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Red, contentColor = Color.White)
+            ) {
+                Text("DELETE", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("CANCEL", color = TextSecondary)
+            }
         },
         containerColor = CharcoalCard
     )
