@@ -16,19 +16,22 @@ import java.util.UUID
 
 object TimerEngine {
     private val scope = CoroutineScope(Dispatchers.Default)
+    @Volatile
     private var tickerJob: Job? = null
 
     // Configuration defaults
     var eyeCareEnabled: Boolean = true
-    var eyeStudyIntervalSeconds: Long = 20 * 60L // 20 minutes
-    var eyeRestDurationSeconds: Long = 20L // 20 seconds
+    var eyeStudyIntervalSeconds: Long = 20 * 60L // 20 minutes study interval
+    var eyeRestDurationSeconds: Long = 20L // 20 seconds break countdown
     var eyeAutoResumeEnabled: Boolean = true
 
     var waterReminderEnabled: Boolean = true
-    var waterIntervalSeconds: Long = 45 * 60L // 45 minutes
-    var waterBreakDurationSeconds: Long = 30L
-    var waterAutoResumeEnabled: Boolean = false
+    var waterIntervalSeconds: Long = 45 * 60L // 45 minutes study interval
+    var waterBreakDurationSeconds: Long = 5 * 60L // 5 minutes break countdown (300s)
+    var waterAutoResumeEnabled: Boolean = true
     var waterRemindLaterSeconds: Long = 5 * 60L
+
+    private val breakQueue = ArrayDeque<BreakType>()
 
     var debugModeActive: Boolean = false
         set(value) {
@@ -37,11 +40,13 @@ object TimerEngine {
                 eyeStudyIntervalSeconds = 20L
                 eyeRestDurationSeconds = 5L
                 waterIntervalSeconds = 30L
+                waterBreakDurationSeconds = 5L
                 waterRemindLaterSeconds = 10L
             } else {
                 eyeStudyIntervalSeconds = 20 * 60L
                 eyeRestDurationSeconds = 20L
                 waterIntervalSeconds = 45 * 60L
+                waterBreakDurationSeconds = 5 * 60L
                 waterRemindLaterSeconds = 5 * 60L
             }
             AppLogger.i(LogFeature.TimerEngine, "Debug Test Mode toggled: $value (Eye: ${eyeStudyIntervalSeconds}s, Water: ${waterIntervalSeconds}s)")
@@ -175,6 +180,7 @@ object TimerEngine {
         val previousState = currentState
         currentState = TimerState.PAUSED
         interruptionCount++
+        stopTicker()
 
         AppLogger.i(
             LogFeature.TimerEngine,
@@ -211,6 +217,7 @@ object TimerEngine {
             topicName
         )
 
+        startTicker()
         updateSnapshot()
         notifyStateChange()
     }
@@ -223,6 +230,7 @@ object TimerEngine {
         commitActiveElapsed(now)
         currentState = TimerState.STOPPED
         stopTicker()
+        breakQueue.clear()
 
         AppLogger.i(
             LogFeature.TimerEngine,
@@ -242,6 +250,16 @@ object TimerEngine {
     }
 
     @Synchronized
+    fun setPlannedDuration(minutes: Int) {
+        if (currentState == TimerState.IDLE) {
+            plannedDurationMillis = (minutes * 60 * 1000L).coerceAtLeast(60 * 1000L)
+            segmentTotalDurationMillis = plannedDurationMillis
+            updateSnapshot()
+            notifyStateChange()
+        }
+    }
+
+    @Synchronized
     fun reset() {
         stopTicker()
         currentState = TimerState.IDLE
@@ -249,7 +267,10 @@ object TimerEngine {
         accumulatedEyeRestMillis = 0L
         accumulatedWaterBreakMillis = 0L
         accumulatedOtherBreakMillis = 0L
+        breakQueue.clear()
         lapsList.clear()
+        segmentStartMonotonicMillis = 0L
+        segmentPausedMonotonicMillis = 0L
 
         AppLogger.i(
             LogFeature.TimerEngine,
@@ -299,6 +320,12 @@ object TimerEngine {
     // 20-20-20 EYE CARE METHODS
     @Synchronized
     fun triggerEyeRestAlert() {
+        if (currentState == TimerState.WATER_BREAK) {
+            if (!breakQueue.contains(BreakType.EYE_REST)) {
+                breakQueue.add(BreakType.EYE_REST)
+            }
+            return
+        }
         val now = SystemClock.elapsedRealtime()
         commitActiveElapsed(now)
         currentState = TimerState.EYE_REST
@@ -329,6 +356,7 @@ object TimerEngine {
 
         val now = SystemClock.elapsedRealtime()
         commitActiveElapsed(now)
+        productiveStudyMillisAtLastEyeRest = accumulatedProductiveStudyMillis
 
         AppLogger.i(
             LogFeature.EyeCare,
@@ -340,6 +368,14 @@ object TimerEngine {
             subjectName,
             topicName
         )
+
+        if (breakQueue.isNotEmpty()) {
+            val nextBreak = breakQueue.removeFirst()
+            if (nextBreak == BreakType.WATER_BREAK) {
+                triggerWaterReminder()
+                return
+            }
+        }
 
         if (eyeAutoResumeEnabled || autoResumed) {
             currentState = TimerState.STUDYING
@@ -361,8 +397,6 @@ object TimerEngine {
         val now = SystemClock.elapsedRealtime()
         commitActiveElapsed(now)
         productiveStudyMillisAtLastEyeRest = accumulatedProductiveStudyMillis
-        currentState = TimerState.STUDYING
-        segmentStartMonotonicMillis = now
 
         AppLogger.i(
             LogFeature.EyeCare,
@@ -375,6 +409,16 @@ object TimerEngine {
             topicName
         )
 
+        if (breakQueue.isNotEmpty()) {
+            val nextBreak = breakQueue.removeFirst()
+            if (nextBreak == BreakType.WATER_BREAK) {
+                triggerWaterReminder()
+                return
+            }
+        }
+
+        currentState = TimerState.STUDYING
+        segmentStartMonotonicMillis = now
         updateSnapshot()
         notifyStateChange()
     }
@@ -382,6 +426,12 @@ object TimerEngine {
     // HYDRATION WATER BREAK METHODS
     @Synchronized
     fun triggerWaterReminder() {
+        if (currentState == TimerState.EYE_REST) {
+            if (!breakQueue.contains(BreakType.WATER_BREAK)) {
+                breakQueue.add(BreakType.WATER_BREAK)
+            }
+            return
+        }
         val now = SystemClock.elapsedRealtime()
         commitActiveElapsed(now)
         currentState = TimerState.WATER_BREAK
@@ -391,7 +441,7 @@ object TimerEngine {
 
         AppLogger.i(
             LogFeature.Hydration,
-            "Hydration reminder triggered",
+            "Hydration reminder triggered (${waterBreakDurationSeconds}s)",
             "Automatic pause of study timer",
             currentState.name,
             sessionUid,
@@ -407,15 +457,17 @@ object TimerEngine {
     }
 
     @Synchronized
-    fun confirmDrankWater() {
+    fun completeWaterBreak(autoResumed: Boolean = false) {
+        if (currentState != TimerState.WATER_BREAK) return
+
         val now = SystemClock.elapsedRealtime()
         commitActiveElapsed(now)
         productiveStudyMillisAtLastWaterPrompt = accumulatedProductiveStudyMillis
 
         AppLogger.i(
             LogFeature.Hydration,
-            "Water intake confirmed: [DRANK WATER]",
-            "Hydration interval reset",
+            "Water break completed (${waterBreakDurationSeconds}s)",
+            "Auto resumed: $autoResumed",
             currentState.name,
             sessionUid,
             timerId,
@@ -423,17 +475,31 @@ object TimerEngine {
             topicName
         )
 
-        if (waterAutoResumeEnabled) {
+        if (breakQueue.isNotEmpty()) {
+            val nextBreak = breakQueue.removeFirst()
+            if (nextBreak == BreakType.EYE_REST) {
+                triggerEyeRestAlert()
+                return
+            }
+        }
+
+        if (waterAutoResumeEnabled || autoResumed) {
             currentState = TimerState.STUDYING
             segmentStartMonotonicMillis = now
             AppLogger.i(LogFeature.TimerEngine, "State changed: WATER_BREAK -> STUDYING", null, currentState.name, sessionUid, timerId)
         } else {
-            currentState = TimerState.STUDYING
-            segmentStartMonotonicMillis = now
+            currentState = TimerState.PAUSED
+            segmentPausedMonotonicMillis = now
         }
 
         updateSnapshot()
         notifyStateChange()
+    }
+
+    @Synchronized
+    fun confirmDrankWater() {
+        if (currentState != TimerState.WATER_BREAK) return
+        completeWaterBreak(autoResumed = true)
     }
 
     @Synchronized
@@ -465,11 +531,10 @@ object TimerEngine {
 
     @Synchronized
     fun skipWaterReminder() {
+        if (currentState != TimerState.WATER_BREAK) return
         val now = SystemClock.elapsedRealtime()
         commitActiveElapsed(now)
         productiveStudyMillisAtLastWaterPrompt = accumulatedProductiveStudyMillis
-        currentState = TimerState.STUDYING
-        segmentStartMonotonicMillis = now
 
         AppLogger.i(
             LogFeature.Hydration,
@@ -482,6 +547,16 @@ object TimerEngine {
             topicName
         )
 
+        if (breakQueue.isNotEmpty()) {
+            val nextBreak = breakQueue.removeFirst()
+            if (nextBreak == BreakType.EYE_REST) {
+                triggerEyeRestAlert()
+                return
+            }
+        }
+
+        currentState = TimerState.STUDYING
+        segmentStartMonotonicMillis = now
         updateSnapshot()
         notifyStateChange()
     }
@@ -555,6 +630,7 @@ object TimerEngine {
         segmentStartMonotonicMillis = now
     }
 
+    @Synchronized
     private fun startTicker() {
         tickerJob?.cancel()
         tickerJob = scope.launch {
@@ -565,6 +641,7 @@ object TimerEngine {
         }
     }
 
+    @Synchronized
     private fun stopTicker() {
         tickerJob?.cancel()
         tickerJob = null
@@ -583,16 +660,16 @@ object TimerEngine {
         if (currentState == TimerState.STUDYING) {
             val totalProductive = accumulatedProductiveStudyMillis + currentSegmentElapsed
 
-            // 1. Check countdown completion
-            if (currentType != TimerType.STOPWATCH && segmentTotalDurationMillis > 0) {
-                if (currentSegmentElapsed >= segmentTotalDurationMillis) {
+            // 1. Check countdown completion based on planned duration
+            if (currentType != TimerType.STOPWATCH && plannedDurationMillis > 0) {
+                if (totalProductive >= plannedDurationMillis) {
                     commitActiveElapsed(now)
                     handleSegmentCompletion()
                     return
                 }
             }
 
-            // 2. Check 20-20-20 Eye Care Trigger
+            // 2. Check 20-20-20 Eye Care Trigger (every 20 minutes of study)
             if (eyeCareEnabled) {
                 val eyeIntervalMillis = eyeStudyIntervalSeconds * 1000L
                 if (totalProductive - productiveStudyMillisAtLastEyeRest >= eyeIntervalMillis) {
@@ -601,7 +678,7 @@ object TimerEngine {
                 }
             }
 
-            // 3. Check Water Reminder Trigger
+            // 3. Check Water Reminder Trigger (every 45 minutes of study)
             if (waterReminderEnabled) {
                 val waterIntervalMillis = waterIntervalSeconds * 1000L
                 if (totalProductive - productiveStudyMillisAtLastWaterPrompt >= waterIntervalMillis) {
@@ -610,10 +687,17 @@ object TimerEngine {
                 }
             }
         } else if (currentState == TimerState.EYE_REST) {
-            // Check Eye rest countdown
-            val eyeRemaining = (segmentTotalDurationMillis - currentSegmentElapsed).coerceAtLeast(0)
+            // Check Eye rest countdown (20 seconds)
+            val eyeRemaining = (eyeRestDurationSeconds * 1000L - currentSegmentElapsed).coerceAtLeast(0)
             if (eyeRemaining <= 0) {
                 completeEyeRest(autoResumed = true)
+                return
+            }
+        } else if (currentState == TimerState.WATER_BREAK) {
+            // Check Water break countdown (5 minutes)
+            val waterRemaining = (waterBreakDurationSeconds * 1000L - currentSegmentElapsed).coerceAtLeast(0)
+            if (waterRemaining <= 0) {
+                completeWaterBreak(autoResumed = true)
                 return
             }
         } else if (currentState == TimerState.SHORT_BREAK || currentState == TimerState.LONG_BREAK) {
@@ -729,10 +813,17 @@ object TimerEngine {
             accumulatedOtherBreakMillis + activeSegmentElapsed
         } else accumulatedOtherBreakMillis
 
-        val segmentRemaining = if (currentType == TimerType.STOPWATCH) {
+        val remainingStudyMillis = if (currentType == TimerType.STOPWATCH) {
             0L
         } else {
-            (segmentTotalDurationMillis - activeSegmentElapsed).coerceAtLeast(0)
+            (plannedDurationMillis - currentProductive).coerceAtLeast(0)
+        }
+
+        val segmentRemaining = when (currentState) {
+            TimerState.EYE_REST -> (eyeRestDurationSeconds * 1000L - activeSegmentElapsed).coerceAtLeast(0)
+            TimerState.WATER_BREAK -> (waterBreakDurationSeconds * 1000L - activeSegmentElapsed).coerceAtLeast(0)
+            TimerState.SHORT_BREAK, TimerState.LONG_BREAK -> (segmentTotalDurationMillis - activeSegmentElapsed).coerceAtLeast(0)
+            else -> remainingStudyMillis
         }
 
         val eyeIntervalMillis = eyeStudyIntervalSeconds * 1000L

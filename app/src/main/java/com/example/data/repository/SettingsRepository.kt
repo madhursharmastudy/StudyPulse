@@ -31,8 +31,8 @@ data class AppSettings(
     val eyeAutoResume: Boolean = true,
     val waterReminderEnabled: Boolean = true,
     val waterIntervalMinutes: Int = 45,
-    val waterBreakDurationSeconds: Int = 30,
-    val waterAutoResume: Boolean = false,
+    val waterBreakDurationSeconds: Int = 300,
+    val waterAutoResume: Boolean = true,
     val soundEnabled: Boolean = true,
     val vibrationEnabled: Boolean = true,
     val dailyTargetHours: Int = 6,
@@ -77,8 +77,8 @@ class SettingsRepository(private val context: Context) {
 
         val waterEnabled = prefs[Keys.WATER_REMINDER_ENABLED] ?: true
         val waterInterval = prefs[Keys.WATER_INTERVAL_MINUTES] ?: 45
-        val waterBreak = prefs[Keys.WATER_BREAK_DURATION_SECONDS] ?: 30
-        val waterAuto = prefs[Keys.WATER_AUTO_RESUME] ?: false
+        val waterBreak = prefs[Keys.WATER_BREAK_DURATION_SECONDS] ?: 300
+        val waterAuto = prefs[Keys.WATER_AUTO_RESUME] ?: true
 
         // Synchronize with TimerEngine
         TimerEngine.debugModeActive = debug

@@ -172,14 +172,30 @@ class StudyWatchRepository(private val dao: StudyWatchDao) {
         return dao.insertSubject(SubjectEntity(name = name, iconName = iconName, colorHex = colorHex, dailyGoalMinutes = dailyGoalMinutes))
     }
 
-    suspend fun updateSubject(subject: SubjectEntity) = dao.updateSubject(subject)
-    suspend fun deleteSubject(id: Long) = dao.deleteSubject(id)
+    suspend fun updateSubject(subject: SubjectEntity) {
+        dao.updateSubject(subject)
+        dao.updateSessionsSubjectName(subject.id, subject.name)
+    }
+
+    suspend fun deleteSubject(id: Long) {
+        dao.deleteSubject(id)
+        dao.deleteTopicsForSubject(id)
+        // Historical study sessions are safely preserved!
+    }
 
     suspend fun insertTopic(subjectId: Long, name: String): Long {
         return dao.insertTopic(TopicEntity(subjectId = subjectId, name = name))
     }
 
-    suspend fun deleteTopic(id: Long) = dao.deleteTopic(id)
+    suspend fun updateTopic(topic: TopicEntity) {
+        dao.updateTopic(topic)
+        dao.updateSessionsTopicName(topic.id, topic.name)
+    }
+
+    suspend fun deleteTopic(id: Long) {
+        dao.deleteTopic(id)
+        // Historical study sessions are safely preserved!
+    }
 
     // CRUD for Plans, Exams, Assignments, Revision
     suspend fun insertStudyPlan(plan: StudyPlanEntity) = dao.insertStudyPlan(plan)

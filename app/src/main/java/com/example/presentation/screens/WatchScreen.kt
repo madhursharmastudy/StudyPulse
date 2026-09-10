@@ -56,6 +56,10 @@ fun WatchScreen(
     onSelectTopic: (TopicEntity) -> Unit = {},
     onAddNewSubject: (name: String, icon: String, colorHex: String, goalMinutes: Int) -> Unit = { _, _, _, _ -> },
     onAddNewTopic: (subjectId: Long, name: String) -> Unit = { _, _ -> },
+    onUpdateSubject: (SubjectEntity) -> Unit = {},
+    onDeleteSubject: (Long) -> Unit = {},
+    onUpdateTopic: (TopicEntity) -> Unit = {},
+    onDeleteTopic: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -307,7 +311,11 @@ fun WatchScreen(
                     showSubjectPicker = false
                 },
                 onAddNewSubject = onAddNewSubject,
-                onAddNewTopic = onAddNewTopic
+                onAddNewTopic = onAddNewTopic,
+                onUpdateSubject = onUpdateSubject,
+                onDeleteSubject = onDeleteSubject,
+                onUpdateTopic = onUpdateTopic,
+                onDeleteTopic = onDeleteTopic
             )
         }
     }
@@ -691,9 +699,13 @@ fun SubjectPickerDialog(
     onDismiss: () -> Unit,
     onSelectSubjectAndTopic: (SubjectEntity, TopicEntity?, Int) -> Unit,
     onAddNewSubject: (name: String, icon: String, colorHex: String, goalMinutes: Int) -> Unit,
-    onAddNewTopic: (subjectId: Long, name: String) -> Unit
+    onAddNewTopic: (subjectId: Long, name: String) -> Unit,
+    onUpdateSubject: (SubjectEntity) -> Unit = {},
+    onDeleteSubject: (Long) -> Unit = {},
+    onUpdateTopic: (TopicEntity) -> Unit = {},
+    onDeleteTopic: (Long) -> Unit = {}
 ) {
-    var selectedSubject by remember {
+    var selectedSubject by remember(subjects) {
         mutableStateOf(subjects.firstOrNull { it.id == currentSubjectId } ?: subjects.firstOrNull())
     }
     val filteredTopics = remember(selectedSubject, topics) {
@@ -706,6 +718,10 @@ fun SubjectPickerDialog(
 
     var showAddSubjectDialog by remember { mutableStateOf(false) }
     var showAddTopicDialog by remember { mutableStateOf(false) }
+    var showEditSubjectDialog by remember { mutableStateOf(false) }
+    var showDeleteSubjectDialog by remember { mutableStateOf(false) }
+    var showEditTopicDialog by remember { mutableStateOf(false) }
+    var showDeleteTopicDialog by remember { mutableStateOf(false) }
 
     val durationPresets = listOf(15, 25, 30, 45, 50, 60, 90, 120)
 
@@ -775,12 +791,50 @@ fun SubjectPickerDialog(
                                 color = if (isSelected) StudyAccent else TextPrimary,
                                 modifier = Modifier.weight(1f)
                             )
-                            if (subject.totalStudySeconds > 0) {
-                                Text(
-                                    text = "${hours}h ${minutes}m",
-                                    fontSize = 11.sp,
-                                    color = TextSecondary
-                                )
+                            if (isSelected) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (subject.totalStudySeconds > 0) {
+                                        Text(
+                                            text = "${hours}h ${minutes}m",
+                                            fontSize = 11.sp,
+                                            color = TextSecondary,
+                                            modifier = Modifier.padding(end = 8.dp)
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { showEditSubjectDialog = true },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = "Edit Subject",
+                                            tint = StudyAccent,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    IconButton(
+                                        onClick = { showDeleteSubjectDialog = true },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete Subject",
+                                            tint = Color.Red,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            } else {
+                                if (subject.totalStudySeconds > 0) {
+                                    Text(
+                                        text = "${hours}h ${minutes}m",
+                                        fontSize = 11.sp,
+                                        color = TextSecondary
+                                    )
+                                }
                             }
                         }
                     }
@@ -826,12 +880,44 @@ fun SubjectPickerDialog(
                                 .fillMaxWidth()
                                 .padding(vertical = 2.dp)
                         ) {
-                            Text(
-                                text = topic.name,
-                                fontSize = 13.sp,
-                                color = if (isSelected) StudyAccent else TextPrimary,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = topic.name,
+                                    fontSize = 13.sp,
+                                    color = if (isSelected) StudyAccent else TextPrimary,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                if (isSelected) {
+                                    IconButton(
+                                        onClick = { showEditTopicDialog = true },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Edit,
+                                            contentDescription = "Edit Topic",
+                                            tint = StudyAccent,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    IconButton(
+                                        onClick = { showDeleteTopicDialog = true },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete Topic",
+                                            tint = Color.Red,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 } else {
@@ -1034,6 +1120,192 @@ fun SubjectPickerDialog(
             },
             dismissButton = {
                 TextButton(onClick = { showAddTopicDialog = false }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            }
+        )
+    }
+
+    // Edit Subject Dialog
+    if (showEditSubjectDialog && selectedSubject != null) {
+        var editSubjectName by remember(selectedSubject) { mutableStateOf(selectedSubject!!.name) }
+        var editDailyGoalTarget by remember(selectedSubject) { mutableStateOf(selectedSubject!!.dailyGoalMinutes.toString()) }
+
+        AlertDialog(
+            onDismissRequest = { showEditSubjectDialog = false },
+            containerColor = DarkCard,
+            title = { Text("Edit Subject", color = TextPrimary) },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = editSubjectName,
+                        onValueChange = { editSubjectName = it },
+                        label = { Text("Subject Name") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = StudyAccent,
+                            unfocusedBorderColor = Color(0xFF444444),
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = editDailyGoalTarget,
+                        onValueChange = { editDailyGoalTarget = it.filter { char -> char.isDigit() } },
+                        label = { Text("Daily Goal (Minutes)") },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = StudyAccent,
+                            unfocusedBorderColor = Color(0xFF444444),
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (editSubjectName.isNotBlank() && selectedSubject != null) {
+                            val updated = selectedSubject!!.copy(
+                                name = editSubjectName.trim(),
+                                dailyGoalMinutes = editDailyGoalTarget.toIntOrNull() ?: 60
+                            )
+                            onUpdateSubject(updated)
+                            selectedSubject = updated
+                            showEditSubjectDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = StudyAccent, contentColor = Color.Black),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Save", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditSubjectDialog = false }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            }
+        )
+    }
+
+    // Delete Subject Confirmation Dialog
+    if (showDeleteSubjectDialog && selectedSubject != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteSubjectDialog = false },
+            containerColor = DarkCard,
+            title = { Text("Delete Subject?", color = TextPrimary) },
+            text = {
+                Text(
+                    "Are you sure you want to delete \"${selectedSubject!!.name}\"? This will also delete all its associated topics and study history.",
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (selectedSubject != null) {
+                            onDeleteSubject(selectedSubject!!.id)
+                            val remaining = subjects.filter { it.id != selectedSubject!!.id }
+                            selectedSubject = remaining.firstOrNull()
+                            showDeleteSubjectDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red, contentColor = Color.White),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Delete", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteSubjectDialog = false }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            }
+        )
+    }
+
+    // Edit Topic Dialog
+    if (showEditTopicDialog && selectedTopic != null) {
+        var editTopicName by remember(selectedTopic) { mutableStateOf(selectedTopic!!.name) }
+
+        AlertDialog(
+            onDismissRequest = { showEditTopicDialog = false },
+            containerColor = DarkCard,
+            title = { Text("Edit Topic", color = TextPrimary) },
+            text = {
+                OutlinedTextField(
+                    value = editTopicName,
+                    onValueChange = { editTopicName = it },
+                    label = { Text("Topic Name") },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = StudyAccent,
+                        unfocusedBorderColor = Color(0xFF444444),
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (editTopicName.isNotBlank() && selectedTopic != null) {
+                            val updated = selectedTopic!!.copy(name = editTopicName.trim())
+                            onUpdateTopic(updated)
+                            selectedTopic = updated
+                            showEditTopicDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = StudyAccent, contentColor = Color.Black),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Save", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditTopicDialog = false }) {
+                    Text("Cancel", color = TextSecondary)
+                }
+            }
+        )
+    }
+
+    // Delete Topic Confirmation Dialog
+    if (showDeleteTopicDialog && selectedTopic != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteTopicDialog = false },
+            containerColor = DarkCard,
+            title = { Text("Delete Topic?", color = TextPrimary) },
+            text = {
+                Text(
+                    "Are you sure you want to delete \"${selectedTopic!!.name}\"?",
+                    color = TextSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (selectedTopic != null) {
+                            onDeleteTopic(selectedTopic!!.id)
+                            val remaining = filteredTopics.filter { it.id != selectedTopic!!.id }
+                            selectedTopic = remaining.firstOrNull()
+                            showDeleteTopicDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red, contentColor = Color.White),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Delete", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteTopicDialog = false }) {
                     Text("Cancel", color = TextSecondary)
                 }
             }

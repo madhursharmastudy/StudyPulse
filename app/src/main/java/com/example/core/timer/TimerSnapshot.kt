@@ -85,11 +85,7 @@ data class TimerSnapshot(
         val h = totalSecs / 3600
         val m = (totalSecs % 3600) / 60
         val s = totalSecs % 60
-        return if (h > 0) {
-            String.format("%02d:%02d:%02d", h, m, s)
-        } else {
-            String.format("%02d:%02d", m, s)
-        }
+        return String.format("%02d:%02d:%02d", h, m, s)
     }
 
     companion object {
@@ -98,11 +94,7 @@ data class TimerSnapshot(
             val h = secs / 3600
             val m = (secs % 3600) / 60
             val s = secs % 60
-            return if (h > 0) {
-                String.format("%02d:%02d:%02d", h, m, s)
-            } else {
-                String.format("%02d:%02d", m, s)
-            }
+            return String.format("%02d:%02d:%02d", h, m, s)
         }
 
         fun formatElapsed(millis: Long): String {
@@ -110,11 +102,7 @@ data class TimerSnapshot(
             val h = totalSecs / 3600
             val m = (totalSecs % 3600) / 60
             val s = totalSecs % 60
-            return if (h > 0) {
-                String.format("%02d:%02d:%02d", h, m, s)
-            } else {
-                String.format("%02d:%02d", m, s)
-            }
+            return String.format("%02d:%02d:%02d", h, m, s)
         }
     }
 }

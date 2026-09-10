@@ -26,6 +26,9 @@ interface StudyWatchDao {
     @Query("DELETE FROM subjects WHERE id = :id")
     suspend fun deleteSubject(id: Long)
 
+    @Query("UPDATE study_sessions SET subjectName = :newName WHERE subjectId = :id")
+    suspend fun updateSessionsSubjectName(id: Long, newName: String)
+
     @Query("UPDATE subjects SET totalStudySeconds = totalStudySeconds + :addedSeconds WHERE id = :id")
     suspend fun addSubjectStudyTime(id: Long, addedSeconds: Long)
 
@@ -39,8 +42,17 @@ interface StudyWatchDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTopic(topic: TopicEntity): Long
 
+    @Update
+    suspend fun updateTopic(topic: TopicEntity)
+
     @Query("DELETE FROM topics WHERE id = :id")
     suspend fun deleteTopic(id: Long)
+
+    @Query("DELETE FROM topics WHERE subjectId = :subjectId")
+    suspend fun deleteTopicsForSubject(subjectId: Long)
+
+    @Query("UPDATE study_sessions SET topicName = :newName WHERE topicId = :id")
+    suspend fun updateSessionsTopicName(id: Long, newName: String)
 
     @Query("UPDATE topics SET totalStudySeconds = totalStudySeconds + :addedSeconds WHERE id = :id")
     suspend fun addTopicStudyTime(id: Long, addedSeconds: Long)

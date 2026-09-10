@@ -177,6 +177,26 @@ fun StudyWatchRootApp() {
                                     coroutineScope.launch {
                                         app.repository.insertTopic(subId, name)
                                     }
+                                },
+                                onUpdateSubject = { sub ->
+                                    coroutineScope.launch {
+                                        app.repository.updateSubject(sub)
+                                    }
+                                },
+                                onDeleteSubject = { id ->
+                                    coroutineScope.launch {
+                                        app.repository.deleteSubject(id)
+                                    }
+                                },
+                                onUpdateTopic = { top ->
+                                    coroutineScope.launch {
+                                        app.repository.updateTopic(top)
+                                    }
+                                },
+                                onDeleteTopic = { id ->
+                                    coroutineScope.launch {
+                                        app.repository.deleteTopic(id)
+                                    }
                                 }
                             )
                         }
