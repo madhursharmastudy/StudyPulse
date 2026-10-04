@@ -248,7 +248,8 @@ fun StudyWatchRootApp() {
                             StatisticsScreen(
                                 sessions = sessions,
                                 subjects = subjects,
-                                onDeleteSession = { id -> coroutineScope.launch { app.repository.deleteStudySession(id) } }
+                                onDeleteSession = { id -> coroutineScope.launch { app.repository.deleteStudySession(id) } },
+                                dailyTargetHours = settings.dailyTargetHours
                             )
                         }
                         NavigationTab.SETTINGS -> {
@@ -297,7 +298,8 @@ fun StudyWatchRootApp() {
                                         Toast.makeText(context, "Exported Study Report copied to clipboard", Toast.LENGTH_SHORT).show()
                                     }
                                 },
-                                onOpenLogBook = { isViewingLogBook = true }
+                                onOpenLogBook = { isViewingLogBook = true },
+                                onUpdateDailyTarget = { coroutineScope.launch { app.settingsRepository.updateDailyTargetHours(it) } }
                             )
                         }
                     }

@@ -52,62 +52,17 @@ class StudyNotificationManager(private val context: Context) {
     }
 
     fun updateRunningTimerNotification(snapshot: TimerSnapshot) {
-        if (!hasNotificationPermission()) return
+        notificationManager.cancel(NOTIFICATION_TIMER_ID)
 
-        if (snapshot.state == TimerState.IDLE || snapshot.state == TimerState.STOPPED || snapshot.state == TimerState.COMPLETED) {
-            notificationManager.cancel(NOTIFICATION_TIMER_ID)
-            return
+        if (snapshot.state != TimerState.EYE_REST) {
+            notificationManager.cancel(NOTIFICATION_EYE_ID)
         }
-
-        val openAppIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        if (snapshot.state != TimerState.WATER_BREAK) {
+            notificationManager.cancel(NOTIFICATION_WATER_ID)
         }
-        val contentPendingIntent = PendingIntent.getActivity(
-            context,
-            0,
-            openAppIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val title = "${snapshot.subjectName} • ${snapshot.state.name}"
-        val content = "${snapshot.topicName} | Time: ${snapshot.formattedActiveDisplay()}"
-
-        val builder = NotificationCompat.Builder(context, CHANNEL_TIMER_ID)
-            .setSmallIcon(R.drawable.ic_notification_studypulse)
-            .setContentTitle(title)
-            .setContentText(content)
-            .setContentIntent(contentPendingIntent)
-            .setOngoing(snapshot.state == TimerState.STUDYING)
-            .setOnlyAlertOnce(true)
-
-        // Action buttons
         if (snapshot.state == TimerState.STUDYING) {
-            val pauseIntent = Intent(context, NotificationActionReceiver::class.java).apply {
-                action = NotificationActionReceiver.ACTION_PAUSE
-            }
-            val pausePending = PendingIntent.getBroadcast(
-                context, 1, pauseIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            builder.addAction(android.R.drawable.ic_media_pause, "PAUSE", pausePending)
-        } else if (snapshot.state == TimerState.PAUSED) {
-            val resumeIntent = Intent(context, NotificationActionReceiver::class.java).apply {
-                action = NotificationActionReceiver.ACTION_RESUME
-            }
-            val resumePending = PendingIntent.getBroadcast(
-                context, 2, resumeIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            builder.addAction(android.R.drawable.ic_media_play, "RESUME", resumePending)
+            notificationManager.cancel(NOTIFICATION_COMPLETED_ID)
         }
-
-        val stopIntent = Intent(context, NotificationActionReceiver::class.java).apply {
-            action = NotificationActionReceiver.ACTION_STOP
-        }
-        val stopPending = PendingIntent.getBroadcast(
-            context, 3, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        builder.addAction(android.R.drawable.ic_menu_close_clear_cancel, "STOP", stopPending)
-
-        notificationManager.notify(NOTIFICATION_TIMER_ID, builder.build())
     }
 
     fun showEyeRestNotification(snapshot: TimerSnapshot) {
@@ -134,7 +89,7 @@ class StudyNotificationManager(private val context: Context) {
             .setContentIntent(contentPendingIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "SKIP", skipPending)
 
-        notificationManager.notify(NOTIFICATION_ALERT_ID, builder.build())
+        notificationManager.notify(NOTIFICATION_EYE_ID, builder.build())
         AppLogger.i(LogFeature.NotificationManager, "Eye rest notification posted")
     }
 
@@ -170,7 +125,7 @@ class StudyNotificationManager(private val context: Context) {
             .addAction(android.R.drawable.checkbox_on_background, "DRANK WATER", drankPending)
             .addAction(android.R.drawable.ic_menu_recent_history, "REMIND LATER", laterPending)
 
-        notificationManager.notify(NOTIFICATION_ALERT_ID, builder.build())
+        notificationManager.notify(NOTIFICATION_WATER_ID, builder.build())
         AppLogger.i(LogFeature.NotificationManager, "Water reminder notification posted")
     }
 
@@ -184,7 +139,7 @@ class StudyNotificationManager(private val context: Context) {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
 
-        notificationManager.notify(NOTIFICATION_ALERT_ID, builder.build())
+        notificationManager.notify(NOTIFICATION_COMPLETED_ID, builder.build())
     }
 
     private fun hasNotificationPermission(): Boolean {
@@ -202,6 +157,8 @@ class StudyNotificationManager(private val context: Context) {
         const val CHANNEL_TIMER_ID = "study_timer_channel"
         const val CHANNEL_ALERTS_ID = "study_alerts_channel"
         const val NOTIFICATION_TIMER_ID = 1001
-        const val NOTIFICATION_ALERT_ID = 1002
+        const val NOTIFICATION_EYE_ID = 1002
+        const val NOTIFICATION_WATER_ID = 1003
+        const val NOTIFICATION_COMPLETED_ID = 1004
     }
 }

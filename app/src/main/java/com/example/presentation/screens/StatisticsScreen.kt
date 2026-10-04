@@ -31,6 +31,7 @@ fun StatisticsScreen(
     sessions: List<StudySessionEntity>,
     subjects: List<SubjectEntity>,
     onDeleteSession: (Long) -> Unit,
+    dailyTargetHours: Int = 6,
     modifier: Modifier = Modifier
 ) {
     var selectedFilterTab by remember { mutableStateOf(0) }
@@ -130,6 +131,75 @@ fun StatisticsScreen(
                             )
                         }
                     )
+                }
+            }
+        }
+
+        if (selectedFilterTab == 0) {
+            item {
+                val productiveMinutes = (totalProductiveSeconds / 60).toInt()
+                val productiveDisplay = if (productiveMinutes >= 60) {
+                    val h = productiveMinutes / 60
+                    val m = productiveMinutes % 60
+                    if (m > 0) "${h}h ${m}m" else "${h}h"
+                } else {
+                    "${productiveMinutes}m"
+                }
+                val targetDisplay = "${dailyTargetHours}h"
+                val fraction = (totalProductiveSeconds.toFloat() / (dailyTargetHours * 3600f)).coerceAtMost(1f)
+                val percent = (fraction * 100).toInt()
+
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = CharcoalCard),
+                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.TrackChanges,
+                                    contentDescription = null,
+                                    tint = AmberAccent,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Today's Target",
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary,
+                                    fontSize = 14.sp
+                                )
+                            }
+                            Text(
+                                text = "$productiveDisplay / $targetDisplay",
+                                fontWeight = FontWeight.Black,
+                                color = AmberAccent,
+                                fontSize = 14.sp
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        LinearProgressIndicator(
+                            progress = { fraction },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            color = AmberAccent,
+                            trackColor = CharcoalElevated
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "$percent% of daily goal completed",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
                 }
             }
         }

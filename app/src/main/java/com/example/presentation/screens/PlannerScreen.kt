@@ -29,9 +29,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import com.example.data.db.*
 import com.example.ui.theme.*
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+sealed class TodayItem {
+    data class StudyBlock(val plan: StudyPlanEntity) : TodayItem()
+    data class Revision(val item: RevisionItemEntity) : TodayItem()
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlannerScreen(
     studyPlans: List<StudyPlanEntity>,
@@ -54,11 +61,39 @@ fun PlannerScreen(
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("SCHEDULE", "EXAMS", "TASKS", "REVISION")
+    val tabs = listOf("TODAY", "TASKS", "EXAMS")
 
     var showAddPlanDialog by remember { mutableStateOf(false) }
     var showAddExamDialog by remember { mutableStateOf(false) }
     var showAddAssignmentDialog by remember { mutableStateOf(false) }
+    var showAddRevisionDialog by remember { mutableStateOf(false) }
+    var showAddChooser by remember { mutableStateOf(false) }
+
+    val todayEnd = remember(revisionItems) {
+        Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }.timeInMillis
+    }
+
+    val todayRevisions = remember(revisionItems, todayEnd) {
+        revisionItems.filter { it.nextRevisionTimestamp <= todayEnd && !it.isCompleted }
+    }
+
+    val todayItems = remember(studyPlans, todayRevisions) {
+        val list = mutableListOf<TodayItem>()
+        studyPlans.forEach { list.add(TodayItem.StudyBlock(it)) }
+        todayRevisions.forEach { list.add(TodayItem.Revision(it)) }
+
+        list.sortedBy { item ->
+            when (item) {
+                is TodayItem.StudyBlock -> item.plan.startTime
+                is TodayItem.Revision -> "00:00" // Revision items listed first
+            }
+        }
+    }
 
     Column(
         modifier = modifier
@@ -80,28 +115,59 @@ fun PlannerScreen(
                 color = AmberAccent
             )
 
-            IconButton(
-                onClick = {
-                    when (selectedTab) {
-                        0 -> showAddPlanDialog = true
-                        1 -> showAddExamDialog = true
-                        2 -> showAddAssignmentDialog = true
-                        3 -> { /* Add revision item */ }
-                    }
-                },
-                modifier = Modifier.testTag("planner_add_button")
-            ) {
-                Icon(Icons.Default.AddCircle, contentDescription = "Add Item", tint = AmberAccent)
+            Box {
+                IconButton(
+                    onClick = { showAddChooser = true },
+                    modifier = Modifier.testTag("planner_add_button")
+                ) {
+                    Icon(Icons.Default.AddCircle, contentDescription = "Add Item", tint = AmberAccent)
+                }
+
+                DropdownMenu(
+                    expanded = showAddChooser,
+                    onDismissRequest = { showAddChooser = false },
+                    modifier = Modifier
+                        .background(CharcoalCard)
+                        .border(1.dp, CharcoalBorder, RoundedCornerShape(8.dp))
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Study Block", color = TextPrimary, fontWeight = FontWeight.Medium) },
+                        onClick = {
+                            showAddChooser = false
+                            showAddPlanDialog = true
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Task", color = TextPrimary, fontWeight = FontWeight.Medium) },
+                        onClick = {
+                            showAddChooser = false
+                            showAddAssignmentDialog = true
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Exam", color = TextPrimary, fontWeight = FontWeight.Medium) },
+                        onClick = {
+                            showAddChooser = false
+                            showAddExamDialog = true
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Revision", color = TextPrimary, fontWeight = FontWeight.Medium) },
+                        onClick = {
+                            showAddChooser = false
+                            showAddRevisionDialog = true
+                        }
+                    )
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        ScrollableTabRow(
+        TabRow(
             selectedTabIndex = selectedTab,
             containerColor = CharcoalCard,
             contentColor = AmberAccent,
-            edgePadding = 0.dp,
             indicator = { tabPositions ->
                 TabRowDefaults.SecondaryIndicator(
                     modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
@@ -128,29 +194,26 @@ fun PlannerScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         when (selectedTab) {
-            0 -> ScheduleTab(
-                plans = studyPlans,
+            0 -> TodayTab(
+                items = todayItems,
                 onToggleComplete = onTogglePlanCompleted,
-                onDelete = onDeleteStudyPlan,
-                onUpdate = onUpdateStudyPlan,
-                onAddClick = { showAddPlanDialog = true }
+                onDeleteStudyPlan = onDeleteStudyPlan,
+                onUpdateStudyPlan = onUpdateStudyPlan,
+                onDeleteRevision = onDeleteRevisionItem,
+                onUpdateRevision = onUpdateRevisionItem,
+                onAddClick = { showAddChooser = true }
             )
-            1 -> ExamsTab(
-                exams = exams,
-                onDelete = onDeleteExam,
-                onUpdate = onUpdateExam,
-                onAddClick = { showAddExamDialog = true }
-            )
-            2 -> AssignmentsTab(
+            1 -> AssignmentsTab(
                 assignments = assignments,
                 onDelete = onDeleteAssignment,
                 onUpdate = onUpdateAssignment,
                 onAddClick = { showAddAssignmentDialog = true }
             )
-            3 -> RevisionTab(
-                items = revisionItems,
-                onDelete = onDeleteRevisionItem,
-                onUpdate = onUpdateRevisionItem
+            2 -> ExamsTab(
+                exams = exams,
+                onDelete = onDeleteExam,
+                onUpdate = onUpdateExam,
+                onAddClick = { showAddExamDialog = true }
             )
         }
     }
@@ -184,32 +247,46 @@ fun PlannerScreen(
             }
         )
     }
+
+    if (showAddRevisionDialog) {
+        AddRevisionDialog(
+            onDismiss = { showAddRevisionDialog = false },
+            onAdd = {
+                onAddRevisionItem(it)
+                showAddRevisionDialog = false
+            }
+        )
+    }
 }
 
 @Composable
-fun ScheduleTab(
-    plans: List<StudyPlanEntity>,
+fun TodayTab(
+    items: List<TodayItem>,
     onToggleComplete: (Long, Boolean) -> Unit,
-    onDelete: (Long) -> Unit,
-    onUpdate: (StudyPlanEntity) -> Unit,
+    onDeleteStudyPlan: (Long) -> Unit,
+    onUpdateStudyPlan: (StudyPlanEntity) -> Unit,
+    onDeleteRevision: (Long) -> Unit,
+    onUpdateRevision: (RevisionItemEntity) -> Unit,
     onAddClick: () -> Unit
 ) {
     var planToEdit by remember { mutableStateOf<StudyPlanEntity?>(null) }
     var planToDelete by remember { mutableStateOf<StudyPlanEntity?>(null) }
+    var revisionToEdit by remember { mutableStateOf<RevisionItemEntity?>(null) }
+    var revisionToDelete by remember { mutableStateOf<RevisionItemEntity?>(null) }
 
-    if (plans.isEmpty()) {
+    if (items.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("No study blocks scheduled today", color = TextSecondary)
+                Text("No study blocks or revisions today", color = TextSecondary)
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = onAddClick,
                     colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
                 ) {
-                    Text("+ Add Study Block")
+                    Text("+ Add Item")
                 }
             }
         }
@@ -218,54 +295,140 @@ fun ScheduleTab(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(plans) { plan ->
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = plan.isCompleted,
-                            onCheckedChange = { onToggleComplete(plan.id, it) },
-                            colors = CheckboxDefaults.colors(
-                                checkedColor = EmeraldAccent,
-                                uncheckedColor = TextMuted
-                            )
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "${plan.startTime} - ${plan.endTime}",
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace,
-                                    color = AmberAccent,
-                                    fontSize = 13.sp
+            items(items) { item ->
+                when (item) {
+                    is TodayItem.StudyBlock -> {
+                        val plan = item.plan
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = CharcoalCard),
+                            border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = plan.isCompleted,
+                                    onCheckedChange = { onToggleComplete(plan.id, it) },
+                                    colors = CheckboxDefaults.colors(
+                                        checkedColor = EmeraldAccent,
+                                        uncheckedColor = TextMuted
+                                    )
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = plan.subjectName,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
-                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "${plan.startTime} - ${plan.endTime}",
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace,
+                                        color = AmberAccent,
+                                        fontSize = 13.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = plan.subjectName,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary,
+                                        fontSize = 15.sp,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "${plan.topicName}${if (plan.notes.isNotEmpty()) " • ${plan.notes}" else ""}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextSecondary,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                }
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    IconButton(onClick = { planToEdit = plan }) {
+                                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextMuted, modifier = Modifier.size(18.dp))
+                                    }
+                                    IconButton(onClick = { planToDelete = plan }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = TextMuted, modifier = Modifier.size(18.dp))
+                                    }
+                                }
                             }
-                            Text(
-                                text = "${plan.topicName} ${if (plan.notes.isNotEmpty()) "• ${plan.notes}" else ""}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TextSecondary
-                            )
                         }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { planToEdit = plan }) {
-                                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextMuted, modifier = Modifier.size(18.dp))
-                            }
-                            IconButton(onClick = { planToDelete = plan }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = TextMuted, modifier = Modifier.size(18.dp))
+                    }
+                    is TodayItem.Revision -> {
+                        val rev = item.item
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = CharcoalCard),
+                            border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(Color(0xFF222222))
+                                        .padding(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Loop,
+                                        contentDescription = null,
+                                        tint = CyanAccent,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(CyanSoft)
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "REVISION",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 10.sp,
+                                            color = CyanAccent
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = rev.subjectName,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary,
+                                        fontSize = 15.sp,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = rev.topicName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = TextSecondary,
+                                        maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                }
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    IconButton(onClick = { revisionToEdit = rev }) {
+                                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextMuted, modifier = Modifier.size(18.dp))
+                                    }
+                                    IconButton(onClick = { revisionToDelete = rev }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = TextMuted, modifier = Modifier.size(18.dp))
+                                    }
+                                }
                             }
                         }
                     }
@@ -279,7 +442,7 @@ fun ScheduleTab(
             plan = planToEdit!!,
             onDismiss = { planToEdit = null },
             onSave = {
-                onUpdate(it)
+                onUpdateStudyPlan(it)
                 planToEdit = null
             }
         )
@@ -290,10 +453,33 @@ fun ScheduleTab(
             title = "Delete Study Block?",
             message = "Are you sure you want to delete this study block for \"${planToDelete!!.subjectName}\"?",
             onConfirm = {
-                onDelete(planToDelete!!.id)
+                onDeleteStudyPlan(planToDelete!!.id)
                 planToDelete = null
             },
             onDismiss = { planToDelete = null }
+        )
+    }
+
+    if (revisionToEdit != null) {
+        EditRevisionDialog(
+            item = revisionToEdit!!,
+            onDismiss = { revisionToEdit = null },
+            onSave = {
+                onUpdateRevision(it)
+                revisionToEdit = null
+            }
+        )
+    }
+
+    if (revisionToDelete != null) {
+        DeleteConfirmationDialog(
+            title = "Delete Spaced Review?",
+            message = "Are you sure you want to delete this spaced review item for \"${revisionToDelete!!.subjectName}\"?",
+            onConfirm = {
+                onDeleteRevision(revisionToDelete!!.id)
+                revisionToDelete = null
+            },
+            onDismiss = { revisionToDelete = null }
         )
     }
 }
@@ -323,7 +509,6 @@ fun ExamsTab(
                 val now = System.currentTimeMillis()
                 val diffMillis = exam.examTimestamp - now
                 val daysLeft = (diffMillis / (1000 * 60 * 60 * 24)).coerceAtLeast(0)
-                val hoursLeft = ((diffMillis / (1000 * 60 * 60)) % 24).coerceAtLeast(0)
 
                 Card(
                     shape = RoundedCornerShape(14.dp),
@@ -429,56 +614,98 @@ fun AssignmentsTab(
     var taskToEdit by remember { mutableStateOf<AssignmentEntity?>(null) }
     var taskToDelete by remember { mutableStateOf<AssignmentEntity?>(null) }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        items(assignments) { task ->
-            val dueDays = ((task.dueTimestamp - System.currentTimeMillis()) / (1000 * 3600 * 24)).coerceAtLeast(0)
-
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
+    if (assignments.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("No active assignments or tasks", color = TextSecondary)
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = onAddClick,
+                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(if (task.priority == "High") RoseSoft else CyanSoft)
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                val priorityText = task.priority.uppercase()
-                                Text(
-                                    text = priorityText,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp,
-                                    color = if (task.priority == "High") RoseAccent else CyanAccent
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(task.title, fontWeight = FontWeight.Bold, color = TextPrimary)
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "${task.subjectName} • Due in $dueDays days • Est: ${task.estimatedMinutes}m • ${task.progressPercent}% Done",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary
-                        )
-                    }
+                    Text("+ Add Task")
+                }
+            }
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            items(assignments) { task ->
+                val diffMillis = task.dueTimestamp - System.currentTimeMillis()
+                val dueDays = (diffMillis / (1000L * 3600 * 24)).toInt()
 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { taskToEdit = task }) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextMuted, modifier = Modifier.size(18.dp))
+                val dueText: String
+                val dueColor: Color
+                if (dueDays < 0) {
+                    dueText = "Overdue by ${-dueDays} days"
+                    dueColor = RoseAccent
+                } else if (dueDays == 0) {
+                    dueText = "Due today"
+                    dueColor = AmberAccent
+                } else {
+                    dueText = "Due in $dueDays days"
+                    dueColor = TextSecondary
+                }
+
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = CharcoalCard),
+                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(if (task.priority == "High") RoseSoft else CyanSoft)
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    val priorityText = task.priority.uppercase()
+                                    Text(
+                                        text = priorityText,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp,
+                                        color = if (task.priority == "High") RoseAccent else CyanAccent
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(task.title, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "${task.subjectName} • ",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                            Text(
+                                text = dueText,
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                color = dueColor
+                            )
+                            Text(
+                                text = " • Est: ${task.estimatedMinutes}m • ${task.progressPercent}% Done",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
                         }
-                        IconButton(onClick = { taskToDelete = task }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = TextMuted, modifier = Modifier.size(18.dp))
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { taskToEdit = task }) {
+                                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextMuted, modifier = Modifier.size(18.dp))
+                            }
+                            IconButton(onClick = { taskToDelete = task }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = TextMuted, modifier = Modifier.size(18.dp))
+                            }
                         }
                     }
                 }
@@ -506,101 +733,6 @@ fun AssignmentsTab(
                 taskToDelete = null
             },
             onDismiss = { taskToDelete = null }
-        )
-    }
-}
-
-@Composable
-fun RevisionTab(
-    items: List<RevisionItemEntity>,
-    onDelete: (Long) -> Unit,
-    onUpdate: (RevisionItemEntity) -> Unit
-) {
-    var itemToEdit by remember { mutableStateOf<RevisionItemEntity?>(null) }
-    var itemToDelete by remember { mutableStateOf<RevisionItemEntity?>(null) }
-
-    if (items.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No active spaced revisions scheduled", color = TextSecondary)
-        }
-    } else {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(items) { item ->
-                val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-                val nextDate = sdf.format(Date(item.nextRevisionTimestamp))
-
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("${item.subjectName} • ${item.topicName}", fontWeight = FontWeight.Bold, color = TextPrimary)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = if (item.isCompleted) "Completed" else "Next review: $nextDate (Cycle #${item.revisionCount + 1})",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (item.isCompleted) EmeraldAccent else CyanAccent
-                            )
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(CharcoalElevated)
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = if (item.isCompleted) "DONE" else "ACTIVE",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    color = if (item.isCompleted) EmeraldAccent else AmberAccent
-                                )
-                            }
-                            IconButton(onClick = { itemToEdit = item }) {
-                                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextMuted, modifier = Modifier.size(18.dp))
-                            }
-                            IconButton(onClick = { itemToDelete = item }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = TextMuted, modifier = Modifier.size(18.dp))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if (itemToEdit != null) {
-        EditRevisionDialog(
-            item = itemToEdit!!,
-            onDismiss = { itemToEdit = null },
-            onSave = {
-                onUpdate(it)
-                itemToEdit = null
-            }
-        )
-    }
-
-    if (itemToDelete != null) {
-        DeleteConfirmationDialog(
-            title = "Delete Spaced Review?",
-            message = "Are you sure you want to delete this spaced review item for \"${itemToDelete!!.subjectName}\"?",
-            onConfirm = {
-                onDelete(itemToDelete!!.id)
-                itemToDelete = null
-            },
-            onDismiss = { itemToDelete = null }
         )
     }
 }
@@ -818,6 +950,79 @@ fun AddAssignmentDialog(onDismiss: () -> Unit, onAdd: (AssignmentEntity) -> Unit
                 colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
             ) {
                 Text("ADD TASK")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+        },
+        containerColor = CharcoalCard
+    )
+}
+
+@Composable
+fun AddRevisionDialog(onDismiss: () -> Unit, onAdd: (RevisionItemEntity) -> Unit) {
+    var subject by remember { mutableStateOf("English Literature") }
+    var topic by remember { mutableStateOf("") }
+    var daysUntil by remember { mutableStateOf(1) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(decorFitsSystemWindows = false),
+        title = { Text("Add Spaced Revision", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = subject,
+                    onValueChange = { subject = it },
+                    label = { Text("Subject") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                )
+                OutlinedTextField(
+                    value = topic,
+                    onValueChange = { topic = it },
+                    label = { Text("Topic / Goal") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                )
+                OutlinedTextField(
+                    value = daysUntil.toString(),
+                    onValueChange = { daysUntil = it.toIntOrNull() ?: 1 },
+                    label = { Text("Days until next review") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        imeAction = ImeAction.Done
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onAdd(
+                        RevisionItemEntity(
+                            subjectName = subject,
+                            topicName = topic.ifBlank { "Spaced Revision" },
+                            lastStudiedTimestamp = System.currentTimeMillis(),
+                            nextRevisionTimestamp = System.currentTimeMillis() + (daysUntil * 24L * 3600 * 1000L),
+                            revisionCount = 0,
+                            isCompleted = false
+                        )
+                    )
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+            ) {
+                Text("ADD")
             }
         },
         dismissButton = {
@@ -1056,7 +1261,7 @@ fun EditAssignmentDialog(
                     ),
                     colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
                 )
-                
+
                 Text("Priority", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("Low", "Medium", "High").forEach { p ->
@@ -1082,6 +1287,7 @@ fun EditAssignmentDialog(
 
                 Spacer(modifier = Modifier.height(4.dp))
                 Text("Progress: $progressPercent%", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Spacer(modifier = Modifier.height(2.dp))
                 Slider(
                     value = progressPercent.toFloat(),
                     onValueChange = { progressPercent = it.toInt() },
@@ -1145,7 +1351,7 @@ fun EditRevisionDialog(
             ) {
                 Text("Subject: ${item.subjectName}", color = TextPrimary, fontWeight = FontWeight.Medium)
                 Text("Topic: ${item.topicName}", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
-                
+
                 OutlinedTextField(
                     value = daysUntil.toString(),
                     onValueChange = { daysUntil = it.toIntOrNull() ?: 0 },

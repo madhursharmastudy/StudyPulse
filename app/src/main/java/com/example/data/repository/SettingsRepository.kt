@@ -69,7 +69,7 @@ class SettingsRepository(private val context: Context) {
     }
 
     val settingsFlow: Flow<AppSettings> = context.dataStore.data.map { prefs ->
-        val debug = prefs[Keys.DEBUG_MODE] ?: false
+        val debug = false // Force debug to false always
         val eyeEnabled = prefs[Keys.EYE_CARE_ENABLED] ?: true
         val eyeInterval = prefs[Keys.EYE_STUDY_INTERVAL_MINUTES] ?: 20
         val eyeRest = prefs[Keys.EYE_REST_DURATION_SECONDS] ?: 20
@@ -81,18 +81,16 @@ class SettingsRepository(private val context: Context) {
         val waterAuto = prefs[Keys.WATER_AUTO_RESUME] ?: true
 
         // Synchronize with TimerEngine
-        TimerEngine.debugModeActive = debug
-        if (!debug) {
-            TimerEngine.eyeCareEnabled = eyeEnabled
-            TimerEngine.eyeStudyIntervalSeconds = eyeInterval * 60L
-            TimerEngine.eyeRestDurationSeconds = eyeRest.toLong()
-            TimerEngine.eyeAutoResumeEnabled = eyeAuto
+        TimerEngine.debugModeActive = false
+        TimerEngine.eyeCareEnabled = eyeEnabled
+        TimerEngine.eyeStudyIntervalSeconds = eyeInterval * 60L
+        TimerEngine.eyeRestDurationSeconds = eyeRest.toLong()
+        TimerEngine.eyeAutoResumeEnabled = eyeAuto
 
-            TimerEngine.waterReminderEnabled = waterEnabled
-            TimerEngine.waterIntervalSeconds = waterInterval * 60L
-            TimerEngine.waterBreakDurationSeconds = waterBreak.toLong()
-            TimerEngine.waterAutoResumeEnabled = waterAuto
-        }
+        TimerEngine.waterReminderEnabled = waterEnabled
+        TimerEngine.waterIntervalSeconds = waterInterval * 60L
+        TimerEngine.waterBreakDurationSeconds = waterBreak.toLong()
+        TimerEngine.waterAutoResumeEnabled = waterAuto
 
         AppSettings(
             use24HourFormat = prefs[Keys.USE_24_HOUR] ?: false,
@@ -117,7 +115,7 @@ class SettingsRepository(private val context: Context) {
             vibrationEnabled = prefs[Keys.VIBRATION_ENABLED] ?: true,
             dailyTargetHours = prefs[Keys.DAILY_TARGET_HOURS] ?: 6,
             keepScreenOn = prefs[Keys.KEEP_SCREEN_ON] ?: true,
-            debugModeActive = debug
+            debugModeActive = false
         )
     }
 
@@ -152,9 +150,9 @@ class SettingsRepository(private val context: Context) {
     suspend fun updateKeepScreenOn(value: Boolean) = edit { it[Keys.KEEP_SCREEN_ON] = value }
 
     suspend fun toggleDebugMode(active: Boolean) {
-        edit { it[Keys.DEBUG_MODE] = active }
-        TimerEngine.debugModeActive = active
-        AppLogger.i(LogFeature.Settings, "Debug test mode updated: $active")
+        edit { it[Keys.DEBUG_MODE] = false }
+        TimerEngine.debugModeActive = false
+        AppLogger.i(LogFeature.Settings, "Debug test mode forced to false")
     }
 
     private suspend fun edit(action: suspend (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {

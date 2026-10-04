@@ -56,16 +56,15 @@ fun SettingsScreen(
     onExportCsvClick: () -> Unit,
     onExportTxtClick: () -> Unit = {},
     onOpenLogBook: () -> Unit,
+    onUpdateDailyTarget: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = "SETTINGS & HUB",
+                        text = "SETTINGS",
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
                         color = TextPrimary
@@ -98,368 +97,153 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Section: Secondary Navigation Hub
+            // SECTION 1: STUDY
             item {
-                SectionHeader("STUDYPULSE PRODUCTIVITY HUB")
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkCard),
-                    border = CardDefaults.outlinedCardBorder().copy(
-                        brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)
-                    )
+                SettingsCard(
+                    title = "STUDY",
+                    subtitle = "Default study session goals and defaults"
                 ) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    Text("Default session length", fontWeight = FontWeight.Bold, color = TextPrimary)
+                    val durations = listOf(15, 25, 30, 45, 50, 60, 90)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(
-                            text = "Access secondary study and productivity tools:",
-                            fontSize = 12.sp,
-                            color = TextSecondary
-                        )
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = onNavigateToTimer,
-                                modifier = Modifier.weight(1f),
+                        durations.forEach { dur ->
+                            val isSelected = settings.defaultStudyDurationMinutes == dur
+                            Surface(
+                                onClick = { onUpdateDefaultStudyDuration(dur) },
                                 shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = StudyAccent)
+                                color = if (isSelected) StudyAccent else Color(0xFF1E1E1E),
+                                modifier = Modifier.weight(1f)
                             ) {
-                                Icon(Icons.Default.HourglassBottom, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Timers", fontSize = 12.sp)
-                            }
-
-                            OutlinedButton(
-                                onClick = onNavigateToPlanner,
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = EyeCareAccent)
-                            ) {
-                                Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Planner", fontSize = 12.sp)
-                            }
-
-                            OutlinedButton(
-                                onClick = onNavigateToStats,
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = WaterAccent)
-                            ) {
-                                Icon(Icons.Default.BarChart, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Stats", fontSize = 12.sp)
+                                Text(
+                                    text = "${dur}m",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) Color.Black else TextPrimary,
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    textAlign = TextAlign.Center
+                                )
                             }
                         }
                     }
-                }
-            }
 
-            // Section: Study Session Defaults
-            item {
-                SectionHeader("DEFAULT STUDY SESSION DURATION")
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkCard),
-                    border = CardDefaults.outlinedCardBorder().copy(
-                        brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Text(
-                            text = "Default session duration when started from Desk Watch:",
-                            fontSize = 12.sp,
-                            color = TextSecondary
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        val durations = listOf(15, 25, 30, 45, 50, 60, 90)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            durations.forEach { dur ->
-                                val isSelected = settings.defaultStudyDurationMinutes == dur
-                                Surface(
-                                    onClick = { onUpdateDefaultStudyDuration(dur) },
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (isSelected) StudyAccent else Color(0xFF1E1E1E),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = "${dur}m",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) Color.Black else TextPrimary,
-                                        modifier = Modifier.padding(vertical = 8.dp),
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 4.dp))
 
-            // Section: Clock & Display
-            item {
-                SectionHeader("CLOCK & DESK DISPLAY")
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkCard),
-                    border = CardDefaults.outlinedCardBorder().copy(
-                        brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        SettingSwitchRow(
-                            "24-Hour Format",
-                            "Display time in 24h format instead of 12h AM/PM",
-                            settings.use24HourFormat,
-                            onUpdate24Hour
-                        )
-                        HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 10.dp))
-                        SettingSwitchRow(
-                            "Show Seconds",
-                            "Display ticking seconds beside the desk clock",
-                            settings.showSeconds,
-                            onUpdateShowSeconds
-                        )
-                        HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 10.dp))
-                        SettingSwitchRow(
-                            "Keep Screen Awake",
-                            "Prevent display sleep in desk watch mode",
-                            settings.keepScreenOn,
-                            onUpdateKeepScreenOn
-                        )
-                    }
-                }
-            }
-
-            // Section: 20-20-20 Eye Care
-            item {
-                SectionHeader("20-20-20 EYE CARE SYSTEM")
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkCard),
-                    border = CardDefaults.outlinedCardBorder().copy(
-                        brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        SettingSwitchRow(
-                            "Eye Care Reminder",
-                            "Pause study timer and rest eyes periodically",
-                            settings.eyeCareEnabled,
-                            onUpdateEyeCareEnabled
-                        )
-                        HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 10.dp))
-                        SettingSwitchRow(
-                            "Auto-Resume After Rest",
-                            "Automatically resume study when eye rest ends",
-                            settings.eyeAutoResume,
-                            onUpdateEyeAutoResume
-                        )
-                        HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 10.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text("Eye Reminder Interval", fontWeight = FontWeight.Bold, color = TextPrimary)
-                                Text("Rule: every 20 minutes (20s in debug)", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                            }
-                            Text("${settings.eyeStudyIntervalMinutes}m", fontWeight = FontWeight.Bold, color = EyeCareAccent)
-                        }
-                    }
-                }
-            }
-
-            // Section: Hydration Reminder
-            item {
-                SectionHeader("HYDRATION REMINDER")
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkCard),
-                    border = CardDefaults.outlinedCardBorder().copy(
-                        brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        SettingSwitchRow(
-                            "Water Intake Reminders",
-                            "Periodic reminders to drink water during study blocks",
-                            settings.waterReminderEnabled,
-                            onUpdateWaterEnabled
-                        )
-                        HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 10.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text("Water Interval", fontWeight = FontWeight.Bold, color = TextPrimary)
-                                Text("Default 45 minutes", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                            }
-                            Text("${settings.waterIntervalMinutes}m", fontWeight = FontWeight.Bold, color = WaterAccent)
-                        }
-                    }
-                }
-            }
-
-            // Section: Sound & Haptics
-            item {
-                SectionHeader("SOUND & HAPTICS")
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkCard),
-                    border = CardDefaults.outlinedCardBorder().copy(
-                        brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        SettingSwitchRow("Sound Effects", "Play alert chime on eye rest and breaks", settings.soundEnabled, onUpdateSound)
-                        HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 10.dp))
-                        SettingSwitchRow("Vibration & Haptics", "Haptic feedback for timer events", settings.vibrationEnabled, onUpdateVibration)
-                    }
-                }
-            }
-
-            // Section: Data & Backup
-            item {
-                SectionHeader("DATA EXPORT & BACKUP")
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkCard),
-                    border = CardDefaults.outlinedCardBorder().copy(
-                        brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    Text("Daily target (hours)", fontWeight = FontWeight.Bold, color = TextPrimary)
+                    val targets = listOf(2, 4, 6, 8, 10)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        OutlinedButton(
-                            onClick = onExportJsonClick,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("export_json_button"),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Export All Data (JSON)")
-                        }
-
-                        OutlinedButton(
-                            onClick = onExportCsvClick,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("export_csv_button"),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(Icons.Default.TableView, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Export Study Sessions (CSV)")
-                        }
-
-                        OutlinedButton(
-                            onClick = onExportTxtClick,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("export_txt_button"),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Export Study Report (TXT)")
-                        }
-                    }
-                }
-            }
-
-            // Section: Developer & Diagnostics
-            item {
-                SectionHeader("DEVELOPER & DIAGNOSTICS")
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkCard),
-                    border = CardDefaults.outlinedCardBorder().copy(
-                        brush = androidx.compose.ui.graphics.SolidColor(RoseAccent)
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        SettingSwitchRow(
-                            title = "Debug Test Mode",
-                            subtitle = "Accelerates intervals: 20s Eye Care, 30s Water Break",
-                            checked = settings.debugModeActive,
-                            onCheckedChange = onToggleDebugMode
-                        )
-
-                        HorizontalDivider(color = DarkBorder)
-
-                        Button(
-                            onClick = onOpenLogBook,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("open_log_book_button"),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF222222), contentColor = TextPrimary),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(Icons.Default.Terminal, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Open Diagnostic Log Book")
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = { TimerEngine.triggerEyeRestAlert() },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp)
+                        targets.forEach { target ->
+                            val isSelected = settings.dailyTargetHours == target
+                            Surface(
+                                onClick = { onUpdateDailyTarget(target) },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isSelected) StudyAccent else Color(0xFF1E1E1E),
+                                modifier = Modifier.weight(1f)
                             ) {
-                                Text("Test Eye Alert", fontSize = 12.sp)
-                            }
-
-                            OutlinedButton(
-                                onClick = { TimerEngine.triggerWaterReminder() },
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text("Test Water Alert", fontSize = 12.sp)
+                                Text(
+                                    text = "${target}h",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) Color.Black else TextPrimary,
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    textAlign = TextAlign.Center
+                                )
                             }
                         }
                     }
                 }
             }
 
-            // Section: About StudyPulse
+            // SECTION 2: DISPLAY
             item {
-                SectionHeader("ABOUT STUDYPULSE")
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkCard),
-                    border = CardDefaults.outlinedCardBorder().copy(
-                        brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)
-                    )
+                SettingsCard(
+                    title = "DISPLAY",
+                    subtitle = "Customize visual options and screen behavior"
                 ) {
+                    SettingSwitchRow(
+                        title = "24-Hour Format",
+                        subtitle = "Display time in 24h format instead of 12h AM/PM",
+                        checked = settings.use24HourFormat,
+                        onCheckedChange = onUpdate24Hour
+                    )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    SettingSwitchRow(
+                        title = "Show Seconds",
+                        subtitle = "Display ticking seconds beside the desk clock",
+                        checked = settings.showSeconds,
+                        onCheckedChange = onUpdateShowSeconds
+                    )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    SettingSwitchRow(
+                        title = "Keep Screen Awake",
+                        subtitle = "Prevent display sleep in desk watch mode",
+                        checked = settings.keepScreenOn,
+                        onCheckedChange = onUpdateKeepScreenOn
+                    )
+                }
+            }
+
+            // SECTION 3: REMINDERS
+            item {
+                SettingsCard(
+                    title = "REMINDERS",
+                    subtitle = "Configure healthy study habits and break alerts"
+                ) {
+                    SettingSwitchRow(
+                        title = "Eye Care (20-20-20)",
+                        subtitle = "Pause study timer and rest eyes periodically",
+                        checked = settings.eyeCareEnabled,
+                        onCheckedChange = onUpdateEyeCareEnabled
+                    )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    SettingSwitchRow(
+                        title = "Water Reminder",
+                        subtitle = "Periodic reminders to drink water during study blocks",
+                        checked = settings.waterReminderEnabled,
+                        onCheckedChange = onUpdateWaterEnabled
+                    )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    SettingSwitchRow(
+                        title = "Auto-Resume After Break",
+                        subtitle = "Automatically resume study when eye rest or hydration break ends",
+                        checked = settings.eyeAutoResume,
+                        onCheckedChange = {
+                            onUpdateEyeAutoResume(it)
+                            onUpdateWaterAutoResume(it)
+                        }
+                    )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    SettingSwitchRow(
+                        title = "Sound",
+                        subtitle = "Play alert chime on eye rest and breaks",
+                        checked = settings.soundEnabled,
+                        onCheckedChange = onUpdateSound
+                    )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    SettingSwitchRow(
+                        title = "Vibration",
+                        subtitle = "Haptic feedback for timer events",
+                        checked = settings.vibrationEnabled,
+                        onCheckedChange = onUpdateVibration
+                    )
+                }
+            }
+
+            // SECTION 4: ABOUT
+            item {
+                SettingsCard(
+                    title = "ABOUT",
+                    subtitle = "About StudyPulse and system developer tools"
+                ) {
+                    var showDevTools by remember { mutableStateOf(false) }
+
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -496,8 +280,28 @@ fun SettingsScreen(
                         Text(
                             text = "Version 1.0.0",
                             style = MaterialTheme.typography.labelSmall,
-                            color = TextMuted
+                            color = TextMuted,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .clickable { showDevTools = !showDevTools }
+                                .padding(6.dp)
                         )
+
+                        if (showDevTools) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Button(
+                                onClick = onOpenLogBook,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("open_log_book_button"),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF222222), contentColor = TextPrimary),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Icon(Icons.Default.Terminal, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Open Diagnostic Log Book")
+                            }
+                        }
                     }
                 }
             }
@@ -506,16 +310,43 @@ fun SettingsScreen(
 }
 
 @Composable
-fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.labelSmall.copy(
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.sp
-        ),
-        color = StudyAccent,
-        modifier = Modifier.padding(bottom = 6.dp)
-    )
+private fun SettingsCard(
+    title: String,
+    subtitle: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp
+            ),
+            color = StudyAccent,
+            modifier = Modifier.padding(bottom = 2.dp)
+        )
+        Text(
+            text = subtitle,
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSecondary,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = DarkCard),
+            border = CardDefaults.outlinedCardBorder().copy(
+                brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                content()
+            }
+        }
+    }
 }
 
 @Composable
