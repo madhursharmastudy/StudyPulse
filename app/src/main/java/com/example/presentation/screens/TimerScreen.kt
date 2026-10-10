@@ -1,7 +1,9 @@
 package com.example.presentation.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,66 +36,86 @@ import androidx.compose.ui.unit.sp
 import com.example.core.timer.*
 import com.example.data.db.SubjectEntity
 import com.example.data.db.TopicEntity
-import com.example.presentation.components.SubjectTopicPicker
 import com.example.ui.theme.*
 
+/**
+ * Timers Screen (Part 4A v2)
+ * Features 5 tabs, compact Subject/Task button with bottom sheet,
+ * a large unified round timer on all tabs, and dual timer strip.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimerScreen(
     snapshot: TimerSnapshot,
     stopwatchSnapshot: StopwatchSnapshot,
     subjects: List<SubjectEntity>,
     topics: List<TopicEntity>,
+    selectedSubjectId: Long = 0L,
+    selectedTopicId: Long = 0L,
     onBackToWatch: () -> Unit = {},
     onOpenManageSubjects: () -> Unit = {},
+    onSelectSubject: (SubjectEntity) -> Unit = {},
+    onSelectTopic: (TopicEntity) -> Unit = {},
     onQuickAddSubject: (String) -> Unit = {},
     onQuickAddTopic: (Long, String) -> Unit = { _, _ -> },
+    onUpdateSubject: (SubjectEntity) -> Unit = {},
+    onDeleteSubject: (Long) -> Unit = {},
+    onUpdateTopic: (TopicEntity) -> Unit = {},
+    onDeleteTopic: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    // 5 tabs with clean title case
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabTitles = listOf("SESSION", "POMODORO", "COUNTDOWN", "STOPWATCH", "BREAKS")
+    val tabTitles = listOf("Session", "Pomodoro", "Countdown", "Stopwatch", "Breaks")
 
-    // State for Subject and Topic
-    var selectedSubject by remember { mutableStateOf<SubjectEntity?>(subjects.firstOrNull()) }
-    var selectedTopicName by remember { mutableStateOf("") }
+    // Current selected Subject and Topic
+    val currentSubject = remember(subjects, selectedSubjectId) {
+        subjects.firstOrNull { it.id == selectedSubjectId } ?: subjects.firstOrNull()
+    }
+    val filteredTopics = remember(topics, currentSubject) {
+        currentSubject?.let { sub -> topics.filter { it.subjectId == sub.id } } ?: emptyList()
+    }
+    val currentTopic = remember(filteredTopics, selectedTopicId) {
+        filteredTopics.firstOrNull { it.id == selectedTopicId } ?: filteredTopics.firstOrNull()
+    }
+
+    // Bottom sheet state for picking Subject/Task & Topic/Sub task
+    var showSubjectSheet by remember { mutableStateOf(false) }
 
     // Dialog state for Set Timer
     var showSetTimerDialog by remember { mutableStateOf(false) }
 
-    // State for Session creation
+    // Session duration (minutes)
     var sessionDurationMinutes by remember { mutableIntStateOf(50) }
 
-    // State for Pomodoro
+    // Pomodoro settings
     var pomodoroStudyMinutes by remember { mutableIntStateOf(25) }
     var pomodoroBreakMinutes by remember { mutableIntStateOf(5) }
     var pomodoroCycles by remember { mutableIntStateOf(4) }
 
-    // State for Countdown
+    // Countdown settings (hours, minutes, seconds)
     var countdownHours by remember { mutableIntStateOf(0) }
     var countdownMinutes by remember { mutableIntStateOf(30) }
     var countdownSeconds by remember { mutableIntStateOf(0) }
-
-    LaunchedEffect(subjects) {
-        if (selectedSubject == null && subjects.isNotEmpty()) {
-            selectedSubject = subjects.first()
-        }
-    }
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(AmoledBlack)
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        // Header (No sliders icon, back button and title only)
+        // 1. Header (back button and title only; top cards and sliders icon removed)
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 8.dp)
+                .padding(bottom = 6.dp)
         ) {
             IconButton(
                 onClick = onBackToWatch,
-                modifier = Modifier.testTag("timer_back_button")
+                modifier = Modifier
+                    .size(36.dp)
+                    .testTag("timer_back_button")
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -101,7 +123,7 @@ fun TimerScreen(
                     tint = StudyAccent
                 )
             }
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = "STUDY TIMERS",
                 style = MaterialTheme.typography.titleLarge.copy(
@@ -112,9 +134,7 @@ fun TimerScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Tabs Row (5 equal tabs, compact font to avoid truncation)
+        // 2. Tabs Row (equal width, single line, ~11sp, no cut-off)
         TabRow(
             selectedTabIndex = selectedTab,
             containerColor = DarkCard,
@@ -126,7 +146,10 @@ fun TimerScreen(
                         color = StudyAccent
                     )
                 }
-            }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
         ) {
             tabTitles.forEachIndexed { index, title ->
                 Tab(
@@ -137,9 +160,9 @@ fun TimerScreen(
                             text = title,
                             fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
                             color = if (selectedTab == index) AmberAccent else TextSecondary,
-                            fontSize = 10.sp,
+                            fontSize = 11.sp,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            softWrap = false
                         )
                     },
                     modifier = Modifier.testTag("timer_tab_$index")
@@ -147,44 +170,80 @@ fun TimerScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        // One-Line Description
+        // 3. Short One-Line Description
         val descriptionText = when (selectedTab) {
             0 -> "Focus on one subject for a fixed time."
-            1 -> "Study in cycles with short rests to stay fresh."
-            2 -> "Quick timer for any task, with an optional subject."
-            3 -> "Counts up. Use it when you do not know how long you will study."
-            else -> "Take a planned rest. Eye and water breaks also come automatically."
+            1 -> "Study in cycles with short rests."
+            2 -> "Quick timer for any task."
+            3 -> "Counts up when you do not know how long you will study."
+            else -> "Take a planned rest."
         }
         Text(
             text = descriptionText,
             style = MaterialTheme.typography.bodySmall,
             color = TextSecondary,
-            modifier = Modifier.padding(horizontal = 4.dp)
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 2.dp)
         )
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Subject/Task & Topic/Sub task picker (for non-Breaks tabs)
+        // 4. Compact Subject/Task Button (48dp high, single line, same on all tabs except Breaks)
         if (selectedTab != 4) {
-            SubjectTopicPicker(
-                subjects = subjects,
-                selectedSubject = selectedSubject,
-                onSubjectSelected = { selectedSubject = it },
-                topics = topics,
-                selectedTopicName = selectedTopicName,
-                onTopicSelected = { selectedTopicName = it },
-                onOpenManageSubjects = onOpenManageSubjects,
-                onQuickAddSubject = onQuickAddSubject,
-                onQuickAddTopic = onQuickAddTopic,
-                subjectOptional = (selectedTab == 2 || selectedTab == 3)
-            )
-            Spacer(modifier = Modifier.height(10.dp))
+            val subName = currentSubject?.name
+            val topName = currentTopic?.name
+            val buttonText = if (!subName.isNullOrBlank() && !topName.isNullOrBlank()) {
+                "$subName • $topName"
+            } else if (!subName.isNullOrBlank()) {
+                subName
+            } else {
+                "Select Subject/Task"
+            }
+
+            OutlinedButton(
+                onClick = { showSubjectSheet = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .testTag("compact_subject_task_button"),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = CharcoalCard,
+                    contentColor = TextPrimary
+                ),
+                border = BorderStroke(1.dp, CharcoalBorder),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = buttonText,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        color = TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(
+                        imageVector = Icons.Default.ArrowDropDown,
+                        contentDescription = "Select Subject and Topic",
+                        tint = AmberAccent
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // Slim Strip for Running Timer in Other Tab
+        // 5. Dual Running Timer Strip (slim strip between button and round timer)
         if (selectedTab in 0..2 || selectedTab == 4) {
+            // Stopwatch is running in background
             if (stopwatchSnapshot.isRunning || stopwatchSnapshot.isPaused) {
                 OtherTimerRunningStrip(
                     title = "Stopwatch ${stopwatchSnapshot.formattedDisplay()} ${if (stopwatchSnapshot.isRunning) "running" else "paused"}",
@@ -196,10 +255,11 @@ fun TimerScreen(
                     },
                     onStop = { StopwatchEngine.stop() }
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
             }
         }
         if (selectedTab == 3 || selectedTab == 4) {
+            // Main Timer is active in background
             if (snapshot.state.isActive) {
                 OtherTimerRunningStrip(
                     title = "${snapshot.timerType.displayName} ${snapshot.formattedActiveDisplay()} ${if (snapshot.state == TimerState.STUDYING) "running" else "paused"}",
@@ -217,11 +277,11 @@ fun TimerScreen(
                     },
                     onStop = { TimerEngine.stop() }
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
             }
         }
 
-        // Main Tab Content
+        // 6. Main Tab Content (Round timer + actions; fixed layout that fits 800dp screen)
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -229,10 +289,15 @@ fun TimerScreen(
             contentAlignment = Alignment.TopCenter
         ) {
             when (selectedTab) {
-                0 -> { // SESSION
+                0 -> { // SESSION TAB
                     val isSessionRunning = snapshot.state.isActive && snapshot.timerType == TimerType.STUDY_SESSION
                     val timeDisplay = if (isSessionRunning) snapshot.formattedActiveDisplay() else formatMinutesToHHMMSS(sessionDurationMinutes)
                     val progressFraction = if (isSessionRunning) snapshot.progressFraction else 0f
+                    val statusText = if (isSessionRunning) {
+                        if (snapshot.state == TimerState.PAUSED) "Session Paused" else "Focusing"
+                    } else {
+                        "${sessionDurationMinutes}m Focus Session"
+                    }
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -240,7 +305,7 @@ fun TimerScreen(
                     ) {
                         TabRoundTimer(
                             modeLabel = "SESSION",
-                            subLabel = "${sessionDurationMinutes}m Focus",
+                            statusLine = statusText,
                             timeDisplay = timeDisplay,
                             isActive = isSessionRunning,
                             isPaused = (snapshot.state == TimerState.PAUSED && snapshot.timerType == TimerType.STUDY_SESSION),
@@ -249,10 +314,10 @@ fun TimerScreen(
                             onPlayPause = {
                                 if (!isSessionRunning) {
                                     TimerEngine.startStudySession(
-                                        subjectId = selectedSubject?.id ?: 0L,
-                                        topicId = 0L,
-                                        subjectName = selectedSubject?.name ?: "General Study",
-                                        topicName = selectedTopicName.ifBlank { "Deep Focus" },
+                                        subjectId = currentSubject?.id ?: 0L,
+                                        topicId = currentTopic?.id ?: 0L,
+                                        subjectName = currentSubject?.name ?: "General Study",
+                                        topicName = currentTopic?.name ?: "Deep Focus",
                                         type = TimerType.STUDY_SESSION,
                                         durationMinutes = sessionDurationMinutes
                                     )
@@ -264,23 +329,31 @@ fun TimerScreen(
                             }
                         )
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
-                        // Actions Row
-                        TimerActionsRow(
-                            isActive = isSessionRunning,
-                            onSetTimer = { showSetTimerDialog = true },
-                            onReset = { TimerEngine.reset() },
-                            onEndSession = { TimerEngine.stop() }
-                        )
+                        // Reserved fixed height action row
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            TimerActionsRow(
+                                isActive = isSessionRunning,
+                                onSetTimer = { showSetTimerDialog = true },
+                                onReset = { TimerEngine.reset() },
+                                onEndSession = { TimerEngine.stop() }
+                            )
+                        }
                     }
                 }
-                1 -> { // POMODORO
+                1 -> { // POMODORO TAB
                     val isPomoRunning = snapshot.state.isActive && snapshot.timerType == TimerType.POMODORO
                     val timeDisplay = if (isPomoRunning) snapshot.formattedActiveDisplay() else formatMinutesToHHMMSS(pomodoroStudyMinutes)
                     val progressFraction = if (isPomoRunning) snapshot.progressFraction else 0f
-                    val pomoPhaseText = if (isPomoRunning) {
-                        "${if (snapshot.state.isBreak) "REST" else "FOCUS"} • Cycle ${snapshot.currentPomodoroCycle} / ${snapshot.totalPomodoroCycles}"
+                    val phase = if (snapshot.state.isBreak) "REST" else "FOCUS"
+                    val cycleText = if (isPomoRunning) {
+                        "$phase • ${snapshot.currentPomodoroCycle} / ${snapshot.totalPomodoroCycles}"
                     } else {
                         "Cycle 1 / $pomodoroCycles"
                     }
@@ -291,7 +364,7 @@ fun TimerScreen(
                     ) {
                         TabRoundTimer(
                             modeLabel = "POMODORO",
-                            subLabel = pomoPhaseText,
+                            statusLine = cycleText,
                             timeDisplay = timeDisplay,
                             isActive = isPomoRunning,
                             isPaused = (snapshot.state == TimerState.PAUSED && snapshot.timerType == TimerType.POMODORO),
@@ -300,10 +373,10 @@ fun TimerScreen(
                             onPlayPause = {
                                 if (!isPomoRunning) {
                                     TimerEngine.startStudySession(
-                                        subjectId = selectedSubject?.id ?: 0L,
-                                        topicId = 0L,
-                                        subjectName = selectedSubject?.name ?: "Pomodoro Study",
-                                        topicName = selectedTopicName.ifBlank { "Interval Focus" },
+                                        subjectId = currentSubject?.id ?: 0L,
+                                        topicId = currentTopic?.id ?: 0L,
+                                        subjectName = currentSubject?.name ?: "Pomodoro Study",
+                                        topicName = currentTopic?.name ?: "Interval Focus",
                                         type = TimerType.POMODORO,
                                         pomodoroSettings = PomodoroSettings(
                                             studyMinutes = pomodoroStudyMinutes,
@@ -319,21 +392,33 @@ fun TimerScreen(
                             }
                         )
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
-                        TimerActionsRow(
-                            isActive = isPomoRunning,
-                            onSetTimer = { showSetTimerDialog = true },
-                            onReset = { TimerEngine.reset() },
-                            onEndSession = { TimerEngine.stop() }
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            TimerActionsRow(
+                                isActive = isPomoRunning,
+                                onSetTimer = { showSetTimerDialog = true },
+                                onReset = { TimerEngine.reset() },
+                                onEndSession = { TimerEngine.stop() }
+                            )
+                        }
                     }
                 }
-                2 -> { // COUNTDOWN
+                2 -> { // COUNTDOWN TAB
                     val isCdRunning = snapshot.state.isActive && snapshot.timerType == TimerType.COUNTDOWN
                     val totalSecs = (countdownHours * 3600) + (countdownMinutes * 60) + countdownSeconds
                     val timeDisplay = if (isCdRunning) snapshot.formattedActiveDisplay() else formatTotalSecondsToDisplay(totalSecs)
                     val progressFraction = if (isCdRunning) snapshot.progressFraction else 0f
+                    val statusText = if (isCdRunning) {
+                        if (snapshot.state == TimerState.PAUSED) "Paused" else "Running"
+                    } else {
+                        "Quick Countdown"
+                    }
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -341,7 +426,7 @@ fun TimerScreen(
                     ) {
                         TabRoundTimer(
                             modeLabel = "COUNTDOWN",
-                            subLabel = formatTotalSecondsToDisplay(totalSecs),
+                            statusLine = statusText,
                             timeDisplay = timeDisplay,
                             isActive = isCdRunning,
                             isPaused = (snapshot.state == TimerState.PAUSED && snapshot.timerType == TimerType.COUNTDOWN),
@@ -349,14 +434,15 @@ fun TimerScreen(
                             accentColor = AmberAccent,
                             onPlayPause = {
                                 if (!isCdRunning) {
+                                    val safeSecs = if (totalSecs > 0) totalSecs else 1800
                                     TimerEngine.startStudySession(
-                                        subjectId = selectedSubject?.id ?: 0L,
-                                        topicId = 0L,
-                                        subjectName = selectedSubject?.name ?: "General Task",
-                                        topicName = selectedTopicName.ifBlank { "Countdown Focus" },
+                                        subjectId = currentSubject?.id ?: 0L,
+                                        topicId = currentTopic?.id ?: 0L,
+                                        subjectName = currentSubject?.name ?: "General Task",
+                                        topicName = currentTopic?.name ?: "Countdown Focus",
                                         type = TimerType.COUNTDOWN,
-                                        durationMinutes = if (totalSecs > 0) (totalSecs / 60).coerceAtLeast(1) else 30,
-                                        durationSeconds = if (totalSecs > 0) totalSecs else 1800
+                                        durationMinutes = (safeSecs / 60).coerceAtLeast(1),
+                                        durationSeconds = safeSecs
                                     )
                                 } else if (snapshot.state == TimerState.STUDYING) {
                                     TimerEngine.pause()
@@ -366,19 +452,31 @@ fun TimerScreen(
                             }
                         )
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
-                        TimerActionsRow(
-                            isActive = isCdRunning,
-                            onSetTimer = { showSetTimerDialog = true },
-                            onReset = { TimerEngine.reset() },
-                            onEndSession = { TimerEngine.stop() }
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            TimerActionsRow(
+                                isActive = isCdRunning,
+                                onSetTimer = { showSetTimerDialog = true },
+                                onReset = { TimerEngine.reset() },
+                                onEndSession = { TimerEngine.stop() }
+                            )
+                        }
                     }
                 }
-                3 -> { // STOPWATCH
+                3 -> { // STOPWATCH TAB
                     val isSwActive = stopwatchSnapshot.isRunning || stopwatchSnapshot.isPaused
                     val timeDisplay = if (isSwActive || stopwatchSnapshot.elapsedMillis > 0) stopwatchSnapshot.formattedDisplay() else "00:00:00"
+                    // Stopwatch ring completes one turn per minute
+                    val stopwatchFraction = if (stopwatchSnapshot.isRunning) {
+                        ((stopwatchSnapshot.elapsedMillis % 60000L) / 60000f)
+                    } else 0f
+                    val statusText = if (stopwatchSnapshot.isRunning) "Running" else if (stopwatchSnapshot.isPaused) "Paused" else "Counts Up"
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -386,19 +484,19 @@ fun TimerScreen(
                     ) {
                         TabRoundTimer(
                             modeLabel = "STOPWATCH",
-                            subLabel = if (stopwatchSnapshot.isRunning) "Running" else if (stopwatchSnapshot.isPaused) "Paused" else "Count Up",
+                            statusLine = statusText,
                             timeDisplay = timeDisplay,
                             isActive = isSwActive,
                             isPaused = stopwatchSnapshot.isPaused,
-                            progressFraction = if (stopwatchSnapshot.isRunning) ((stopwatchSnapshot.elapsedMillis / 1000) % 60) / 60f else 0f,
+                            progressFraction = stopwatchFraction,
                             accentColor = CyanAccent,
                             onPlayPause = {
                                 if (!stopwatchSnapshot.isRunning && !stopwatchSnapshot.isPaused) {
                                     StopwatchEngine.start(
-                                        subjectId = selectedSubject?.id ?: 0L,
-                                        subjectName = selectedSubject?.name ?: "Stopwatch",
-                                        topicId = 0L,
-                                        topicName = selectedTopicName.ifBlank { "Open Study" }
+                                        subjectId = currentSubject?.id ?: 0L,
+                                        subjectName = currentSubject?.name ?: "Stopwatch",
+                                        topicId = currentTopic?.id ?: 0L,
+                                        topicName = currentTopic?.name ?: "Open Study"
                                     )
                                 } else if (stopwatchSnapshot.isRunning) {
                                     StopwatchEngine.pause()
@@ -408,45 +506,56 @@ fun TimerScreen(
                             }
                         )
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
-                        // Stopwatch Actions Row
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
+                        // Stopwatch Actions Row (End Session / Reset / Lap)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            contentAlignment = Alignment.Center
                         ) {
                             if (isSwActive) {
-                                TextButton(onClick = { StopwatchEngine.stop() }) {
-                                    Text("End Session", color = RoseAccent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                }
-                                TextButton(onClick = { StopwatchEngine.reset() }) {
-                                    Text("Reset", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                }
-                                TextButton(onClick = { StopwatchEngine.recordLap() }) {
-                                    Text("Lap", color = CyanAccent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    TextButton(
+                                        onClick = { StopwatchEngine.stop() },
+                                        modifier = Modifier.testTag("stopwatch_end_button")
+                                    ) {
+                                        Text("End Session", color = RoseAccent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    }
+                                    TextButton(
+                                        onClick = { StopwatchEngine.reset() },
+                                        modifier = Modifier.testTag("stopwatch_reset_button")
+                                    ) {
+                                        Text("Reset", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    }
+                                    TextButton(
+                                        onClick = { StopwatchEngine.recordLap() },
+                                        modifier = Modifier.testTag("stopwatch_lap_button")
+                                    ) {
+                                        Text("Lap", color = CyanAccent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    }
                                 }
                             } else {
-                                TextButton(onClick = {
-                                    StopwatchEngine.start(
-                                        subjectId = selectedSubject?.id ?: 0L,
-                                        subjectName = selectedSubject?.name ?: "Stopwatch",
-                                        topicId = 0L,
-                                        topicName = selectedTopicName.ifBlank { "Open Study" }
-                                    )
-                                }) {
-                                    Text("Start Stopwatch", color = CyanAccent, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                }
+                                Text(
+                                    text = "Tap Play to Start",
+                                    color = TextMuted,
+                                    fontSize = 13.sp
+                                )
                             }
                         }
 
-                        // Laps list below circle
+                        // Laps list (scrollable, only shown in Stopwatch tab)
                         if (stopwatchSnapshot.laps.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text("Laps (${stopwatchSnapshot.laps.size})", style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
                             LazyColumn(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 items(stopwatchSnapshot.laps.asReversed()) { lap ->
@@ -456,7 +565,8 @@ fun TimerScreen(
                                             .clip(RoundedCornerShape(6.dp))
                                             .background(CharcoalCard)
                                             .padding(horizontal = 12.dp, vertical = 6.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text("Lap ${lap.lapNumber}", color = TextSecondary, fontSize = 12.sp)
                                         Text(
@@ -472,7 +582,7 @@ fun TimerScreen(
                         }
                     }
                 }
-                4 -> { // BREAKS
+                4 -> { // BREAKS TAB
                     BreaksTab(
                         onStartBreak = { type, durationSecs ->
                             TimerEngine.startBreak(type, (durationSecs / 60).toInt())
@@ -483,7 +593,40 @@ fun TimerScreen(
         }
     }
 
-    // Set Timer Dialog
+    // Bottom Sheet for Subject/Task and Topic/Sub task
+    if (showSubjectSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showSubjectSheet = false },
+            containerColor = CharcoalElevated,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = CharcoalBorder) }
+        ) {
+            SubjectTopicBottomSheetContent(
+                subjects = subjects,
+                topics = topics,
+                selectedSubject = currentSubject,
+                selectedTopic = currentTopic,
+                onSelectSubject = { sub ->
+                    onSelectSubject(sub)
+                },
+                onSelectTopic = { top ->
+                    onSelectTopic(top)
+                },
+                onOpenManage = {
+                    showSubjectSheet = false
+                    onOpenManageSubjects()
+                },
+                onQuickAddSubject = onQuickAddSubject,
+                onQuickAddTopic = onQuickAddTopic,
+                onUpdateSubject = onUpdateSubject,
+                onDeleteSubject = onDeleteSubject,
+                onUpdateTopic = onUpdateTopic,
+                onDeleteTopic = onDeleteTopic,
+                onDone = { showSubjectSheet = false }
+            )
+        }
+    }
+
+    // Set Timer Dialogs
     if (showSetTimerDialog) {
         when (selectedTab) {
             0 -> SetSessionTimerDialog(
@@ -522,10 +665,14 @@ fun TimerScreen(
     }
 }
 
+/**
+ * Reusable Round Timer (one fixed size ~270dp on all tabs)
+ * Stacks mode label, time (shown ONCE), small status line, and large play/pause button.
+ */
 @Composable
 fun TabRoundTimer(
     modeLabel: String,
-    subLabel: String?,
+    statusLine: String,
     timeDisplay: String,
     isActive: Boolean,
     isPaused: Boolean,
@@ -537,12 +684,13 @@ fun TabRoundTimer(
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
-            .size(190.dp)
+            .size(270.dp)
             .testTag("tab_round_timer")
     ) {
+        // Circular Progress Ring
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokeWidth = 8.dp.toPx()
-            val diameter = size.minDimension - strokeWidth
+            val strokeWidth = 10.dp.toPx()
+            val diameter = size.minDimension - strokeWidth - 8.dp.toPx()
             val topLeft = Offset((size.width - diameter) / 2f, (size.height - diameter) / 2f)
             val arcSize = Size(diameter, diameter)
 
@@ -557,7 +705,7 @@ fun TabRoundTimer(
                 style = Stroke(width = strokeWidth)
             )
 
-            // Active progress arc
+            // Progress arc
             val sweep = progressFraction.coerceIn(0f, 1f) * 360f
             if (sweep > 0f) {
                 drawArc(
@@ -572,47 +720,59 @@ fun TabRoundTimer(
             }
         }
 
+        // Inside content: mode label, time, status line, play/pause button
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.padding(horizontal = 24.dp)
         ) {
             Text(
                 text = modeLabel,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = accentColor,
                 letterSpacing = 1.sp
             )
-            if (!subLabel.isNullOrBlank()) {
-                Text(
-                    text = subLabel,
-                    fontSize = 10.sp,
-                    color = TextSecondary
-                )
-            }
+
             Spacer(modifier = Modifier.height(4.dp))
+
+            // Time shown strictly ONCE
             Text(
                 text = timeDisplay,
-                fontSize = 28.sp,
+                fontSize = 34.sp,
                 fontWeight = FontWeight.Black,
                 fontFamily = FontFamily.Monospace,
                 color = TextPrimary
             )
-            Spacer(modifier = Modifier.height(6.dp))
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Text(
+                text = statusLine,
+                fontSize = 11.sp,
+                color = TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Play/Pause button
             Surface(
                 onClick = onPlayPause,
                 shape = CircleShape,
-                color = if (isActive && !isPaused) CharcoalElevated else accentColor,
+                color = if (isActive && !isPaused) CharcoalCard else accentColor,
                 contentColor = if (isActive && !isPaused) accentColor else Color.Black,
+                border = if (isActive && !isPaused) BorderStroke(1.5.dp, accentColor) else null,
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(52.dp)
                     .testTag("round_timer_play_pause")
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = if (isActive && !isPaused) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isActive && !isPaused) "Pause" else "Start/Resume",
-                        modifier = Modifier.size(24.dp)
+                        contentDescription = if (isActive && !isPaused) "Pause" else "Play",
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             }
@@ -620,6 +780,11 @@ fun TabRoundTimer(
     }
 }
 
+/**
+ * Action buttons below the circle:
+ * Idle: "Set Timer" centered
+ * Active/Paused: "End Session", "Reset", "Set Timer"
+ */
 @Composable
 fun TimerActionsRow(
     isActive: Boolean,
@@ -627,12 +792,12 @@ fun TimerActionsRow(
     onReset: () -> Unit,
     onEndSession: () -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (isActive) {
+    if (isActive) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             TextButton(onClick = onEndSession) {
                 Text("End Session", color = RoseAccent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }
@@ -642,14 +807,17 @@ fun TimerActionsRow(
             TextButton(onClick = onSetTimer) {
                 Text("Set Timer", color = AmberAccent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }
-        } else {
-            TextButton(onClick = onSetTimer) {
-                Text("Set Timer", color = AmberAccent, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            }
+        }
+    } else {
+        TextButton(onClick = onSetTimer) {
+            Text("Set Timer", color = AmberAccent, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
     }
 }
 
+/**
+ * Slim strip shown when another timer is running in the background.
+ */
 @Composable
 fun OtherTimerRunningStrip(
     title: String,
@@ -662,7 +830,7 @@ fun OtherTimerRunningStrip(
     Card(
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(containerColor = CharcoalElevated),
-        border = CardDefaults.outlinedCardBorder().copy(brush = SolidColor(accentColor)),
+        border = BorderStroke(1.dp, accentColor),
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
@@ -720,6 +888,433 @@ fun OtherTimerRunningStrip(
     }
 }
 
+/**
+ * Bottom Sheet content for Subject/Task and Topic/Sub task selection, inline adding,
+ * renaming, and deleting.
+ */
+@Composable
+fun SubjectTopicBottomSheetContent(
+    subjects: List<SubjectEntity>,
+    topics: List<TopicEntity>,
+    selectedSubject: SubjectEntity?,
+    selectedTopic: TopicEntity?,
+    onSelectSubject: (SubjectEntity) -> Unit,
+    onSelectTopic: (TopicEntity) -> Unit,
+    onOpenManage: () -> Unit,
+    onQuickAddSubject: (String) -> Unit,
+    onQuickAddTopic: (Long, String) -> Unit,
+    onUpdateSubject: (SubjectEntity) -> Unit,
+    onDeleteSubject: (Long) -> Unit,
+    onUpdateTopic: (TopicEntity) -> Unit,
+    onDeleteTopic: (Long) -> Unit,
+    onDone: () -> Unit
+) {
+    var subjectExpanded by remember { mutableStateOf(false) }
+    var topicExpanded by remember { mutableStateOf(false) }
+
+    var showAddSubjectDialog by remember { mutableStateOf(false) }
+    var showAddTopicDialog by remember { mutableStateOf(false) }
+    var subjectToEdit by remember { mutableStateOf<SubjectEntity?>(null) }
+    var topicToEdit by remember { mutableStateOf<TopicEntity?>(null) }
+
+    val currentFilteredTopics = remember(topics, selectedSubject) {
+        selectedSubject?.let { sub -> topics.filter { it.subjectId == sub.id } } ?: emptyList()
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 12.dp)
+    ) {
+        // Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Select Subject/Task",
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = TextPrimary
+            )
+            TextButton(onClick = onOpenManage) {
+                Icon(
+                    imageVector = Icons.Default.Tune,
+                    contentDescription = "Manage",
+                    tint = AmberAccent,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Manage", color = AmberAccent, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // 1. Subject/Task Selector
+        Text(
+            text = "Subject/Task",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = AmberAccent
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Box(modifier = Modifier.fillMaxWidth()) {
+            OutlinedCard(
+                onClick = { subjectExpanded = true },
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.outlinedCardColors(containerColor = CharcoalCard),
+                border = BorderStroke(1.dp, CharcoalBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = selectedSubject?.name ?: "Select Subject/Task",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = TextMuted)
+                }
+            }
+
+            DropdownMenu(
+                expanded = subjectExpanded,
+                onDismissRequest = { subjectExpanded = false },
+                modifier = Modifier
+                    .background(CharcoalCard)
+                    .border(1.dp, CharcoalBorder, RoundedCornerShape(8.dp))
+            ) {
+                subjects.forEach { subject ->
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = subject.name,
+                                    color = if (subject.id == selectedSubject?.id) AmberAccent else TextPrimary,
+                                    fontWeight = if (subject.id == selectedSubject?.id) FontWeight.Bold else FontWeight.Normal,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Row {
+                                    IconButton(
+                                        onClick = {
+                                            subjectExpanded = false
+                                            subjectToEdit = subject
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Default.Edit, contentDescription = "Rename", tint = TextMuted, modifier = Modifier.size(14.dp))
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            onDeleteSubject(subject.id)
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = RoseAccent, modifier = Modifier.size(14.dp))
+                                    }
+                                }
+                            }
+                        },
+                        onClick = {
+                            onSelectSubject(subject)
+                            subjectExpanded = false
+                        }
+                    )
+                }
+                HorizontalDivider(color = CharcoalBorder)
+                DropdownMenuItem(
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Add, contentDescription = null, tint = AmberAccent, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("+ Add new Subject/Task...", color = AmberAccent, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    onClick = {
+                        subjectExpanded = false
+                        showAddSubjectDialog = true
+                    }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // 2. Topic/Sub task Selector
+        Text(
+            text = "Topic/Sub task",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = AmberAccent
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Box(modifier = Modifier.fillMaxWidth()) {
+            OutlinedCard(
+                onClick = { topicExpanded = true },
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.outlinedCardColors(containerColor = CharcoalCard),
+                border = BorderStroke(1.dp, CharcoalBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = selectedTopic?.name ?: "Select or Add Topic/Sub task",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = TextMuted)
+                }
+            }
+
+            DropdownMenu(
+                expanded = topicExpanded,
+                onDismissRequest = { topicExpanded = false },
+                modifier = Modifier
+                    .background(CharcoalCard)
+                    .border(1.dp, CharcoalBorder, RoundedCornerShape(8.dp))
+            ) {
+                currentFilteredTopics.forEach { topic ->
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = topic.name,
+                                    color = if (topic.id == selectedTopic?.id) AmberAccent else TextPrimary,
+                                    fontWeight = if (topic.id == selectedTopic?.id) FontWeight.Bold else FontWeight.Normal,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Row {
+                                    IconButton(
+                                        onClick = {
+                                            topicExpanded = false
+                                            topicToEdit = topic
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Default.Edit, contentDescription = "Rename", tint = TextMuted, modifier = Modifier.size(14.dp))
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            onDeleteTopic(topic.id)
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = RoseAccent, modifier = Modifier.size(14.dp))
+                                    }
+                                }
+                            }
+                        },
+                        onClick = {
+                            onSelectTopic(topic)
+                            topicExpanded = false
+                        }
+                    )
+                }
+                HorizontalDivider(color = CharcoalBorder)
+                DropdownMenuItem(
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Add, contentDescription = null, tint = AmberAccent, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("+ Add new Topic/Sub task...", color = AmberAccent, fontWeight = FontWeight.Bold)
+                        }
+                    },
+                    onClick = {
+                        topicExpanded = false
+                        showAddTopicDialog = true
+                    }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // Done button
+        Button(
+            onClick = onDone,
+            colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black),
+            shape = RoundedCornerShape(10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+        ) {
+            Text("DONE", fontWeight = FontWeight.Bold)
+        }
+    }
+
+    // Add Subject Dialog
+    if (showAddSubjectDialog) {
+        var newSubName by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showAddSubjectDialog = false },
+            title = { Text("Add Subject/Task", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(
+                    value = newSubName,
+                    onValueChange = { newSubName = it },
+                    label = { Text("Subject/Task Name") },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newSubName.isNotBlank()) {
+                            onQuickAddSubject(newSubName.trim())
+                            showAddSubjectDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                ) {
+                    Text("ADD", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddSubjectDialog = false }) {
+                    Text("CANCEL", color = TextSecondary)
+                }
+            },
+            containerColor = CharcoalCard
+        )
+    }
+
+    // Rename Subject Dialog
+    subjectToEdit?.let { sub ->
+        var editName by remember { mutableStateOf(sub.name) }
+        AlertDialog(
+            onDismissRequest = { subjectToEdit = null },
+            title = { Text("Rename Subject/Task", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(
+                    value = editName,
+                    onValueChange = { editName = it },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (editName.isNotBlank()) {
+                            onUpdateSubject(sub.copy(name = editName.trim()))
+                            subjectToEdit = null
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                ) {
+                    Text("SAVE", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { subjectToEdit = null }) {
+                    Text("CANCEL", color = TextSecondary)
+                }
+            },
+            containerColor = CharcoalCard
+        )
+    }
+
+    // Add Topic Dialog
+    if (showAddTopicDialog && selectedSubject != null) {
+        var newTopName by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showAddTopicDialog = false },
+            title = { Text("Add Topic/Sub task to ${selectedSubject.name}", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(
+                    value = newTopName,
+                    onValueChange = { newTopName = it },
+                    label = { Text("Topic/Sub task Name") },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newTopName.isNotBlank()) {
+                            onQuickAddTopic(selectedSubject.id, newTopName.trim())
+                            showAddTopicDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                ) {
+                    Text("ADD", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddTopicDialog = false }) {
+                    Text("CANCEL", color = TextSecondary)
+                }
+            },
+            containerColor = CharcoalCard
+        )
+    }
+
+    // Rename Topic Dialog
+    topicToEdit?.let { top ->
+        var editTopName by remember { mutableStateOf(top.name) }
+        AlertDialog(
+            onDismissRequest = { topicToEdit = null },
+            title = { Text("Rename Topic/Sub task", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(
+                    value = editTopName,
+                    onValueChange = { editTopName = it },
+                    label = { Text("Name") },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (editTopName.isNotBlank()) {
+                            onUpdateTopic(top.copy(name = editTopName.trim()))
+                            topicToEdit = null
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                ) {
+                    Text("SAVE", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { topicToEdit = null }) {
+                    Text("CANCEL", color = TextSecondary)
+                }
+            },
+            containerColor = CharcoalCard
+        )
+    }
+}
+
+/**
+ * Breaks Tab: planned breaks.
+ */
 @Composable
 fun BreaksTab(
     onStartBreak: (BreakType, Long) -> Unit
@@ -733,12 +1328,13 @@ fun BreaksTab(
 
     Column(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         breakPresets.forEach { (title, type, durationSecs) ->
             Card(
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(containerColor = CharcoalCard),
+                border = BorderStroke(1.dp, CharcoalBorder),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -765,6 +1361,9 @@ fun BreaksTab(
     }
 }
 
+/**
+ * Set Timer Dialog for Session
+ */
 @Composable
 fun SetSessionTimerDialog(
     currentMinutes: Int,
@@ -842,6 +1441,9 @@ fun SetSessionTimerDialog(
     )
 }
 
+/**
+ * Set Timer Dialog for Pomodoro
+ */
 @Composable
 fun SetPomodoroTimerDialog(
     currentStudy: Int,
@@ -909,6 +1511,9 @@ fun SetPomodoroTimerDialog(
     )
 }
 
+/**
+ * Set Timer Dialog for Countdown
+ */
 @Composable
 fun SetCountdownTimerDialog(
     currentH: Int,

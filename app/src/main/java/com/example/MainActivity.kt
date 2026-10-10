@@ -248,13 +248,33 @@ fun StudyWatchRootApp() {
                                 stopwatchSnapshot = stopwatchSnapshot,
                                 subjects = subjects,
                                 topics = topics,
+                                selectedSubjectId = settings.selectedSubjectId,
+                                selectedTopicId = settings.selectedTopicId,
                                 onBackToWatch = { currentTab = NavigationTab.WATCH },
                                 onOpenManageSubjects = { isManagingSubjects = true },
+                                onSelectSubject = { sub ->
+                                    coroutineScope.launch { app.settingsRepository.updateSelectedSubject(sub.id, sub.name) }
+                                },
+                                onSelectTopic = { top ->
+                                    coroutineScope.launch { app.settingsRepository.updateSelectedTopic(top.id, top.name) }
+                                },
                                 onQuickAddSubject = { name ->
                                     coroutineScope.launch { app.repository.insertSubject(name, "Book", "#FFA640", 60) }
                                 },
                                 onQuickAddTopic = { subjectId, name ->
                                     coroutineScope.launch { app.repository.insertTopic(subjectId, name) }
+                                },
+                                onUpdateSubject = { sub ->
+                                    coroutineScope.launch { app.repository.updateSubject(sub) }
+                                },
+                                onDeleteSubject = { id ->
+                                    coroutineScope.launch { app.repository.deleteSubject(id) }
+                                },
+                                onUpdateTopic = { top ->
+                                    coroutineScope.launch { app.repository.updateTopic(top) }
+                                },
+                                onDeleteTopic = { id ->
+                                    coroutineScope.launch { app.repository.deleteTopic(id) }
                                 }
                             )
                         }
