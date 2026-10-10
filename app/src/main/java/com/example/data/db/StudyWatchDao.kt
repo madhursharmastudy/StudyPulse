@@ -80,6 +80,12 @@ interface StudyWatchDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBreakSession(breakSession: BreakSessionEntity): Long
 
+    @Query("SELECT * FROM break_sessions ORDER BY startTimestamp DESC")
+    fun getAllBreakSessions(): Flow<List<BreakSessionEntity>>
+
+    @Query("SELECT COUNT(*) FROM break_sessions WHERE breakType = 'STRETCH_BREAK' AND startTimestamp >= :fromTimestamp")
+    suspend fun getStretchBreakCountSince(fromTimestamp: Long): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEyeRestEvent(event: EyeRestEventEntity): Long
 

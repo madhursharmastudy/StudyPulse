@@ -233,19 +233,23 @@ fun WatchScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // 5. Two Compact Cards: Eye Rest and Water Break
+            val isWaterOrStretchOn = snapshot.waterReminderEnabled || snapshot.stretchBreakEnabled
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 EyeRestMiniCard(
                     snapshot = snapshot,
-                    modifier = Modifier.weight(1f)
+                    modifier = if (isWaterOrStretchOn) Modifier.weight(1f) else Modifier.fillMaxWidth()
                 )
 
-                WaterBreakMiniCard(
-                    snapshot = snapshot,
-                    modifier = Modifier.weight(1f)
-                )
+                if (isWaterOrStretchOn) {
+                    WaterBreakMiniCard(
+                        snapshot = snapshot,
+                        label = if (snapshot.waterReminderEnabled) "Water Break in" else "Stretch Break in",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -581,6 +585,7 @@ fun EyeRestMiniCard(
 @Composable
 fun WaterBreakMiniCard(
     snapshot: TimerSnapshot,
+    label: String = "Water Break in",
     modifier: Modifier = Modifier
 ) {
     val totalWaterIntervalSecs = (TimerEngine.waterIntervalSeconds).coerceAtLeast(1L)
@@ -620,7 +625,7 @@ fun WaterBreakMiniCard(
 
                 Column {
                     Text(
-                        text = "Water Break in",
+                        text = label,
                         fontSize = 11.sp,
                         color = TextSecondary
                     )

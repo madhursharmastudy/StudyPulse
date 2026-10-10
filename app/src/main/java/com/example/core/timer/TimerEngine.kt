@@ -31,6 +31,12 @@ object TimerEngine {
     var waterAutoResumeEnabled: Boolean = true
     var waterRemindLaterSeconds: Long = 5 * 60L
 
+    var stretchBreakEnabled: Boolean = true
+    var sharedBreakIntervalSeconds: Long = 45 * 60L
+    var shortModeEnabled: Boolean = false
+    var includeStandingExercises: Boolean = true
+    var pauseBreaksUntilTimestamp: Long = 0L
+
     private val breakQueue = ArrayDeque<BreakType>()
 
     var debugModeActive: Boolean = false
@@ -685,17 +691,28 @@ object TimerEngine {
             if (eyeCareEnabled) {
                 val eyeIntervalMillis = eyeStudyIntervalSeconds * 1000L
                 if (totalProductive - productiveStudyMillisAtLastEyeRest >= eyeIntervalMillis) {
-                    triggerEyeRestAlert()
-                    return
+                    if (currentState == TimerState.WATER_BREAK) {
+                        // Delay eye rest by 3 minutes so two overlays never open together
+                        productiveStudyMillisAtLastEyeRest = totalProductive - eyeIntervalMillis + (3 * 60 * 1000L)
+                    } else {
+                        triggerEyeRestAlert()
+                        return
+                    }
                 }
             }
 
-            // 3. Check Water Reminder Trigger (every 45 minutes of study)
-            if (waterReminderEnabled) {
-                val waterIntervalMillis = waterIntervalSeconds * 1000L
-                if (totalProductive - productiveStudyMillisAtLastWaterPrompt >= waterIntervalMillis) {
-                    triggerWaterReminder()
-                    return
+            // 3. Check Water / Stretch Break Trigger (shared interval, only during study)
+            if (waterReminderEnabled || stretchBreakEnabled) {
+                val breakIntervalMillis = sharedBreakIntervalSeconds * 1000L
+                val isOfficePaused = System.currentTimeMillis() < pauseBreaksUntilTimestamp
+                if (!isOfficePaused && totalProductive - productiveStudyMillisAtLastWaterPrompt >= breakIntervalMillis) {
+                    if (currentState == TimerState.EYE_REST) {
+                        // Delay break by 3 minutes if Eye Rest is currently open
+                        productiveStudyMillisAtLastWaterPrompt = totalProductive - breakIntervalMillis + (3 * 60 * 1000L)
+                    } else {
+                        triggerWaterReminder()
+                        return
+                    }
                 }
             }
         } else if (currentState == TimerState.EYE_REST) {
@@ -846,12 +863,12 @@ object TimerEngine {
             ((eyeIntervalMillis - productiveSinceEye) / 1000).coerceAtLeast(0)
         }
 
-        val waterIntervalMillis = waterIntervalSeconds * 1000L
+        val breakIntervalMillis = sharedBreakIntervalSeconds * 1000L
         val productiveSinceWater = (currentProductive - productiveStudyMillisAtLastWaterPrompt).coerceAtLeast(0)
         val nextWaterSeconds = if (currentState == TimerState.WATER_BREAK) {
             (segmentRemaining / 1000).coerceAtLeast(0)
         } else {
-            ((waterIntervalMillis - productiveSinceWater) / 1000).coerceAtLeast(0)
+            ((breakIntervalMillis - productiveSinceWater) / 1000).coerceAtLeast(0)
         }
 
         return TimerSnapshot(
@@ -874,6 +891,10 @@ object TimerEngine {
             nextEyeRestCountdownSeconds = nextEyeSeconds,
             eyeRestDurationSeconds = eyeRestDurationSeconds,
             nextWaterCountdownSeconds = nextWaterSeconds,
+            stretchBreakEnabled = stretchBreakEnabled,
+            waterReminderEnabled = waterReminderEnabled,
+            isStretchOnlyBreak = (!waterReminderEnabled && stretchBreakEnabled),
+            isCombinedBreak = (waterReminderEnabled && stretchBreakEnabled),
             currentPomodoroCycle = currentPomodoroCycle,
             totalPomodoroCycles = totalPomodoroCycles,
             interruptionCount = interruptionCount,

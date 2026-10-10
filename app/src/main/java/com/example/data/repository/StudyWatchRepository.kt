@@ -18,6 +18,7 @@ class StudyWatchRepository(private val dao: StudyWatchDao) {
     val allSubjects: Flow<List<SubjectEntity>> = dao.getAllSubjects()
     val allTopics: Flow<List<TopicEntity>> = dao.getAllTopics()
     val allSessions: Flow<List<StudySessionEntity>> = dao.getAllStudySessions()
+    val allBreakSessions: Flow<List<BreakSessionEntity>> = dao.getAllBreakSessions()
     val allPlans: Flow<List<StudyPlanEntity>> = dao.getAllStudyPlans()
     val allExams: Flow<List<ExamEntity>> = dao.getAllExams()
     val allAssignments: Flow<List<AssignmentEntity>> = dao.getAllAssignments()
@@ -165,6 +166,20 @@ class StudyWatchRepository(private val dao: StudyWatchDao) {
                 durationSeconds = durationSecs
             )
         )
+    }
+
+    suspend fun recordStretchBreak(sessionUid: String, durationSecs: Long) {
+        val now = System.currentTimeMillis()
+        dao.insertBreakSession(
+            BreakSessionEntity(
+                sessionUid = sessionUid,
+                breakType = "STRETCH_BREAK",
+                startTimestamp = now - (durationSecs * 1000),
+                endTimestamp = now,
+                durationSeconds = durationSecs
+            )
+        )
+        AppLogger.i(LogFeature.Database, "Stretch break recorded in database ($durationSecs s)")
     }
 
     // CRUD for Subjects & Topics

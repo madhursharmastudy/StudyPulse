@@ -33,6 +33,12 @@ data class AppSettings(
     val waterIntervalMinutes: Int = 45,
     val waterBreakDurationSeconds: Int = 300,
     val waterAutoResume: Boolean = true,
+    val stretchBreakEnabled: Boolean = true,
+    val breakIntervalMinutes: Int = 45, // Shared: 30 / 45 / 60
+    val shortModeEnabled: Boolean = false,
+    val includeStandingExercises: Boolean = true,
+    val userMode: String = "Student", // Student or Office
+    val pauseBreaksUntilTimestamp: Long = 0L,
     val soundEnabled: Boolean = true,
     val vibrationEnabled: Boolean = true,
     val dailyTargetHours: Int = 6,
@@ -61,6 +67,12 @@ class SettingsRepository(private val context: Context) {
         val WATER_INTERVAL_MINUTES = intPreferencesKey("water_interval_minutes")
         val WATER_BREAK_DURATION_SECONDS = intPreferencesKey("water_break_duration_seconds")
         val WATER_AUTO_RESUME = booleanPreferencesKey("water_auto_resume")
+        val STRETCH_BREAK_ENABLED = booleanPreferencesKey("stretch_break_enabled")
+        val BREAK_INTERVAL_MINUTES = intPreferencesKey("break_interval_minutes")
+        val SHORT_MODE_ENABLED = booleanPreferencesKey("short_mode_enabled")
+        val INCLUDE_STANDING_EXERCISES = booleanPreferencesKey("include_standing_exercises")
+        val USER_MODE = stringPreferencesKey("user_mode")
+        val PAUSE_BREAKS_UNTIL_TIMESTAMP = androidx.datastore.preferences.core.longPreferencesKey("pause_breaks_until_timestamp")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         val VIBRATION_ENABLED = booleanPreferencesKey("vibration_enabled")
         val DAILY_TARGET_HOURS = intPreferencesKey("daily_target_hours")
@@ -80,6 +92,13 @@ class SettingsRepository(private val context: Context) {
         val waterBreak = prefs[Keys.WATER_BREAK_DURATION_SECONDS] ?: 300
         val waterAuto = prefs[Keys.WATER_AUTO_RESUME] ?: true
 
+        val stretchEnabled = prefs[Keys.STRETCH_BREAK_ENABLED] ?: true
+        val breakInterval = prefs[Keys.BREAK_INTERVAL_MINUTES] ?: 45
+        val shortMode = prefs[Keys.SHORT_MODE_ENABLED] ?: false
+        val includeStanding = prefs[Keys.INCLUDE_STANDING_EXERCISES] ?: true
+        val userMode = prefs[Keys.USER_MODE] ?: "Student"
+        val pauseUntil = prefs[Keys.PAUSE_BREAKS_UNTIL_TIMESTAMP] ?: 0L
+
         // Synchronize with TimerEngine
         TimerEngine.debugModeActive = false
         TimerEngine.eyeCareEnabled = eyeEnabled
@@ -88,9 +107,14 @@ class SettingsRepository(private val context: Context) {
         TimerEngine.eyeAutoResumeEnabled = eyeAuto
 
         TimerEngine.waterReminderEnabled = waterEnabled
-        TimerEngine.waterIntervalSeconds = waterInterval * 60L
+        TimerEngine.stretchBreakEnabled = stretchEnabled
+        TimerEngine.sharedBreakIntervalSeconds = breakInterval * 60L
+        TimerEngine.waterIntervalSeconds = breakInterval * 60L
         TimerEngine.waterBreakDurationSeconds = waterBreak.toLong()
         TimerEngine.waterAutoResumeEnabled = waterAuto
+        TimerEngine.shortModeEnabled = shortMode
+        TimerEngine.includeStandingExercises = includeStanding
+        TimerEngine.pauseBreaksUntilTimestamp = pauseUntil
 
         AppSettings(
             use24HourFormat = prefs[Keys.USE_24_HOUR] ?: false,
@@ -108,9 +132,15 @@ class SettingsRepository(private val context: Context) {
             eyeRestDurationSeconds = eyeRest,
             eyeAutoResume = eyeAuto,
             waterReminderEnabled = waterEnabled,
-            waterIntervalMinutes = waterInterval,
+            waterIntervalMinutes = breakInterval,
             waterBreakDurationSeconds = waterBreak,
             waterAutoResume = waterAuto,
+            stretchBreakEnabled = stretchEnabled,
+            breakIntervalMinutes = breakInterval,
+            shortModeEnabled = shortMode,
+            includeStandingExercises = includeStanding,
+            userMode = userMode,
+            pauseBreaksUntilTimestamp = pauseUntil,
             soundEnabled = prefs[Keys.SOUND_ENABLED] ?: true,
             vibrationEnabled = prefs[Keys.VIBRATION_ENABLED] ?: true,
             dailyTargetHours = prefs[Keys.DAILY_TARGET_HOURS] ?: 6,
@@ -140,9 +170,25 @@ class SettingsRepository(private val context: Context) {
     suspend fun updateEyeAutoResume(value: Boolean) = edit { it[Keys.EYE_AUTO_RESUME] = value }
 
     suspend fun updateWaterReminderEnabled(value: Boolean) = edit { it[Keys.WATER_REMINDER_ENABLED] = value }
-    suspend fun updateWaterInterval(minutes: Int) = edit { it[Keys.WATER_INTERVAL_MINUTES] = minutes }
+    suspend fun updateWaterInterval(minutes: Int) = edit {
+        it[Keys.WATER_INTERVAL_MINUTES] = minutes
+        it[Keys.BREAK_INTERVAL_MINUTES] = minutes
+    }
     suspend fun updateWaterBreakDuration(seconds: Int) = edit { it[Keys.WATER_BREAK_DURATION_SECONDS] = seconds }
     suspend fun updateWaterAutoResume(value: Boolean) = edit { it[Keys.WATER_AUTO_RESUME] = value }
+
+    suspend fun updateStretchBreakEnabled(value: Boolean) = edit { it[Keys.STRETCH_BREAK_ENABLED] = value }
+    suspend fun updateBreakIntervalMinutes(minutes: Int) = edit {
+        it[Keys.BREAK_INTERVAL_MINUTES] = minutes
+        it[Keys.WATER_INTERVAL_MINUTES] = minutes
+    }
+    suspend fun updateShortModeEnabled(value: Boolean) = edit { it[Keys.SHORT_MODE_ENABLED] = value }
+    suspend fun updateIncludeStandingExercises(value: Boolean) = edit { it[Keys.INCLUDE_STANDING_EXERCISES] = value }
+    suspend fun updateUserMode(mode: String) = edit { it[Keys.USER_MODE] = mode }
+    suspend fun pauseBreaksForMinutes(minutes: Int) = edit {
+        val until = System.currentTimeMillis() + (minutes * 60 * 1000L)
+        it[Keys.PAUSE_BREAKS_UNTIL_TIMESTAMP] = until
+    }
 
     suspend fun updateSoundEnabled(value: Boolean) = edit { it[Keys.SOUND_ENABLED] = value }
     suspend fun updateVibrationEnabled(value: Boolean) = edit { it[Keys.VIBRATION_ENABLED] = value }

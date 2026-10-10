@@ -48,6 +48,10 @@ fun SettingsScreen(
     onUpdateWaterEnabled: (Boolean) -> Unit,
     onUpdateWaterInterval: (Int) -> Unit,
     onUpdateWaterAutoResume: (Boolean) -> Unit,
+    onUpdateStretchBreakEnabled: (Boolean) -> Unit = {},
+    onUpdateBreakInterval: (Int) -> Unit = {},
+    onUpdateShortModeEnabled: (Boolean) -> Unit = {},
+    onUpdateIncludeStandingExercises: (Boolean) -> Unit = {},
     onUpdateSound: (Boolean) -> Unit,
     onUpdateVibration: (Boolean) -> Unit,
     onUpdateKeepScreenOn: (Boolean) -> Unit,
@@ -196,21 +200,71 @@ fun SettingsScreen(
                 ) {
                     SettingSwitchRow(
                         title = "Eye Care (20-20-20)",
-                        subtitle = "Pause study timer and rest eyes periodically",
+                        subtitle = "Pause study timer and rest eyes periodically (20 min)",
                         checked = settings.eyeCareEnabled,
                         onCheckedChange = onUpdateEyeCareEnabled
                     )
                     HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
                     SettingSwitchRow(
                         title = "Water Reminder",
-                        subtitle = "Periodic reminders to drink water during study blocks",
+                        subtitle = "Periodic reminders to drink water and take a short walk",
                         checked = settings.waterReminderEnabled,
                         onCheckedChange = onUpdateWaterEnabled
                     )
                     HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
                     SettingSwitchRow(
+                        title = "Stretch Break",
+                        subtitle = "Gentle ergonomic exercises for neck, shoulders, back & legs",
+                        checked = settings.stretchBreakEnabled,
+                        onCheckedChange = onUpdateStretchBreakEnabled
+                    )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+
+                    Text("Break interval", fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text("Shared by Water Reminder and Stretch Break", fontSize = 12.sp, color = TextSecondary)
+                    val intervals = listOf(30, 45, 60)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        intervals.forEach { interval ->
+                            val isSelected = settings.breakIntervalMinutes == interval
+                            Surface(
+                                onClick = { onUpdateBreakInterval(interval) },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isSelected) WaterAccent else Color(0xFF1E1E1E),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = "$interval min",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) Color.Black else TextPrimary,
+                                    modifier = Modifier.padding(vertical = 8.dp),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    SettingSwitchRow(
+                        title = "Short mode (3 min)",
+                        subtitle = "1 min water + 3 exercises instead of 6 exercises",
+                        checked = settings.shortModeEnabled,
+                        onCheckedChange = onUpdateShortModeEnabled
+                    )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    SettingSwitchRow(
+                        title = "Only sitting exercises",
+                        subtitle = "Filters out standing exercises (calf raises, back extension)",
+                        checked = !settings.includeStandingExercises,
+                        onCheckedChange = { sittingOnly -> onUpdateIncludeStandingExercises(!sittingOnly) }
+                    )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    SettingSwitchRow(
                         title = "Auto-Resume After Break",
-                        subtitle = "Automatically resume study when eye rest or hydration break ends",
+                        subtitle = "Automatically resume study when break or eye rest finishes",
                         checked = settings.eyeAutoResume,
                         onCheckedChange = {
                             onUpdateEyeAutoResume(it)

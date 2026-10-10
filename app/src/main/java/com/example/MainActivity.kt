@@ -36,8 +36,10 @@ import com.example.core.timer.StopwatchEngine
 import com.example.core.timer.TimerEngine
 import com.example.core.timer.TimerState
 import com.example.data.repository.AppSettings
+import com.example.presentation.components.CombinedBreakOverlay
 import com.example.presentation.components.FullscreenEyeAlert
 import com.example.presentation.components.FullscreenWaterAlert
+import com.example.core.stretch.StretchBreakManager
 import com.example.presentation.screens.*
 import com.example.ui.theme.*
 import kotlinx.coroutines.launch
@@ -334,6 +336,10 @@ fun StudyWatchRootApp() {
                                 onUpdateWaterEnabled = { coroutineScope.launch { app.settingsRepository.updateWaterReminderEnabled(it) } },
                                 onUpdateWaterInterval = { coroutineScope.launch { app.settingsRepository.updateWaterInterval(it) } },
                                 onUpdateWaterAutoResume = { coroutineScope.launch { app.settingsRepository.updateWaterAutoResume(it) } },
+                                onUpdateStretchBreakEnabled = { coroutineScope.launch { app.settingsRepository.updateStretchBreakEnabled(it) } },
+                                onUpdateBreakInterval = { coroutineScope.launch { app.settingsRepository.updateBreakIntervalMinutes(it) } },
+                                onUpdateShortModeEnabled = { coroutineScope.launch { app.settingsRepository.updateShortModeEnabled(it) } },
+                                onUpdateIncludeStandingExercises = { coroutineScope.launch { app.settingsRepository.updateIncludeStandingExercises(it) } },
                                 onUpdateSound = { coroutineScope.launch { app.settingsRepository.updateSoundEnabled(it) } },
                                 onUpdateVibration = { coroutineScope.launch { app.settingsRepository.updateVibrationEnabled(it) } },
                                 onUpdateKeepScreenOn = { coroutineScope.launch { app.settingsRepository.updateKeepScreenOn(it) } },
@@ -378,13 +384,40 @@ fun StudyWatchRootApp() {
                     FullscreenEyeAlert(snapshot = snapshot)
                 }
 
-                // Fullscreen Overlay for Hydration Water Break
+                // Fullscreen Overlay for Hydration & Stretch Health Break
                 AnimatedVisibility(
                     visible = snapshot.state == TimerState.WATER_BREAK,
                     enter = fadeIn(),
                     exit = fadeOut()
                 ) {
-                    FullscreenWaterAlert(snapshot = snapshot)
+                    CombinedBreakOverlay(
+                        snapshot = snapshot,
+                        shortMode = settings.shortModeEnabled,
+                        includeStanding = settings.includeStandingExercises,
+                        onCompleteBreak = { completedStretches ->
+                            coroutineScope.launch {
+                                val streak = StretchBreakManager.recordBreakCompleted()
+                                TimerEngine.completeWaterBreak(autoResumed = true)
+                                val logDesc = when {
+                                    snapshot.waterReminderEnabled && snapshot.stretchBreakEnabled ->
+                                        "Break completed: Water + Stretch ($streak today)"
+                                    snapshot.stretchBreakEnabled ->
+                                        "Break completed: Stretch break ($streak today)"
+                                    else ->
+                                        "Break completed: Water break ($streak today)"
+                                }
+                                AppLogger.i(
+                                    feature = LogFeature.Hydration,
+                                    event = logDesc,
+                                    details = "Completed health break cycle",
+                                    timerState = snapshot.state.name
+                                )
+                            }
+                        },
+                        onSkipAll = {
+                            TimerEngine.skipWaterReminder()
+                        }
+                    )
                 }
             }
         }

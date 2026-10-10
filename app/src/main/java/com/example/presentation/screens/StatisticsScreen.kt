@@ -20,8 +20,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.db.BreakSessionEntity
 import com.example.data.db.StudySessionEntity
 import com.example.data.db.SubjectEntity
+import com.example.core.stretch.StretchBreakManager
 import com.example.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -30,6 +32,7 @@ import java.util.*
 fun StatisticsScreen(
     sessions: List<StudySessionEntity>,
     subjects: List<SubjectEntity>,
+    breakSessions: List<BreakSessionEntity> = emptyList(),
     onDeleteSession: (Long) -> Unit,
     dailyTargetHours: Int = 6,
     modifier: Modifier = Modifier
@@ -70,11 +73,41 @@ fun StatisticsScreen(
         }
     }
 
+    val filteredBreakSessions = remember(breakSessions, selectedFilterTab) {
+        val calendar = Calendar.getInstance()
+        when (selectedFilterTab) {
+            0 -> {
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                val startOfDay = calendar.timeInMillis
+                breakSessions.filter { it.startTimestamp >= startOfDay }
+            }
+            1 -> {
+                calendar.set(Calendar.DAY_OF_WEEK, calendar.firstDayOfWeek)
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                val startOfWeek = calendar.timeInMillis
+                breakSessions.filter { it.startTimestamp >= startOfWeek }
+            }
+            2 -> {
+                calendar.set(Calendar.DAY_OF_MONTH, 1)
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                val startOfMonth = calendar.timeInMillis
+                breakSessions.filter { it.startTimestamp >= startOfMonth }
+            }
+            else -> breakSessions
+        }
+    }
+
     val totalProductiveSeconds = filteredSessions.sumOf { it.productiveStudySeconds }
     val totalSessionsCount = filteredSessions.size
     val completedSessionsCount = filteredSessions.count { it.status == "COMPLETED" }
     val totalEyeRestSeconds = filteredSessions.sumOf { it.eyeRestSeconds }
     val totalWaterBreaks = filteredSessions.count { it.waterBreakSeconds > 0 }
+    val totalStretchBreaks = filteredBreakSessions.count { it.breakType == "STRETCH_BREAK" }
     val totalInterruptions = filteredSessions.sumOf { it.interruptionCount }
 
     val longestSeconds = filteredSessions.maxOfOrNull { it.productiveStudySeconds } ?: 0L
@@ -228,6 +261,60 @@ fun StatisticsScreen(
             }
         }
 
+        // Breaks taken today (water + stretch count)
+        item {
+            val breaksToday = StretchBreakManager.getTodayBreakCount()
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = CharcoalCard),
+                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(Color(0x2200B4FF)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.WaterDrop,
+                                contentDescription = "Breaks",
+                                tint = WaterAccent,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Breaks taken today: $breaksToday",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "Water + stretch health routine",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+                    Text(
+                        text = "$breaksToday",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
+                        color = WaterAccent
+                    )
+                }
+            }
+        }
+
         // Secondary Metrics Grid
         item {
             Card(
@@ -256,7 +343,7 @@ fun StatisticsScreen(
                     ) {
                         SmallMetricItem("Eye Rests", "${totalEyeRestSeconds / 20} times")
                         SmallMetricItem("Hydration", "$totalWaterBreaks logged")
-                        SmallMetricItem("Interruptions", "$totalInterruptions total")
+                        SmallMetricItem("Stretch breaks", "$totalStretchBreaks completed")
                     }
                 }
             }
