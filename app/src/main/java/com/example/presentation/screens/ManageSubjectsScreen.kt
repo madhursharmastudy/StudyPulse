@@ -55,7 +55,7 @@ fun ManageSubjectsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "MANAGE SUBJECTS",
+                        text = "MANAGE SUBJECTS/TASKS",
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
                         color = TextPrimary
@@ -75,7 +75,7 @@ fun ManageSubjectsScreen(
                         onClick = { showAddSubjectDialog = true },
                         modifier = Modifier.testTag("add_subject_button")
                     ) {
-                        Icon(Icons.Default.AddCircle, contentDescription = "Add Subject", tint = AmberAccent)
+                        Icon(Icons.Default.AddCircle, contentDescription = "Add Subject/Task", tint = AmberAccent)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = AmoledBlack)
@@ -91,7 +91,7 @@ fun ManageSubjectsScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             Text(
-                text = "Add, edit, or delete subjects and topics. Changes sync across all timers and study planner.",
+                text = "Add, edit, or delete subjects/tasks and topics/sub tasks. Changes sync across all timers and study planner.",
                 style = MaterialTheme.typography.bodySmall,
                 color = TextSecondary,
                 modifier = Modifier.padding(bottom = 12.dp)
@@ -103,13 +103,13 @@ fun ManageSubjectsScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("No subjects found", color = TextSecondary)
+                        Text("No subjects/tasks found", color = TextSecondary)
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(
                             onClick = { showAddSubjectDialog = true },
                             colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
                         ) {
-                            Text("+ Add First Subject")
+                            Text("+ Add First Subject/Task")
                         }
                     }
                 }
@@ -243,12 +243,12 @@ fun ManageSubjectsScreen(
         var name by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showAddSubjectDialog = false },
-            title = { Text("Add Subject", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("Add Subject/Task", color = TextPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Subject Name") },
+                    label = { Text("Subject/Task Name") },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
                 )
@@ -278,12 +278,12 @@ fun ManageSubjectsScreen(
         var name by remember { mutableStateOf(subjectToEdit!!.name) }
         AlertDialog(
             onDismissRequest = { subjectToEdit = null },
-            title = { Text("Rename Subject", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("Rename Subject/Task", color = TextPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Subject Name") },
+                    label = { Text("Subject/Task Name") },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
                 )
@@ -312,8 +312,8 @@ fun ManageSubjectsScreen(
     if (subjectToDelete != null) {
         AlertDialog(
             onDismissRequest = { subjectToDelete = null },
-            title = { Text("Delete Subject?", color = TextPrimary, fontWeight = FontWeight.Bold) },
-            text = { Text("Are you sure you want to delete \"${subjectToDelete!!.name}\"? All topics under it will also be deleted.", color = TextSecondary) },
+            title = { Text("Delete Subject/Task?", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to delete \"${subjectToDelete!!.name}\"? All topics/sub tasks under it will also be deleted.", color = TextSecondary) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -337,12 +337,12 @@ fun ManageSubjectsScreen(
         var name by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { topicSubjectTarget = null },
-            title = { Text("Add Topic to ${topicSubjectTarget!!.name}", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("Add Topic/Sub task to ${topicSubjectTarget!!.name}", color = TextPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Topic Name") },
+                    label = { Text("Topic/Sub task Name") },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
                 )
@@ -372,12 +372,12 @@ fun ManageSubjectsScreen(
         var name by remember { mutableStateOf(topicToEdit!!.name) }
         AlertDialog(
             onDismissRequest = { topicToEdit = null },
-            title = { Text("Rename Topic", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("Rename Topic/Sub task", color = TextPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Topic Name") },
+                    label = { Text("Topic/Sub task Name") },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
                 )
@@ -406,7 +406,7 @@ fun ManageSubjectsScreen(
     if (topicToDelete != null) {
         AlertDialog(
             onDismissRequest = { topicToDelete = null },
-            title = { Text("Delete Topic?", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("Delete Topic/Sub task?", color = TextPrimary, fontWeight = FontWeight.Bold) },
             text = { Text("Are you sure you want to delete \"${topicToDelete!!.name}\"?", color = TextSecondary) },
             confirmButton = {
                 Button(

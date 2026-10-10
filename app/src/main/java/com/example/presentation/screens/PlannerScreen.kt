@@ -778,10 +778,10 @@ fun SubjectPickerDropdown(
         OutlinedTextField(
             value = selectedSubjectName,
             onValueChange = onSubjectNameSelected,
-            label = { Text("Subject") },
+            label = { Text("Subject/Task") },
             trailingIcon = {
                 IconButton(onClick = { expanded = true }) {
-                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Select Subject")
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Select Subject/Task")
                 }
             },
             singleLine = true,
@@ -811,7 +811,7 @@ fun SubjectPickerDropdown(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Add, contentDescription = null, tint = AmberAccent, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("+ Add new subject...", color = AmberAccent, fontWeight = FontWeight.Bold)
+                        Text("+ Add new subject/task...", color = AmberAccent, fontWeight = FontWeight.Bold)
                     }
                 },
                 onClick = {
@@ -826,12 +826,12 @@ fun SubjectPickerDropdown(
     if (showNewSubjectDialog) {
         AlertDialog(
             onDismissRequest = { showNewSubjectDialog = false },
-            title = { Text("New Subject", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("New Subject/Task", color = TextPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = newSubjectName,
                     onValueChange = { newSubjectName = it },
-                    label = { Text("Subject Name") },
+                    label = { Text("Subject/Task Name") },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
                 )
@@ -892,7 +892,7 @@ fun AddStudyPlanDialog(
                 OutlinedTextField(
                     value = topic,
                     onValueChange = { topic = it },
-                    label = { Text("Topic / Goal") },
+                    label = { Text("Topic/Sub task") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
@@ -1122,7 +1122,7 @@ fun AddRevisionDialog(
                 OutlinedTextField(
                     value = topic,
                     onValueChange = { topic = it },
-                    label = { Text("Topic / Goal") },
+                    label = { Text("Topic/Sub task") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
@@ -1192,7 +1192,7 @@ fun EditStudyPlanDialog(
                 OutlinedTextField(
                     value = subject,
                     onValueChange = { subject = it },
-                    label = { Text("Subject") },
+                    label = { Text("Subject/Task") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
@@ -1200,7 +1200,7 @@ fun EditStudyPlanDialog(
                 OutlinedTextField(
                     value = topic,
                     onValueChange = { topic = it },
-                    label = { Text("Topic / Goal") },
+                    label = { Text("Topic/Sub task") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
@@ -1288,7 +1288,7 @@ fun EditExamDialog(
                 OutlinedTextField(
                     value = subjects,
                     onValueChange = { subjects = it },
-                    label = { Text("Included Subjects") },
+                    label = { Text("Included Subjects/Tasks") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
@@ -1380,7 +1380,7 @@ fun EditAssignmentDialog(
                 OutlinedTextField(
                     value = subject,
                     onValueChange = { subject = it },
-                    label = { Text("Subject") },
+                    label = { Text("Subject/Task") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
@@ -1484,8 +1484,8 @@ fun EditRevisionDialog(
                     .imePadding(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("Subject: ${item.subjectName}", color = TextPrimary, fontWeight = FontWeight.Medium)
-                Text("Topic: ${item.topicName}", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                Text("Subject/Task: ${item.subjectName}", color = TextPrimary, fontWeight = FontWeight.Medium)
+                Text("Topic/Sub task: ${item.topicName}", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
 
                 OutlinedTextField(
                     value = daysUntil.toString(),

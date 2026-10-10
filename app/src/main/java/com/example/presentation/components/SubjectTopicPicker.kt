@@ -67,7 +67,7 @@ fun SubjectTopicPicker(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (subjectOptional) "TARGET SUBJECT & TOPIC (OPTIONAL)" else "TARGET SUBJECT & TOPIC",
+                    text = if (subjectOptional) "TARGET SUBJECT/TASK & TOPIC/SUB TASK (OPTIONAL)" else "TARGET SUBJECT/TASK & TOPIC/SUB TASK",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
                     color = AmberAccent
                 )
@@ -77,7 +77,7 @@ fun SubjectTopicPicker(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Tune,
-                        contentDescription = "Manage Subjects",
+                        contentDescription = "Manage Subjects/Tasks",
                         tint = AmberAccent,
                         modifier = Modifier.size(14.dp)
                     )
@@ -108,9 +108,9 @@ fun SubjectTopicPicker(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("Subject", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                            Text("Subject/Task", style = MaterialTheme.typography.labelSmall, color = TextMuted)
                             Text(
-                                text = selectedSubject?.name ?: if (subjectOptional) "None (Optional)" else "Select Subject",
+                                text = selectedSubject?.name ?: if (subjectOptional) "None (Optional)" else "Select Subject/Task",
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary,
                                 fontSize = 14.sp
@@ -129,7 +129,7 @@ fun SubjectTopicPicker(
                 ) {
                     if (subjectOptional) {
                         DropdownMenuItem(
-                            text = { Text("None (No Subject)", color = TextSecondary) },
+                            text = { Text("None (No Subject/Task)", color = TextSecondary) },
                             onClick = {
                                 onSubjectSelected(SubjectEntity(name = "General", id = 0L))
                                 subjectExpanded = false
@@ -157,7 +157,7 @@ fun SubjectTopicPicker(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Add, contentDescription = null, tint = AmberAccent, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("+ Add new subject...", color = AmberAccent, fontWeight = FontWeight.Bold)
+                                Text("+ Add new subject/task...", color = AmberAccent, fontWeight = FontWeight.Bold)
                             }
                         },
                         onClick = {
@@ -186,9 +186,9 @@ fun SubjectTopicPicker(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("Topic / Task Goal", style = MaterialTheme.typography.labelSmall, color = TextMuted)
+                            Text("Topic/Sub task", style = MaterialTheme.typography.labelSmall, color = TextMuted)
                             Text(
-                                text = selectedTopicName.ifBlank { "Select or Add Topic" },
+                                text = selectedTopicName.ifBlank { "Select or Add Topic/Sub task" },
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary,
                                 fontSize = 14.sp
@@ -207,7 +207,7 @@ fun SubjectTopicPicker(
                 ) {
                     if (filteredTopics.isEmpty()) {
                         DropdownMenuItem(
-                            text = { Text("No topics under this subject yet", color = TextMuted, fontSize = 12.sp) },
+                            text = { Text("No topics/sub tasks under this subject/task yet", color = TextMuted, fontSize = 12.sp) },
                             onClick = {}
                         )
                     } else {
@@ -233,7 +233,7 @@ fun SubjectTopicPicker(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Add, contentDescription = null, tint = AmberAccent, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("+ Add new topic...", color = AmberAccent, fontWeight = FontWeight.Bold)
+                                Text("+ Add new topic/sub task...", color = AmberAccent, fontWeight = FontWeight.Bold)
                             }
                         },
                         onClick = {
@@ -251,12 +251,12 @@ fun SubjectTopicPicker(
     if (showNewSubjectDialog) {
         AlertDialog(
             onDismissRequest = { showNewSubjectDialog = false },
-            title = { Text("New Subject", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("New Subject/Task", color = TextPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = newSubjectName,
                     onValueChange = { newSubjectName = it },
-                    label = { Text("Subject Name") },
+                    label = { Text("Subject/Task Name") },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
                 )
@@ -287,18 +287,18 @@ fun SubjectTopicPicker(
     if (showNewTopicDialog) {
         AlertDialog(
             onDismissRequest = { showNewTopicDialog = false },
-            title = { Text("New Topic", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("New Topic/Sub task", color = TextPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "Adding to: ${selectedSubject?.name ?: "Current Subject"}",
+                        text = "Adding to: ${selectedSubject?.name ?: "Current Subject/Task"}",
                         color = TextSecondary,
                         style = MaterialTheme.typography.bodySmall
                     )
                     OutlinedTextField(
                         value = newTopicName,
                         onValueChange = { newTopicName = it },
-                        label = { Text("Topic Name") },
+                        label = { Text("Topic/Sub task Name") },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
                     )

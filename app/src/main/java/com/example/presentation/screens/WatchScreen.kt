@@ -691,7 +691,7 @@ fun SubjectTopicCard(
             ) {
                 Icon(
                     imageVector = Icons.Default.MenuBook,
-                    contentDescription = "Subject",
+                    contentDescription = "Subject/Task",
                     tint = TextPrimary,
                     modifier = Modifier.size(20.dp)
                 )
@@ -722,7 +722,7 @@ fun SubjectTopicCard(
 
             Icon(
                 imageVector = Icons.Default.ChevronRight,
-                contentDescription = "Select Subject",
+                contentDescription = "Select Subject/Task",
                 tint = TextMuted,
                 modifier = Modifier.size(20.dp)
             )
@@ -771,7 +771,7 @@ fun SubjectPickerDialog(
         containerColor = DarkCard,
         title = {
             Text(
-                text = "Select Study Subject",
+                text = "Select Subject/Task",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = TextPrimary
             )
@@ -789,7 +789,7 @@ fun SubjectPickerDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "SUBJECT",
+                        text = "SUBJECT/TASK",
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                         color = StudyAccent
                     )
@@ -799,7 +799,7 @@ fun SubjectPickerDialog(
                     ) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = StudyAccent)
                         Spacer(Modifier.width(4.dp))
-                        Text("Add Subject", fontSize = 12.sp, color = StudyAccent)
+                        Text("Add Subject/Task", fontSize = 12.sp, color = StudyAccent)
                     }
                 }
 
@@ -849,7 +849,7 @@ fun SubjectPickerDialog(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Edit,
-                                        contentDescription = "Edit Subject",
+                                        contentDescription = "Edit Subject/Task",
                                         tint = TextMuted,
                                         modifier = Modifier.size(14.dp)
                                     )
@@ -861,7 +861,7 @@ fun SubjectPickerDialog(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete Subject",
+                                        contentDescription = "Delete Subject/Task",
                                         tint = Color.Red.copy(alpha = 0.7f),
                                         modifier = Modifier.size(14.dp)
                                     )
@@ -1055,13 +1055,13 @@ fun SubjectPickerDialog(
         AlertDialog(
             onDismissRequest = { showAddSubjectDialog = false },
             containerColor = DarkCard,
-            title = { Text("Add New Subject", color = TextPrimary) },
+            title = { Text("Add New Subject/Task", color = TextPrimary) },
             text = {
                 Column {
                     OutlinedTextField(
                         value = newSubjectName,
                         onValueChange = { newSubjectName = it },
-                        label = { Text("Subject Name (e.g. Physics)") },
+                        label = { Text("Subject/Task Name") },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = StudyAccent,
@@ -1121,12 +1121,12 @@ fun SubjectPickerDialog(
         AlertDialog(
             onDismissRequest = { showAddTopicDialog = false },
             containerColor = DarkCard,
-            title = { Text("Add Topic to ${selectedSubject?.name}", color = TextPrimary) },
+            title = { Text("Add Topic/Sub task to ${selectedSubject?.name}", color = TextPrimary) },
             text = {
                 OutlinedTextField(
                     value = newTopicName,
                     onValueChange = { newTopicName = it },
-                    label = { Text("Topic Name (e.g. Thermodynamics)") },
+                    label = { Text("Topic/Sub task Name") },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = StudyAccent,
@@ -1148,7 +1148,7 @@ fun SubjectPickerDialog(
                     colors = ButtonDefaults.buttonColors(containerColor = StudyAccent, contentColor = Color.Black),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Add Topic", fontWeight = FontWeight.Bold)
+                    Text("Add Topic/Sub task", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -1167,13 +1167,13 @@ fun SubjectPickerDialog(
         AlertDialog(
             onDismissRequest = { subjectToEdit = null },
             containerColor = DarkCard,
-            title = { Text("Edit Subject", color = TextPrimary) },
+            title = { Text("Edit Subject/Task", color = TextPrimary) },
             text = {
                 Column {
                     OutlinedTextField(
                         value = editSubjectName,
                         onValueChange = { editSubjectName = it },
-                        label = { Text("Subject Name") },
+                        label = { Text("Subject/Task Name") },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = StudyAccent,
@@ -1233,10 +1233,10 @@ fun SubjectPickerDialog(
         AlertDialog(
             onDismissRequest = { subjectToDelete = null },
             containerColor = DarkCard,
-            title = { Text("Delete Subject?", color = TextPrimary) },
+            title = { Text("Delete Subject/Task?", color = TextPrimary) },
             text = {
                 Text(
-                    "Are you sure you want to delete \"${subjectToDelete!!.name}\"? This will also delete all its associated topics and study history.",
+                    "Are you sure you want to delete \"${subjectToDelete!!.name}\"? This will also delete all its associated topics/sub tasks and study history.",
                     color = TextSecondary
                 )
             },
@@ -1273,12 +1273,12 @@ fun SubjectPickerDialog(
         AlertDialog(
             onDismissRequest = { topicToEdit = null },
             containerColor = DarkCard,
-            title = { Text("Edit Topic", color = TextPrimary) },
+            title = { Text("Edit Topic/Sub task", color = TextPrimary) },
             text = {
                 OutlinedTextField(
                     value = editTopicName,
                     onValueChange = { editTopicName = it },
-                    label = { Text("Topic Name") },
+                    label = { Text("Topic/Sub task Name") },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = StudyAccent,
@@ -1320,7 +1320,7 @@ fun SubjectPickerDialog(
         AlertDialog(
             onDismissRequest = { topicToDelete = null },
             containerColor = DarkCard,
-            title = { Text("Delete Topic?", color = TextPrimary) },
+            title = { Text("Delete Topic/Sub task?", color = TextPrimary) },
             text = {
                 Text(
                     "Are you sure you want to delete \"${topicToDelete!!.name}\"?",

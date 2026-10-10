@@ -264,7 +264,7 @@ fun StatisticsScreen(
 
         // Subject Breakdown Progress
         item {
-            Text("Subject Distribution", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
+            Text("Subject/Task Distribution", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
         }
 
         item {

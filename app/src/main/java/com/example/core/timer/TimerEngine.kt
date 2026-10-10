@@ -114,7 +114,8 @@ object TimerEngine {
         type: TimerType = TimerType.STUDY_SESSION,
         durationMinutes: Int = 50,
         notes: String = "",
-        pomodoroSettings: PomodoroSettings? = null
+        pomodoroSettings: PomodoroSettings? = null,
+        durationSeconds: Int? = null
     ) {
         timerId = "TIMER-${System.currentTimeMillis() % 10000}"
         sessionUid = "SESSION-${UUID.randomUUID().toString().take(8).uppercase()}"
@@ -126,7 +127,7 @@ object TimerEngine {
         this.topicName = topicName
         this.sessionNotes = notes
 
-        plannedDurationMillis = if (type == TimerType.STOPWATCH) 0L else durationMinutes * 60 * 1000L
+        plannedDurationMillis = if (type == TimerType.STOPWATCH) 0L else (durationSeconds?.let { it * 1000L } ?: (durationMinutes * 60 * 1000L))
         segmentTotalDurationMillis = plannedDurationMillis
 
         pomodoroSettings?.let {
