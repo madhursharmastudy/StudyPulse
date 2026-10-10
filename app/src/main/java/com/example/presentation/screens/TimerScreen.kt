@@ -20,29 +20,35 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.core.timer.*
 import com.example.data.db.SubjectEntity
 import com.example.data.db.TopicEntity
+import com.example.presentation.components.SubjectTopicPicker
 import com.example.ui.theme.*
 
 @Composable
 fun TimerScreen(
     snapshot: TimerSnapshot,
+    stopwatchSnapshot: StopwatchSnapshot,
     subjects: List<SubjectEntity>,
     topics: List<TopicEntity>,
     onBackToWatch: () -> Unit = {},
+    onOpenManageSubjects: () -> Unit = {},
+    onQuickAddSubject: (String) -> Unit = {},
+    onQuickAddTopic: (Long, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(0) }
     val tabTitles = listOf("SESSION", "POMODORO", "COUNTDOWN", "STOPWATCH", "BREAKS")
 
+    // State for Subject and Topic
+    var selectedSubject by remember { mutableStateOf<SubjectEntity?>(subjects.firstOrNull()) }
+    var selectedTopicName by remember { mutableStateOf("") }
+
     // State for Session creation
-    var selectedSubject by remember { mutableStateOf(subjects.firstOrNull() ?: SubjectEntity(name = "English Literature")) }
-    var selectedTopicName by remember { mutableStateOf("Romantic Poetry") }
     var sessionDurationMinutes by remember { mutableIntStateOf(50) }
     var sessionNotes by remember { mutableStateOf("") }
 
@@ -55,7 +61,7 @@ fun TimerScreen(
     var countdownMinutes by remember { mutableIntStateOf(30) }
 
     LaunchedEffect(subjects) {
-        if (subjects.isNotEmpty() && selectedSubject.id == 0L) {
+        if (selectedSubject == null && subjects.isNotEmpty()) {
             selectedSubject = subjects.first()
         }
     }
@@ -89,11 +95,214 @@ fun TimerScreen(
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
                 ),
-                color = StudyAccent
+                color = StudyAccent,
+                modifier = Modifier.weight(1f)
             )
+            IconButton(
+                onClick = onOpenManageSubjects,
+                modifier = Modifier.testTag("manage_subjects_header_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Tune,
+                    contentDescription = "Manage Subjects",
+                    tint = AmberAccent
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Dual Running Timers Cards at Top
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            val isTimerActive = snapshot.state.isActive
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isTimerActive) CharcoalElevated else CharcoalCard
+                ),
+                border = CardDefaults.outlinedCardBorder().copy(
+                    brush = androidx.compose.ui.graphics.SolidColor(
+                        if (isTimerActive) AmberAccent else CharcoalBorder
+                    )
+                ),
+                modifier = Modifier.weight(1f)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "TIMER",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
+                            color = if (isTimerActive) AmberAccent else TextMuted
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(if (isTimerActive) AmberSoft else Color(0xFF1E1E1E))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = if (isTimerActive) snapshot.state.name else "IDLE",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isTimerActive) AmberAccent else TextMuted
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = if (isTimerActive) snapshot.formattedActiveDisplay() else "--:--",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        color = if (isTimerActive) TextPrimary else TextMuted
+                    )
+
+                    if (isTimerActive) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = snapshot.subjectName.ifBlank { snapshot.timerType.displayName },
+                            fontSize = 11.sp,
+                            color = TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (snapshot.state == TimerState.STUDYING) {
+                                Button(
+                                    onClick = { TimerEngine.pause() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = CharcoalCard, contentColor = TextPrimary),
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                    modifier = Modifier.weight(1f).height(28.dp)
+                                ) {
+                                    Text("Pause", fontSize = 11.sp)
+                                }
+                            } else if (snapshot.state == TimerState.PAUSED) {
+                                Button(
+                                    onClick = { TimerEngine.resume() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black),
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                    modifier = Modifier.weight(1f).height(28.dp)
+                                ) {
+                                    Text("Resume", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            OutlinedButton(
+                                onClick = { TimerEngine.stop() },
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = RoseAccent),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                modifier = Modifier.weight(1f).height(28.dp)
+                            ) {
+                                Text("Stop", fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+            }
+
+            val isStopwatchActive = stopwatchSnapshot.isRunning || stopwatchSnapshot.isPaused
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isStopwatchActive) CharcoalElevated else CharcoalCard
+                ),
+                border = CardDefaults.outlinedCardBorder().copy(
+                    brush = androidx.compose.ui.graphics.SolidColor(
+                        if (isStopwatchActive) CyanAccent else CharcoalBorder
+                    )
+                ),
+                modifier = Modifier.weight(1f)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "STOPWATCH",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
+                            color = if (isStopwatchActive) CyanAccent else TextMuted
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(if (isStopwatchActive) CyanSoft else Color(0xFF1E1E1E))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = stopwatchSnapshot.stateText,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isStopwatchActive) CyanAccent else TextMuted
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = if (isStopwatchActive || stopwatchSnapshot.elapsedMillis > 0) stopwatchSnapshot.formattedDisplay() else "00:00:00",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        color = if (isStopwatchActive) TextPrimary else TextMuted
+                    )
+
+                    if (isStopwatchActive) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = stopwatchSnapshot.subjectName.ifBlank { "Stopwatch" },
+                            fontSize = 11.sp,
+                            color = TextSecondary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (stopwatchSnapshot.isRunning) {
+                                Button(
+                                    onClick = { StopwatchEngine.pause() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = CharcoalCard, contentColor = TextPrimary),
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                    modifier = Modifier.weight(1f).height(28.dp)
+                                ) {
+                                    Text("Pause", fontSize = 11.sp)
+                                }
+                            } else {
+                                Button(
+                                    onClick = { StopwatchEngine.resume() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = CyanAccent, contentColor = Color.Black),
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                    modifier = Modifier.weight(1f).height(28.dp)
+                                ) {
+                                    Text("Resume", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            OutlinedButton(
+                                onClick = { StopwatchEngine.reset() },
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                modifier = Modifier.weight(1f).height(28.dp)
+                            ) {
+                                Text("Reset", fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         // Tabs
         ScrollableTabRow(
@@ -125,34 +334,31 @@ fun TimerScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Active Timer Hero Card (if running)
-        if (snapshot.state != TimerState.IDLE) {
-            ActiveHeroTimer(snapshot = snapshot)
-            Spacer(modifier = Modifier.height(16.dp))
-        }
+        Spacer(modifier = Modifier.height(14.dp))
 
         // Tab Content
         Box(modifier = Modifier.weight(1f)) {
             when (selectedTab) {
                 0 -> StudySessionTab(
-                    snapshot = snapshot,
                     subjects = subjects,
                     selectedSubject = selectedSubject,
                     onSubjectSelected = { selectedSubject = it },
+                    topics = topics,
                     topicName = selectedTopicName,
                     onTopicChange = { selectedTopicName = it },
                     durationMinutes = sessionDurationMinutes,
                     onDurationChange = { sessionDurationMinutes = it },
                     notes = sessionNotes,
                     onNotesChange = { sessionNotes = it },
+                    onOpenManageSubjects = onOpenManageSubjects,
+                    onQuickAddSubject = onQuickAddSubject,
+                    onQuickAddTopic = onQuickAddTopic,
                     onStart = {
                         TimerEngine.startStudySession(
-                            subjectId = selectedSubject.id,
-                            topicId = 0,
-                            subjectName = selectedSubject.name,
-                            topicName = selectedTopicName,
+                            subjectId = selectedSubject?.id ?: 0L,
+                            topicId = 0L,
+                            subjectName = selectedSubject?.name ?: "General Study",
+                            topicName = selectedTopicName.ifBlank { "Deep Focus" },
                             type = TimerType.STUDY_SESSION,
                             durationMinutes = sessionDurationMinutes,
                             notes = sessionNotes
@@ -160,7 +366,12 @@ fun TimerScreen(
                     }
                 )
                 1 -> PomodoroTab(
-                    snapshot = snapshot,
+                    subjects = subjects,
+                    selectedSubject = selectedSubject,
+                    onSubjectSelected = { selectedSubject = it },
+                    topics = topics,
+                    topicName = selectedTopicName,
+                    onTopicChange = { selectedTopicName = it },
                     studyMinutes = pomodoroStudyMinutes,
                     breakMinutes = pomodoroBreakMinutes,
                     cycles = pomodoroCycles,
@@ -169,12 +380,15 @@ fun TimerScreen(
                         pomodoroBreakMinutes = b
                     },
                     onCyclesChange = { pomodoroCycles = it },
+                    onOpenManageSubjects = onOpenManageSubjects,
+                    onQuickAddSubject = onQuickAddSubject,
+                    onQuickAddTopic = onQuickAddTopic,
                     onStart = {
                         TimerEngine.startStudySession(
-                            subjectId = selectedSubject.id,
-                            topicId = 0,
-                            subjectName = selectedSubject.name,
-                            topicName = selectedTopicName,
+                            subjectId = selectedSubject?.id ?: 0L,
+                            topicId = 0L,
+                            subjectName = selectedSubject?.name ?: "Pomodoro Study",
+                            topicName = selectedTopicName.ifBlank { "Focus Interval" },
                             type = TimerType.POMODORO,
                             pomodoroSettings = PomodoroSettings(
                                 studyMinutes = pomodoroStudyMinutes,
@@ -185,117 +399,58 @@ fun TimerScreen(
                     }
                 )
                 2 -> CountdownTab(
+                    subjects = subjects,
+                    selectedSubject = selectedSubject,
+                    onSubjectSelected = { selectedSubject = it },
+                    topics = topics,
+                    topicName = selectedTopicName,
+                    onTopicChange = { selectedTopicName = it },
                     countdownMinutes = countdownMinutes,
                     onMinutesChange = { countdownMinutes = it },
+                    onOpenManageSubjects = onOpenManageSubjects,
+                    onQuickAddSubject = onQuickAddSubject,
+                    onQuickAddTopic = onQuickAddTopic,
                     onStart = {
                         TimerEngine.startStudySession(
-                            subjectId = selectedSubject.id,
-                            topicId = 0,
-                            subjectName = selectedSubject.name,
-                            topicName = selectedTopicName,
+                            subjectId = selectedSubject?.id ?: 0L,
+                            topicId = 0L,
+                            subjectName = selectedSubject?.name ?: "General Task",
+                            topicName = selectedTopicName.ifBlank { "Countdown Focus" },
                             type = TimerType.COUNTDOWN,
                             durationMinutes = countdownMinutes
                         )
                     }
                 )
                 3 -> StopwatchTab(
-                    snapshot = snapshot,
+                    stopwatchSnapshot = stopwatchSnapshot,
+                    subjects = subjects,
+                    selectedSubject = selectedSubject,
+                    onSubjectSelected = { selectedSubject = it },
+                    topics = topics,
+                    topicName = selectedTopicName,
+                    onTopicChange = { selectedTopicName = it },
+                    onOpenManageSubjects = onOpenManageSubjects,
+                    onQuickAddSubject = onQuickAddSubject,
+                    onQuickAddTopic = onQuickAddTopic,
                     onStart = {
-                        TimerEngine.startStudySession(
-                            subjectId = selectedSubject.id,
-                            topicId = 0,
-                            subjectName = selectedSubject.name,
-                            topicName = "Stopwatch Track",
-                            type = TimerType.STOPWATCH
+                        StopwatchEngine.start(
+                            subjectId = selectedSubject?.id ?: 0L,
+                            subjectName = selectedSubject?.name ?: "Stopwatch",
+                            topicId = 0L,
+                            topicName = selectedTopicName.ifBlank { "Open Study" }
                         )
                     },
-                    onLap = { TimerEngine.recordLap() },
-                    onStop = { TimerEngine.stop() },
-                    onReset = { TimerEngine.reset() }
+                    onPause = { StopwatchEngine.pause() },
+                    onResume = { StopwatchEngine.resume() },
+                    onLap = { StopwatchEngine.recordLap() },
+                    onStop = { StopwatchEngine.stop() },
+                    onReset = { StopwatchEngine.reset() }
                 )
                 4 -> BreaksTab(
-                    onStartBreak = { type, duration ->
-                        TimerEngine.startBreak(type, duration)
+                    onStartBreak = { type, durationSecs ->
+                        TimerEngine.startBreak(type, (durationSecs / 60).toInt())
                     }
                 )
-            }
-        }
-    }
-}
-
-@Composable
-fun ActiveHeroTimer(snapshot: TimerSnapshot) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(AmberAccent)),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "${snapshot.timerType.displayName} • ${snapshot.state.name}",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                    color = AmberAccent
-                )
-                Text(
-                    text = snapshot.subjectName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextPrimary
-                )
-            }
-
-            Text(
-                text = snapshot.formattedActiveDisplay(),
-                fontSize = 44.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-                color = TextPrimary,
-                modifier = Modifier.padding(vertical = 4.dp)
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (snapshot.state == TimerState.STUDYING) {
-                    Button(
-                        onClick = { TimerEngine.pause() },
-                        colors = ButtonDefaults.buttonColors(containerColor = CharcoalElevated, contentColor = TextPrimary),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(40.dp)
-                    ) {
-                        Text("PAUSE")
-                    }
-                } else if (snapshot.state == TimerState.PAUSED) {
-                    Button(
-                        onClick = { TimerEngine.resume() },
-                        colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(40.dp)
-                    ) {
-                        Text("RESUME", fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                OutlinedButton(
-                    onClick = { TimerEngine.stop() },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = RoseAccent),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(40.dp)
-                ) {
-                    Text("STOP")
-                }
             }
         }
     }
@@ -303,99 +458,89 @@ fun ActiveHeroTimer(snapshot: TimerSnapshot) {
 
 @Composable
 fun StudySessionTab(
-    snapshot: TimerSnapshot,
     subjects: List<SubjectEntity>,
-    selectedSubject: SubjectEntity,
+    selectedSubject: SubjectEntity?,
     onSubjectSelected: (SubjectEntity) -> Unit,
+    topics: List<TopicEntity>,
     topicName: String,
     onTopicChange: (String) -> Unit,
     durationMinutes: Int,
     onDurationChange: (Int) -> Unit,
     notes: String,
     onNotesChange: (String) -> Unit,
+    onOpenManageSubjects: () -> Unit,
+    onQuickAddSubject: (String) -> Unit,
+    onQuickAddTopic: (Long, String) -> Unit,
     onStart: () -> Unit
 ) {
     val presets = listOf(25, 45, 50, 60, 90, 120)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            Text("Select Subject", style = MaterialTheme.typography.labelLarge, color = TextMuted)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                subjects.take(3).forEach { s ->
-                    val isSelected = s.id == selectedSubject.id
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (isSelected) AmberSoft else CharcoalCard)
-                            .border(1.dp, if (isSelected) AmberAccent else CharcoalBorder, RoundedCornerShape(8.dp))
-                            .clickable { onSubjectSelected(s) }
-                            .padding(vertical = 10.dp, horizontal = 4.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = s.name.take(14),
-                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = if (isSelected) AmberAccent else TextSecondary,
-                            maxLines = 1
-                        )
-                    }
-                }
-            }
-        }
-
-        item {
-            Text("Topic / Goal", style = MaterialTheme.typography.labelLarge, color = TextMuted)
-            Spacer(modifier = Modifier.height(6.dp))
-            OutlinedTextField(
-                value = topicName,
-                onValueChange = onTopicChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("study_session_topic_input"),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = AmberAccent,
-                    unfocusedBorderColor = CharcoalBorder,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
-                ),
-                shape = RoundedCornerShape(10.dp)
+            Text(
+                text = "Focus on one subject for a fixed time.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary
             )
         }
 
         item {
-            Text("Duration Preset", style = MaterialTheme.typography.labelLarge, color = TextMuted)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                presets.forEach { m ->
-                    val isSel = durationMinutes == m
+            SubjectTopicPicker(
+                subjects = subjects,
+                selectedSubject = selectedSubject,
+                onSubjectSelected = onSubjectSelected,
+                topics = topics,
+                selectedTopicName = topicName,
+                onTopicSelected = onTopicChange,
+                onOpenManageSubjects = onOpenManageSubjects,
+                onQuickAddSubject = onQuickAddSubject,
+                onQuickAddTopic = onQuickAddTopic
+            )
+        }
+
+        item {
+            Text("Session Duration (minutes)", style = MaterialTheme.typography.labelMedium, color = TextMuted)
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                presets.take(3).forEach { p ->
+                    val isSelected = durationMinutes == p
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(if (isSel) AmberAccent else CharcoalCard)
-                            .border(1.dp, if (isSel) AmberAccent else CharcoalBorder, RoundedCornerShape(8.dp))
-                            .clickable { onDurationChange(m) }
-                            .padding(vertical = 8.dp),
+                            .background(if (isSelected) AmberAccent else CharcoalCard)
+                            .clickable { onDurationChange(p) }
+                            .padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "${m}m",
+                            text = "${p}m",
                             fontWeight = FontWeight.Bold,
-                            color = if (isSel) Color.Black else TextSecondary,
-                            fontSize = 13.sp
+                            color = if (isSelected) Color.Black else TextPrimary
+                        )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                presets.drop(3).forEach { p ->
+                    val isSelected = durationMinutes == p
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isSelected) AmberAccent else CharcoalCard)
+                            .clickable { onDurationChange(p) }
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${p}m",
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSelected) Color.Black else TextPrimary
                         )
                     }
                 }
@@ -403,27 +548,17 @@ fun StudySessionTab(
         }
 
         item {
-            Text("Session Notes / Tasks", style = MaterialTheme.typography.labelLarge, color = TextMuted)
-            Spacer(modifier = Modifier.height(6.dp))
             OutlinedTextField(
                 value = notes,
                 onValueChange = onNotesChange,
+                label = { Text("Session Notes / Objectives (Optional)") },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("What will you accomplish in this session?", color = TextMuted) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = AmberAccent,
-                    unfocusedBorderColor = CharcoalBorder,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
-                ),
-                shape = RoundedCornerShape(10.dp)
+                colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
             )
         }
 
         item {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Button(
                 onClick = onStart,
                 colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black),
@@ -431,11 +566,11 @@ fun StudySessionTab(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp)
-                    .testTag("start_session_button")
+                    .testTag("start_study_session_button")
             ) {
                 Icon(Icons.Default.PlayArrow, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("START ${durationMinutes}M STUDY SESSION", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text("START ${durationMinutes}M FOCUS SESSION", fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -443,317 +578,407 @@ fun StudySessionTab(
 
 @Composable
 fun PomodoroTab(
-    snapshot: TimerSnapshot,
+    subjects: List<SubjectEntity>,
+    selectedSubject: SubjectEntity?,
+    onSubjectSelected: (SubjectEntity) -> Unit,
+    topics: List<TopicEntity>,
+    topicName: String,
+    onTopicChange: (String) -> Unit,
     studyMinutes: Int,
     breakMinutes: Int,
     cycles: Int,
-    onPresetSelect: (Int, Int) -> Unit,
+    onPresetSelect: (study: Int, brk: Int) -> Unit,
     onCyclesChange: (Int) -> Unit,
+    onOpenManageSubjects: () -> Unit,
+    onQuickAddSubject: (String) -> Unit,
+    onQuickAddTopic: (Long, String) -> Unit,
     onStart: () -> Unit
 ) {
-    Column(
+    LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Text("Standard Pomodoro Presets", style = MaterialTheme.typography.labelLarge, color = TextMuted)
+        item {
+            Text(
+                text = "Study in cycles with short rests to stay fresh.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary
+            )
+        }
 
-        val pomoPresets = listOf(Pair(25, 5), Pair(50, 10), Pair(90, 15))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            pomoPresets.forEach { pair ->
-                val isSel = studyMinutes == pair.first && breakMinutes == pair.second
-                Card(
-                    shape = RoundedCornerShape(10.dp),
-                    colors = CardDefaults.cardColors(containerColor = if (isSel) AmberSoft else CharcoalCard),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(if (isSel) AmberAccent else CharcoalBorder)),
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { onPresetSelect(pair.first, pair.second) }
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+        item {
+            SubjectTopicPicker(
+                subjects = subjects,
+                selectedSubject = selectedSubject,
+                onSubjectSelected = onSubjectSelected,
+                topics = topics,
+                selectedTopicName = topicName,
+                onTopicSelected = onTopicChange,
+                onOpenManageSubjects = onOpenManageSubjects,
+                onQuickAddSubject = onQuickAddSubject,
+                onQuickAddTopic = onQuickAddTopic
+            )
+        }
+
+        item {
+            Text("Pomodoro Cycle Interval", style = MaterialTheme.typography.labelMedium, color = TextMuted)
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                listOf(Pair(25, 5), Pair(50, 10), Pair(30, 5)).forEach { pair ->
+                    val isSel = studyMinutes == pair.first && breakMinutes == pair.second
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isSel) AmberAccent else CharcoalElevated)
+                            .clickable { onPresetSelect(pair.first, pair.second) }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "${pair.first}/${pair.second}",
-                            fontSize = 20.sp,
+                            text = "${pair.first} / ${pair.second}m",
                             fontWeight = FontWeight.Bold,
-                            color = if (isSel) AmberAccent else TextPrimary
-                        )
-                        Text(
-                            text = "${pair.first}m Study • ${pair.second}m Rest",
-                            fontSize = 10.sp,
-                            color = TextSecondary
+                            color = if (isSel) Color.Black else TextSecondary
                         )
                     }
                 }
             }
         }
 
-        Text("Target Cycles: $cycles Cycles (${cycles * (studyMinutes + breakMinutes)}m total)", style = MaterialTheme.typography.labelLarge, color = TextMuted)
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            listOf(2, 4, 6, 8).forEach { c ->
-                val isSel = cycles == c
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSel) AmberAccent else CharcoalElevated)
-                        .clickable { onCyclesChange(c) }
-                        .padding(vertical = 10.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "$c Cycles",
-                        fontWeight = FontWeight.Bold,
-                        color = if (isSel) Color.Black else TextSecondary
-                    )
+        item {
+            Text("Number of Cycles", style = MaterialTheme.typography.labelMedium, color = TextMuted)
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                listOf(2, 4, 6, 8).forEach { c ->
+                    val isSel = cycles == c
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isSel) AmberAccent else CharcoalElevated)
+                            .clickable { onCyclesChange(c) }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "$c Cycles",
+                            fontWeight = FontWeight.Bold,
+                            color = if (isSel) Color.Black else TextSecondary
+                        )
+                    }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
-
-        Button(
-            onClick = onStart,
-            colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
-                .testTag("start_pomodoro_button")
-        ) {
-            Icon(Icons.Default.Timer, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("LAUNCH POMODORO ($studyMinutes / $breakMinutes min)", fontWeight = FontWeight.Bold)
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = onStart,
+                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+                    .testTag("start_pomodoro_button")
+            ) {
+                Icon(Icons.Default.Timer, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("LAUNCH POMODORO ($studyMinutes / $breakMinutes min)", fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
 
 @Composable
 fun CountdownTab(
+    subjects: List<SubjectEntity>,
+    selectedSubject: SubjectEntity?,
+    onSubjectSelected: (SubjectEntity) -> Unit,
+    topics: List<TopicEntity>,
+    topicName: String,
+    onTopicChange: (String) -> Unit,
     countdownMinutes: Int,
     onMinutesChange: (Int) -> Unit,
+    onOpenManageSubjects: () -> Unit,
+    onQuickAddSubject: (String) -> Unit,
+    onQuickAddTopic: (Long, String) -> Unit,
     onStart: () -> Unit
 ) {
     val presets = listOf(10, 15, 20, 25, 30, 45, 60, 90)
 
-    Column(
+    LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Text("Quick Countdown Durations", style = MaterialTheme.typography.labelLarge, color = TextMuted)
+        item {
+            Text(
+                text = "Quick timer for any task, with an optional subject.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary
+            )
+        }
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                presets.take(4).forEach { m ->
-                    val isSel = countdownMinutes == m
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (isSel) AmberAccent else CharcoalCard)
-                            .border(1.dp, if (isSel) AmberAccent else CharcoalBorder, RoundedCornerShape(8.dp))
-                            .clickable { onMinutesChange(m) }
-                            .padding(vertical = 14.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "${m}m",
-                            fontWeight = FontWeight.Bold,
-                            color = if (isSel) Color.Black else TextPrimary,
-                            fontSize = 16.sp
-                        )
+        item {
+            SubjectTopicPicker(
+                subjects = subjects,
+                selectedSubject = selectedSubject,
+                onSubjectSelected = onSubjectSelected,
+                topics = topics,
+                selectedTopicName = topicName,
+                onTopicSelected = onTopicChange,
+                onOpenManageSubjects = onOpenManageSubjects,
+                onQuickAddSubject = onQuickAddSubject,
+                onQuickAddTopic = onQuickAddTopic,
+                subjectOptional = true
+            )
+        }
+
+        item {
+            Text("Quick Countdown Durations", style = MaterialTheme.typography.labelMedium, color = TextMuted)
+            Spacer(modifier = Modifier.height(6.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    presets.take(4).forEach { m ->
+                        val isSel = countdownMinutes == m
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSel) AmberAccent else CharcoalCard)
+                                .border(1.dp, if (isSel) AmberAccent else CharcoalBorder, RoundedCornerShape(8.dp))
+                                .clickable { onMinutesChange(m) }
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "${m}m",
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSel) Color.Black else TextPrimary,
+                                fontSize = 15.sp
+                            )
+                        }
                     }
                 }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                presets.drop(4).take(4).forEach { m ->
-                    val isSel = countdownMinutes == m
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (isSel) AmberAccent else CharcoalCard)
-                            .border(1.dp, if (isSel) AmberAccent else CharcoalBorder, RoundedCornerShape(8.dp))
-                            .clickable { onMinutesChange(m) }
-                            .padding(vertical = 14.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "${m}m",
-                            fontWeight = FontWeight.Bold,
-                            color = if (isSel) Color.Black else TextPrimary,
-                            fontSize = 16.sp
-                        )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    presets.drop(4).take(4).forEach { m ->
+                        val isSel = countdownMinutes == m
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSel) AmberAccent else CharcoalCard)
+                                .border(1.dp, if (isSel) AmberAccent else CharcoalBorder, RoundedCornerShape(8.dp))
+                                .clickable { onMinutesChange(m) }
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "${m}m",
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSel) Color.Black else TextPrimary,
+                                fontSize = 15.sp
+                            )
+                        }
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.weight(1f))
-
-        Button(
-            onClick = onStart,
-            colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
-                .testTag("start_countdown_button")
-        ) {
-            Icon(Icons.Default.HourglassBottom, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("START ${countdownMinutes}M COUNTDOWN", fontWeight = FontWeight.Bold)
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = onStart,
+                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+                    .testTag("start_countdown_button")
+            ) {
+                Icon(Icons.Default.HourglassBottom, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("START ${countdownMinutes}M COUNTDOWN", fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
 
 @Composable
 fun StopwatchTab(
-    snapshot: TimerSnapshot,
+    stopwatchSnapshot: StopwatchSnapshot,
+    subjects: List<SubjectEntity>,
+    selectedSubject: SubjectEntity?,
+    onSubjectSelected: (SubjectEntity) -> Unit,
+    topics: List<TopicEntity>,
+    topicName: String,
+    onTopicChange: (String) -> Unit,
+    onOpenManageSubjects: () -> Unit,
+    onQuickAddSubject: (String) -> Unit,
+    onQuickAddTopic: (Long, String) -> Unit,
     onStart: () -> Unit,
+    onPause: () -> Unit,
+    onResume: () -> Unit,
     onLap: () -> Unit,
     onStop: () -> Unit,
     onReset: () -> Unit
 ) {
-    val isRunning = snapshot.timerType == TimerType.STOPWATCH && snapshot.state == TimerState.STUDYING
-    val isPaused = snapshot.timerType == TimerType.STOPWATCH && snapshot.state == TimerState.PAUSED
+    val isRunning = stopwatchSnapshot.isRunning
+    val isPaused = stopwatchSnapshot.isPaused
 
-    Column(
+    LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Large Stopwatch Elapsed Display
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+        item {
+            Text(
+                text = "Counts up. Use it when you do not know how long you will study.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary
+            )
+        }
+
+        item {
+            SubjectTopicPicker(
+                subjects = subjects,
+                selectedSubject = selectedSubject,
+                onSubjectSelected = onSubjectSelected,
+                topics = topics,
+                selectedTopicName = topicName,
+                onTopicSelected = onTopicChange,
+                onOpenManageSubjects = onOpenManageSubjects,
+                onQuickAddSubject = onQuickAddSubject,
+                onQuickAddTopic = onQuickAddTopic,
+                subjectOptional = true
+            )
+        }
+
+        item {
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = CharcoalCard),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = if (snapshot.timerType == TimerType.STOPWATCH) snapshot.formattedActiveDisplay() else "00:00:00",
-                    fontSize = 48.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
-                    color = TextPrimary
-                )
-                Text(
-                    text = "ACCURATE MONOTONIC TIME",
-                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
-                    color = TextMuted
-                )
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = stopwatchSnapshot.formattedDisplay(),
+                        fontSize = 48.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "INDEPENDENT RUNNING STOPWATCH",
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
+                        color = CyanAccent
+                    )
+                }
             }
         }
 
-        // Stopwatch Control Buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            if (!isRunning && !isPaused) {
-                Button(
-                    onClick = onStart,
-                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .testTag("stopwatch_start_button")
-                ) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = null)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("START STOPWATCH", fontWeight = FontWeight.Bold)
-                }
-            } else {
-                if (isRunning) {
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (!isRunning && !isPaused) {
                     Button(
-                        onClick = { TimerEngine.pause() },
-                        colors = ButtonDefaults.buttonColors(containerColor = CharcoalElevated, contentColor = TextPrimary),
+                        onClick = onStart,
+                        colors = ButtonDefaults.buttonColors(containerColor = CyanAccent, contentColor = Color.Black),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
-                            .weight(1f)
+                            .fillMaxWidth()
                             .height(48.dp)
+                            .testTag("stopwatch_start_button")
                     ) {
-                        Text("PAUSE")
-                    }
-
-                    OutlinedButton(
-                        onClick = onLap,
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = CyanAccent),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .testTag("stopwatch_lap_btn")
-                    ) {
-                        Text("LAP")
+                        Icon(Icons.Default.PlayArrow, contentDescription = null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("START STOPWATCH", fontWeight = FontWeight.Bold)
                     }
                 } else {
-                    Button(
-                        onClick = { TimerEngine.resume() },
-                        colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                    ) {
-                        Text("RESUME", fontWeight = FontWeight.Bold)
+                    if (isRunning) {
+                        Button(
+                            onClick = onPause,
+                            colors = ButtonDefaults.buttonColors(containerColor = CharcoalElevated, contentColor = TextPrimary),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                        ) {
+                            Text("PAUSE")
+                        }
+
+                        OutlinedButton(
+                            onClick = onLap,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = CyanAccent),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                                .testTag("stopwatch_lap_btn")
+                        ) {
+                            Text("LAP")
+                        }
+                    } else {
+                        Button(
+                            onClick = onResume,
+                            colors = ButtonDefaults.buttonColors(containerColor = CyanAccent, contentColor = Color.Black),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                        ) {
+                            Text("RESUME", fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedButton(
+                            onClick = onReset,
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                        ) {
+                            Text("RESET")
+                        }
                     }
 
                     OutlinedButton(
-                        onClick = onReset,
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+                        onClick = onStop,
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = RoseAccent),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp)
                     ) {
-                        Text("RESET")
+                        Text("STOP")
                     }
-                }
-
-                OutlinedButton(
-                    onClick = onStop,
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = RoseAccent),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp)
-                ) {
-                    Text("STOP")
                 }
             }
         }
 
-        // Laps Table
-        Text("Laps & Splits (${snapshot.laps.size})", style = MaterialTheme.typography.labelLarge, color = TextMuted)
-
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            items(snapshot.laps) { lap ->
+        if (stopwatchSnapshot.laps.isNotEmpty()) {
+            item {
+                Text("Laps (${stopwatchSnapshot.laps.size})", style = MaterialTheme.typography.labelMedium, color = TextMuted)
+            }
+            items(stopwatchSnapshot.laps.asReversed()) { lap ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(CharcoalElevated)
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .background(CharcoalCard)
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Lap ${lap.lapNumber}", fontWeight = FontWeight.Bold, color = TextPrimary)
-                    Text(lap.formatDuration(), color = CyanAccent, fontFamily = FontFamily.Monospace)
-                    Text(lap.formatTotal(), color = TextSecondary, fontFamily = FontFamily.Monospace)
+                    Text("Lap ${lap.lapNumber}", color = TextSecondary, fontWeight = FontWeight.Medium)
+                    Text(
+                        formatMillisToDisplay(lap.lapDurationMillis),
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold,
+                        color = CyanAccent
+                    )
                 }
             }
         }
@@ -762,72 +987,59 @@ fun StopwatchTab(
 
 @Composable
 fun BreaksTab(
-    onStartBreak: (BreakType, Int) -> Unit
+    onStartBreak: (BreakType, Long) -> Unit
 ) {
+    val breakPresets = listOf(
+        Triple("Quick Refresh", BreakType.SHORT_BREAK, 5L * 60),
+        Triple("Coffee & Stretch", BreakType.SHORT_BREAK, 10L * 60),
+        Triple("Meal / Walk Break", BreakType.LONG_BREAK, 20L * 60),
+        Triple("Power Nap", BreakType.LONG_BREAK, 30L * 60)
+    )
+
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Text("Manual Rest Breaks", style = MaterialTheme.typography.labelLarge, color = TextMuted)
+        Text(
+            text = "Take a planned rest. Eye and water breaks also come automatically.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextSecondary
+        )
 
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onStartBreak(BreakType.SHORT_BREAK, 5) }
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+        breakPresets.forEach { (title, type, durationSecs) ->
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = CharcoalCard),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.Default.Coffee, contentDescription = null, tint = AmberAccent, modifier = Modifier.size(32.dp))
-                Spacer(modifier = Modifier.width(16.dp))
-                Column {
-                    Text("Short Break (5 minutes)", fontWeight = FontWeight.Bold, color = TextPrimary)
-                    Text("Quick recharge, stretch, or tea break.", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                }
-            }
-        }
-
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onStartBreak(BreakType.LONG_BREAK, 15) }
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.Bedtime, contentDescription = null, tint = CyanAccent, modifier = Modifier.size(32.dp))
-                Spacer(modifier = Modifier.width(16.dp))
-                Column {
-                    Text("Long Break (15 minutes)", fontWeight = FontWeight.Bold, color = TextPrimary)
-                    Text("Walk around, meditate, or take a mental reset.", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                }
-            }
-        }
-
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onStartBreak(BreakType.CUSTOM_BREAK, 30) }
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.Restaurant, contentDescription = null, tint = EmeraldAccent, modifier = Modifier.size(32.dp))
-                Spacer(modifier = Modifier.width(16.dp))
-                Column {
-                    Text("Lunch / Meal Break (30 minutes)", fontWeight = FontWeight.Bold, color = TextPrimary)
-                    Text("Step completely away from your study desk.", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(title, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Text("${durationSecs / 60} minutes • ${type.name}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    }
+                    Button(
+                        onClick = { onStartBreak(type, durationSecs) },
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldAccent, contentColor = Color.Black),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text("START")
+                    }
                 }
             }
         }
     }
+}
+
+private fun formatMillisToDisplay(millis: Long): String {
+    val totalSecs = millis / 1000
+    val m = (totalSecs % 3600) / 60
+    val s = totalSecs % 60
+    val ms = (millis % 1000) / 100
+    return String.format(java.util.Locale.getDefault(), "%02d:%02d.%d", m, s, ms)
 }

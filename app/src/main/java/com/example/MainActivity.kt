@@ -32,6 +32,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.core.logging.AppLogger
 import com.example.core.logging.LogFeature
+import com.example.core.timer.StopwatchEngine
 import com.example.core.timer.TimerEngine
 import com.example.core.timer.TimerState
 import com.example.data.repository.AppSettings
@@ -69,6 +70,7 @@ fun StudyWatchRootApp() {
 
     // State flows
     val snapshot by TimerEngine.snapshot.collectAsStateWithLifecycle()
+    val stopwatchSnapshot by StopwatchEngine.snapshot.collectAsStateWithLifecycle()
     val settings by app.settingsRepository.settingsFlow.collectAsStateWithLifecycle(initialValue = AppSettings())
     val subjects by app.repository.allSubjects.collectAsStateWithLifecycle(initialValue = emptyList())
     val topics by app.repository.allTopics.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -82,6 +84,7 @@ fun StudyWatchRootApp() {
 
     var currentTab by remember { mutableStateOf(NavigationTab.WATCH) }
     var isViewingLogBook by remember { mutableStateOf(false) }
+    var isManagingSubjects by remember { mutableStateOf(false) }
 
     // Request POST_NOTIFICATIONS permission on Android 13+
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -151,6 +154,30 @@ fun StudyWatchRootApp() {
                         onClearLogs = { coroutineScope.launch { app.logRepository.clearLogs() } },
                         onBack = { isViewingLogBook = false }
                     )
+                } else if (isManagingSubjects) {
+                    ManageSubjectsScreen(
+                        subjects = subjects,
+                        topics = topics,
+                        onBack = { isManagingSubjects = false },
+                        onAddSubject = { name, icon, colorHex, goalMins ->
+                            coroutineScope.launch { app.repository.insertSubject(name, icon, colorHex, goalMins) }
+                        },
+                        onUpdateSubject = {
+                            coroutineScope.launch { app.repository.updateSubject(it) }
+                        },
+                        onDeleteSubject = {
+                            coroutineScope.launch { app.repository.deleteSubject(it) }
+                        },
+                        onAddTopic = { subjectId, name ->
+                            coroutineScope.launch { app.repository.insertTopic(subjectId, name) }
+                        },
+                        onUpdateTopic = {
+                            coroutineScope.launch { app.repository.updateTopic(it) }
+                        },
+                        onDeleteTopic = {
+                            coroutineScope.launch { app.repository.deleteTopic(it) }
+                        }
+                    )
                 } else {
                     when (currentTab) {
                         NavigationTab.WATCH -> {
@@ -218,9 +245,17 @@ fun StudyWatchRootApp() {
                         NavigationTab.TIMER -> {
                             TimerScreen(
                                 snapshot = snapshot,
+                                stopwatchSnapshot = stopwatchSnapshot,
                                 subjects = subjects,
                                 topics = topics,
-                                onBackToWatch = { currentTab = NavigationTab.WATCH }
+                                onBackToWatch = { currentTab = NavigationTab.WATCH },
+                                onOpenManageSubjects = { isManagingSubjects = true },
+                                onQuickAddSubject = { name ->
+                                    coroutineScope.launch { app.repository.insertSubject(name, "Book", "#FFA640", 60) }
+                                },
+                                onQuickAddTopic = { subjectId, name ->
+                                    coroutineScope.launch { app.repository.insertTopic(subjectId, name) }
+                                }
                             )
                         }
                         NavigationTab.PLANNER -> {
@@ -229,6 +264,8 @@ fun StudyWatchRootApp() {
                                 exams = exams,
                                 assignments = assignments,
                                 revisionItems = revisionItems,
+                                subjects = subjects,
+                                topics = topics,
                                 onAddStudyPlan = { coroutineScope.launch { app.repository.insertStudyPlan(it) } },
                                 onUpdateStudyPlan = { coroutineScope.launch { app.repository.updateStudyPlan(it) } },
                                 onTogglePlanCompleted = { id, comp -> coroutineScope.launch { app.repository.setStudyPlanCompleted(id, comp) } },
@@ -241,7 +278,14 @@ fun StudyWatchRootApp() {
                                 onDeleteAssignment = { id -> coroutineScope.launch { app.repository.deleteAssignment(id) } },
                                 onAddRevisionItem = { coroutineScope.launch { app.repository.insertRevisionItem(it) } },
                                 onUpdateRevisionItem = { coroutineScope.launch { app.repository.updateRevisionItem(it) } },
-                                onDeleteRevisionItem = { id -> coroutineScope.launch { app.repository.deleteRevisionItem(id) } }
+                                onDeleteRevisionItem = { id -> coroutineScope.launch { app.repository.deleteRevisionItem(id) } },
+                                onOpenManageSubjects = { isManagingSubjects = true },
+                                onQuickAddSubject = { name ->
+                                    coroutineScope.launch { app.repository.insertSubject(name, "Book", "#FFA640", 60) }
+                                },
+                                onQuickAddTopic = { subjectId, name ->
+                                    coroutineScope.launch { app.repository.insertTopic(subjectId, name) }
+                                }
                             )
                         }
                         NavigationTab.STATS -> {

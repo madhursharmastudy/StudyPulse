@@ -45,6 +45,8 @@ fun PlannerScreen(
     exams: List<ExamEntity>,
     assignments: List<AssignmentEntity>,
     revisionItems: List<RevisionItemEntity>,
+    subjects: List<SubjectEntity> = emptyList(),
+    topics: List<TopicEntity> = emptyList(),
     onAddStudyPlan: (StudyPlanEntity) -> Unit,
     onUpdateStudyPlan: (StudyPlanEntity) -> Unit,
     onTogglePlanCompleted: (Long, Boolean) -> Unit,
@@ -58,6 +60,9 @@ fun PlannerScreen(
     onAddRevisionItem: (RevisionItemEntity) -> Unit,
     onUpdateRevisionItem: (RevisionItemEntity) -> Unit,
     onDeleteRevisionItem: (Long) -> Unit,
+    onOpenManageSubjects: () -> Unit = {},
+    onQuickAddSubject: (String) -> Unit = {},
+    onQuickAddTopic: (Long, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(0) }
@@ -115,49 +120,62 @@ fun PlannerScreen(
                 color = AmberAccent
             )
 
-            Box {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(
-                    onClick = { showAddChooser = true },
-                    modifier = Modifier.testTag("planner_add_button")
+                    onClick = onOpenManageSubjects,
+                    modifier = Modifier.testTag("planner_manage_subjects_button")
                 ) {
-                    Icon(Icons.Default.AddCircle, contentDescription = "Add Item", tint = AmberAccent)
+                    Icon(
+                        imageVector = Icons.Default.Tune,
+                        contentDescription = "Manage Subjects",
+                        tint = AmberAccent
+                    )
                 }
 
-                DropdownMenu(
-                    expanded = showAddChooser,
-                    onDismissRequest = { showAddChooser = false },
-                    modifier = Modifier
-                        .background(CharcoalCard)
-                        .border(1.dp, CharcoalBorder, RoundedCornerShape(8.dp))
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Study Block", color = TextPrimary, fontWeight = FontWeight.Medium) },
-                        onClick = {
-                            showAddChooser = false
-                            showAddPlanDialog = true
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Task", color = TextPrimary, fontWeight = FontWeight.Medium) },
-                        onClick = {
-                            showAddChooser = false
-                            showAddAssignmentDialog = true
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Exam", color = TextPrimary, fontWeight = FontWeight.Medium) },
-                        onClick = {
-                            showAddChooser = false
-                            showAddExamDialog = true
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Revision", color = TextPrimary, fontWeight = FontWeight.Medium) },
-                        onClick = {
-                            showAddChooser = false
-                            showAddRevisionDialog = true
-                        }
-                    )
+                Box {
+                    IconButton(
+                        onClick = { showAddChooser = true },
+                        modifier = Modifier.testTag("planner_add_button")
+                    ) {
+                        Icon(Icons.Default.AddCircle, contentDescription = "Add Item", tint = AmberAccent)
+                    }
+
+                    DropdownMenu(
+                        expanded = showAddChooser,
+                        onDismissRequest = { showAddChooser = false },
+                        modifier = Modifier
+                            .background(CharcoalCard)
+                            .border(1.dp, CharcoalBorder, RoundedCornerShape(8.dp))
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Study Block", color = TextPrimary, fontWeight = FontWeight.Medium) },
+                            onClick = {
+                                showAddChooser = false
+                                showAddPlanDialog = true
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Task", color = TextPrimary, fontWeight = FontWeight.Medium) },
+                            onClick = {
+                                showAddChooser = false
+                                showAddAssignmentDialog = true
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Exam", color = TextPrimary, fontWeight = FontWeight.Medium) },
+                            onClick = {
+                                showAddChooser = false
+                                showAddExamDialog = true
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Revision", color = TextPrimary, fontWeight = FontWeight.Medium) },
+                            onClick = {
+                                showAddChooser = false
+                                showAddRevisionDialog = true
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -220,6 +238,8 @@ fun PlannerScreen(
 
     if (showAddPlanDialog) {
         AddStudyPlanDialog(
+            subjects = subjects,
+            onQuickAddSubject = onQuickAddSubject,
             onDismiss = { showAddPlanDialog = false },
             onAdd = {
                 onAddStudyPlan(it)
@@ -230,6 +250,8 @@ fun PlannerScreen(
 
     if (showAddExamDialog) {
         AddExamDialog(
+            subjects = subjects,
+            onQuickAddSubject = onQuickAddSubject,
             onDismiss = { showAddExamDialog = false },
             onAdd = {
                 onAddExam(it)
@@ -240,6 +262,8 @@ fun PlannerScreen(
 
     if (showAddAssignmentDialog) {
         AddAssignmentDialog(
+            subjects = subjects,
+            onQuickAddSubject = onQuickAddSubject,
             onDismiss = { showAddAssignmentDialog = false },
             onAdd = {
                 onAddAssignment(it)
@@ -250,6 +274,8 @@ fun PlannerScreen(
 
     if (showAddRevisionDialog) {
         AddRevisionDialog(
+            subjects = subjects,
+            onQuickAddSubject = onQuickAddSubject,
             onDismiss = { showAddRevisionDialog = false },
             onAdd = {
                 onAddRevisionItem(it)
@@ -738,8 +764,110 @@ fun AssignmentsTab(
 }
 
 @Composable
-fun AddStudyPlanDialog(onDismiss: () -> Unit, onAdd: (StudyPlanEntity) -> Unit) {
-    var subject by remember { mutableStateOf("English Literature") }
+fun SubjectPickerDropdown(
+    subjects: List<SubjectEntity>,
+    selectedSubjectName: String,
+    onSubjectNameSelected: (String) -> Unit,
+    onQuickAddSubject: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var showNewSubjectDialog by remember { mutableStateOf(false) }
+    var newSubjectName by remember { mutableStateOf("") }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = selectedSubjectName,
+            onValueChange = onSubjectNameSelected,
+            label = { Text("Subject") },
+            trailingIcon = {
+                IconButton(onClick = { expanded = true }) {
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Select Subject")
+                }
+            },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+        )
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier
+                .background(CharcoalCard)
+                .border(1.dp, CharcoalBorder, RoundedCornerShape(8.dp))
+        ) {
+            subjects.forEach { s ->
+                DropdownMenuItem(
+                    text = { Text(s.name, color = TextPrimary) },
+                    onClick = {
+                        onSubjectNameSelected(s.name)
+                        expanded = false
+                    }
+                )
+            }
+            HorizontalDivider(color = CharcoalBorder)
+            DropdownMenuItem(
+                text = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Add, contentDescription = null, tint = AmberAccent, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("+ Add new subject...", color = AmberAccent, fontWeight = FontWeight.Bold)
+                    }
+                },
+                onClick = {
+                    expanded = false
+                    newSubjectName = ""
+                    showNewSubjectDialog = true
+                }
+            )
+        }
+    }
+
+    if (showNewSubjectDialog) {
+        AlertDialog(
+            onDismissRequest = { showNewSubjectDialog = false },
+            title = { Text("New Subject", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(
+                    value = newSubjectName,
+                    onValueChange = { newSubjectName = it },
+                    label = { Text("Subject Name") },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newSubjectName.isNotBlank()) {
+                            onQuickAddSubject(newSubjectName.trim())
+                            onSubjectNameSelected(newSubjectName.trim())
+                            showNewSubjectDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                ) {
+                    Text("ADD")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewSubjectDialog = false }) {
+                    Text("CANCEL", color = TextSecondary)
+                }
+            },
+            containerColor = CharcoalCard
+        )
+    }
+}
+
+@Composable
+fun AddStudyPlanDialog(
+    subjects: List<SubjectEntity> = emptyList(),
+    onQuickAddSubject: (String) -> Unit = {},
+    onDismiss: () -> Unit,
+    onAdd: (StudyPlanEntity) -> Unit
+) {
+    var subject by remember { mutableStateOf(subjects.firstOrNull()?.name ?: "English Literature") }
     var topic by remember { mutableStateOf("") }
     var start by remember { mutableStateOf("14:00") }
     var end by remember { mutableStateOf("14:50") }
@@ -755,13 +883,11 @@ fun AddStudyPlanDialog(onDismiss: () -> Unit, onAdd: (StudyPlanEntity) -> Unit) 
                     .imePadding(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = subject,
-                    onValueChange = { subject = it },
-                    label = { Text("Subject") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                SubjectPickerDropdown(
+                    subjects = subjects,
+                    selectedSubjectName = subject,
+                    onSubjectNameSelected = { subject = it },
+                    onQuickAddSubject = onQuickAddSubject
                 )
                 OutlinedTextField(
                     value = topic,
@@ -819,9 +945,14 @@ fun AddStudyPlanDialog(onDismiss: () -> Unit, onAdd: (StudyPlanEntity) -> Unit) 
 }
 
 @Composable
-fun AddExamDialog(onDismiss: () -> Unit, onAdd: (ExamEntity) -> Unit) {
+fun AddExamDialog(
+    subjects: List<SubjectEntity> = emptyList(),
+    onQuickAddSubject: (String) -> Unit = {},
+    onDismiss: () -> Unit,
+    onAdd: (ExamEntity) -> Unit
+) {
     var title by remember { mutableStateOf("") }
-    var subjects by remember { mutableStateOf("") }
+    var subjectsName by remember { mutableStateOf(subjects.firstOrNull()?.name ?: "General") }
     var daysAhead by remember { mutableIntStateOf(30) }
 
     AlertDialog(
@@ -843,13 +974,11 @@ fun AddExamDialog(onDismiss: () -> Unit, onAdd: (ExamEntity) -> Unit) {
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
                 )
-                OutlinedTextField(
-                    value = subjects,
-                    onValueChange = { subjects = it },
-                    label = { Text("Included Subjects") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                SubjectPickerDropdown(
+                    subjects = subjects,
+                    selectedSubjectName = subjectsName,
+                    onSubjectNameSelected = { subjectsName = it },
+                    onQuickAddSubject = onQuickAddSubject
                 )
                 OutlinedTextField(
                     value = daysAhead.toString(),
@@ -870,7 +999,7 @@ fun AddExamDialog(onDismiss: () -> Unit, onAdd: (ExamEntity) -> Unit) {
                     onAdd(
                         ExamEntity(
                             title = title.ifBlank { "Target Exam" },
-                            subjectNames = subjects.ifBlank { "General" },
+                            subjectNames = subjectsName.ifBlank { "General" },
                             examTimestamp = System.currentTimeMillis() + (daysAhead * 24L * 3600 * 1000L),
                             preparationPercent = 20
                         )
@@ -889,9 +1018,14 @@ fun AddExamDialog(onDismiss: () -> Unit, onAdd: (ExamEntity) -> Unit) {
 }
 
 @Composable
-fun AddAssignmentDialog(onDismiss: () -> Unit, onAdd: (AssignmentEntity) -> Unit) {
+fun AddAssignmentDialog(
+    subjects: List<SubjectEntity> = emptyList(),
+    onQuickAddSubject: (String) -> Unit = {},
+    onDismiss: () -> Unit,
+    onAdd: (AssignmentEntity) -> Unit
+) {
     var title by remember { mutableStateOf("") }
-    var subject by remember { mutableStateOf("English Literature") }
+    var subject by remember { mutableStateOf(subjects.firstOrNull()?.name ?: "English Literature") }
     var daysUntil by remember { mutableIntStateOf(7) }
 
     AlertDialog(
@@ -913,13 +1047,11 @@ fun AddAssignmentDialog(onDismiss: () -> Unit, onAdd: (AssignmentEntity) -> Unit
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
                 )
-                OutlinedTextField(
-                    value = subject,
-                    onValueChange = { subject = it },
-                    label = { Text("Subject") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                SubjectPickerDropdown(
+                    subjects = subjects,
+                    selectedSubjectName = subject,
+                    onSubjectNameSelected = { subject = it },
+                    onQuickAddSubject = onQuickAddSubject
                 )
                 OutlinedTextField(
                     value = daysUntil.toString(),
@@ -960,8 +1092,13 @@ fun AddAssignmentDialog(onDismiss: () -> Unit, onAdd: (AssignmentEntity) -> Unit
 }
 
 @Composable
-fun AddRevisionDialog(onDismiss: () -> Unit, onAdd: (RevisionItemEntity) -> Unit) {
-    var subject by remember { mutableStateOf("English Literature") }
+fun AddRevisionDialog(
+    subjects: List<SubjectEntity> = emptyList(),
+    onQuickAddSubject: (String) -> Unit = {},
+    onDismiss: () -> Unit,
+    onAdd: (RevisionItemEntity) -> Unit
+) {
+    var subject by remember { mutableStateOf(subjects.firstOrNull()?.name ?: "English Literature") }
     var topic by remember { mutableStateOf("") }
     var daysUntil by remember { mutableStateOf(1) }
 
@@ -976,13 +1113,11 @@ fun AddRevisionDialog(onDismiss: () -> Unit, onAdd: (RevisionItemEntity) -> Unit
                     .imePadding(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = subject,
-                    onValueChange = { subject = it },
-                    label = { Text("Subject") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                SubjectPickerDropdown(
+                    subjects = subjects,
+                    selectedSubjectName = subject,
+                    onSubjectNameSelected = { subject = it },
+                    onQuickAddSubject = onQuickAddSubject
                 )
                 OutlinedTextField(
                     value = topic,
