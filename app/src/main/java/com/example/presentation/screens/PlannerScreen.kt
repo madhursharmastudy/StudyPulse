@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.text.KeyboardOptions
 import com.example.data.db.*
+import com.example.presentation.components.AppBackground
 import com.example.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -100,12 +101,12 @@ fun PlannerScreen(
         }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(AmoledBlack)
-            .padding(16.dp)
-    ) {
+    AppBackground(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -283,6 +284,7 @@ fun PlannerScreen(
             }
         )
     }
+}
 }
 
 @Composable

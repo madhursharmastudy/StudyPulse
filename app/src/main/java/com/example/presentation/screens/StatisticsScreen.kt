@@ -24,6 +24,7 @@ import com.example.data.db.BreakSessionEntity
 import com.example.data.db.StudySessionEntity
 import com.example.data.db.SubjectEntity
 import com.example.core.stretch.StretchBreakManager
+import com.example.presentation.components.AppBackground
 import com.example.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -120,13 +121,13 @@ fun StatisticsScreen(
         ((completionRatio * 70) + 30 - interruptionPenalty).toInt().coerceIn(30, 100)
     }
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .background(AmoledBlack)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
+    AppBackground(modifier = modifier) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
         item {
             Text(
                 text = "STUDY ANALYTICS",
@@ -439,6 +440,7 @@ fun StatisticsScreen(
             }
         }
     }
+}
 }
 
 @Composable

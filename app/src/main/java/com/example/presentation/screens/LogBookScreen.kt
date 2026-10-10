@@ -30,6 +30,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.core.logging.*
+import com.example.presentation.components.AppBackground
 import com.example.ui.theme.*
 
 @Composable
@@ -60,12 +61,12 @@ fun LogBookScreen(
         }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(AmoledBlack)
-            .padding(16.dp)
-    ) {
+    AppBackground(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
         // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -203,6 +204,7 @@ fun LogBookScreen(
             }
         }
     }
+}
 }
 
 @Composable

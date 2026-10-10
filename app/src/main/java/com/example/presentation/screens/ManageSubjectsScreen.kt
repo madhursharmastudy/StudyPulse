@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.db.SubjectEntity
 import com.example.data.db.TopicEntity
+import com.example.presentation.components.AppBackground
 import com.example.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,8 +51,9 @@ fun ManageSubjectsScreen(
     var topicToEdit by remember { mutableStateOf<TopicEntity?>(null) }
     var topicToDelete by remember { mutableStateOf<TopicEntity?>(null) }
 
-    Scaffold(
-        topBar = {
+    AppBackground(modifier = modifier) {
+        Scaffold(
+            topBar = {
             TopAppBar(
                 title = {
                     Text(
@@ -78,11 +80,11 @@ fun ManageSubjectsScreen(
                         Icon(Icons.Default.AddCircle, contentDescription = "Add Subject/Task", tint = AmberAccent)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = AmoledBlack)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        containerColor = AmoledBlack,
-        modifier = modifier.fillMaxSize()
+        containerColor = Color.Transparent,
+        modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -425,4 +427,5 @@ fun ManageSubjectsScreen(
             containerColor = CharcoalCard
         )
     }
+}
 }

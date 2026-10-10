@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.example.core.timer.*
 import com.example.data.db.SubjectEntity
 import com.example.data.db.TopicEntity
+import com.example.presentation.components.AppBackground
 import com.example.ui.theme.*
 
 /**
@@ -98,12 +99,12 @@ fun TimerScreen(
     var countdownMinutes by remember { mutableIntStateOf(30) }
     var countdownSeconds by remember { mutableIntStateOf(0) }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(AmoledBlack)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
+    AppBackground(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
         // 1. Header (back button and title only; top cards and sliders icon removed)
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -663,6 +664,7 @@ fun TimerScreen(
             )
         }
     }
+}
 }
 
 /**

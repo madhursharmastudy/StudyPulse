@@ -79,13 +79,13 @@ fun CombinedBreakOverlay(
     var currentExerciseIndex by remember { mutableIntStateOf(0) }
     var anyStretchCompleted by remember { mutableStateOf(false) }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color(0xF5060A10))
-            .padding(20.dp),
-        contentAlignment = Alignment.Center
-    ) {
+    AppBackground(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(20.dp),
+            contentAlignment = Alignment.Center
+        ) {
         when (currentStage) {
             "WATER" -> {
                 WaterBreakStep(
@@ -145,6 +145,7 @@ fun CombinedBreakOverlay(
             }
         }
     }
+}
 }
 
 /**

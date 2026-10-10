@@ -46,13 +46,13 @@ fun FullscreenEyeAlert(
     val totalSeconds = snapshot.eyeRestDurationSeconds.coerceAtLeast(1)
     val progress = (secondsRemaining.toFloat() / totalSeconds.toFloat()).coerceIn(0f, 1f)
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color(0xF005070B))
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
-    ) {
+    AppBackground(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -163,4 +163,5 @@ fun FullscreenEyeAlert(
             }
         }
     }
+}
 }

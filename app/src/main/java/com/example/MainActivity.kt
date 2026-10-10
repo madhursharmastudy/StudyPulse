@@ -36,6 +36,7 @@ import com.example.core.timer.StopwatchEngine
 import com.example.core.timer.TimerEngine
 import com.example.core.timer.TimerState
 import com.example.data.repository.AppSettings
+import com.example.presentation.components.AppBackground
 import com.example.presentation.components.CombinedBreakOverlay
 import com.example.presentation.components.FullscreenEyeAlert
 import com.example.presentation.components.FullscreenWaterAlert
@@ -109,10 +110,15 @@ fun StudyWatchRootApp() {
         app.repository.getOrCreateTodayGoal()
     }
 
-    StudyWatchTheme(isAmoled = settings.appTheme != "Light") {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            containerColor = AmoledBlack,
+    StudyWatchTheme(
+        isAmoled = settings.appTheme != "Light",
+        themeName = settings.appTheme,
+        backgroundStyle = settings.backgroundStyle
+    ) {
+        AppBackground {
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                containerColor = Color.Transparent,
             contentWindowInsets = WindowInsets.systemBars,
             bottomBar = {
                 // Secondary navigation bar only when user is navigating secondary feature tabs
@@ -329,6 +335,8 @@ fun StudyWatchRootApp() {
                                 onUpdate24Hour = { coroutineScope.launch { app.settingsRepository.update24Hour(it) } },
                                 onUpdateShowSeconds = { coroutineScope.launch { app.settingsRepository.updateShowSeconds(it) } },
                                 onUpdateClockStyle = { coroutineScope.launch { app.settingsRepository.updateClockStyle(it) } },
+                                onUpdateBackgroundStyle = { coroutineScope.launch { app.settingsRepository.updateBackgroundStyle(it) } },
+                                onUpdateAppTheme = { coroutineScope.launch { app.settingsRepository.updateAppTheme(it) } },
                                 onUpdateDefaultStudyDuration = { coroutineScope.launch { app.settingsRepository.updateDefaultStudyDuration(it) } },
                                 onUpdateEyeCareEnabled = { coroutineScope.launch { app.settingsRepository.updateEyeCareEnabled(it) } },
                                 onUpdateEyeStudyInterval = { coroutineScope.launch { app.settingsRepository.updateEyeStudyInterval(it) } },
@@ -423,4 +431,5 @@ fun StudyWatchRootApp() {
             }
         }
     }
+}
 }

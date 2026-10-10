@@ -43,6 +43,7 @@ import com.example.data.repository.AppSettings
 import com.example.presentation.components.DeskClockDisplay
 import com.example.presentation.components.FullscreenEyeAlert
 import com.example.presentation.components.FullscreenWaterAlert
+import com.example.presentation.components.AppBackground
 import com.example.ui.theme.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.font.FontFamily
@@ -104,10 +105,8 @@ fun WatchScreen(
         sessions.count { it.startTimestamp >= startOfToday }
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(AmoledBlack)
+    AppBackground(
+        modifier = modifier.fillMaxSize()
     ) {
         if (isLandscape) {
             LandscapeWatchScreen(
@@ -1630,7 +1629,6 @@ fun LandscapeWatchScreen(
     Row(
         modifier = modifier
             .fillMaxSize()
-            .background(AmoledBlack)
             .padding(horizontal = 16.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically

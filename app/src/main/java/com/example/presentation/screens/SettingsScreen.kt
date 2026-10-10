@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.core.timer.TimerEngine
 import com.example.data.repository.AppSettings
+import com.example.presentation.components.AppBackground
 import com.example.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,6 +41,8 @@ fun SettingsScreen(
     onUpdate24Hour: (Boolean) -> Unit,
     onUpdateShowSeconds: (Boolean) -> Unit,
     onUpdateClockStyle: (String) -> Unit,
+    onUpdateBackgroundStyle: (String) -> Unit = {},
+    onUpdateAppTheme: (String) -> Unit = {},
     onUpdateDefaultStudyDuration: (Int) -> Unit = {},
     onUpdateEyeCareEnabled: (Boolean) -> Unit,
     onUpdateEyeStudyInterval: (Int) -> Unit,
@@ -64,37 +67,38 @@ fun SettingsScreen(
     onUpdateDailyTarget: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "SETTINGS",
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp,
-                        color = TextPrimary
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onBackToWatch,
-                        modifier = Modifier.testTag("settings_back_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back to Watch",
-                            tint = StudyAccent
+    AppBackground(modifier = modifier) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "SETTINGS",
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                            color = TextPrimary
                         )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = AmoledBlack
+                    },
+                    navigationIcon = {
+                        IconButton(
+                            onClick = onBackToWatch,
+                            modifier = Modifier.testTag("settings_back_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back to Watch",
+                                tint = StudyAccent
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent
+                    )
                 )
-            )
-        },
-        containerColor = AmoledBlack,
-        modifier = modifier.fillMaxSize()
-    ) { innerPadding ->
+            },
+            containerColor = Color.Transparent,
+            modifier = Modifier.fillMaxSize()
+        ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -190,6 +194,75 @@ fun SettingsScreen(
                         checked = settings.keepScreenOn,
                         onCheckedChange = onUpdateKeepScreenOn
                     )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 4.dp))
+                    Text("Background", fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text(
+                        text = "Pure black saves battery on AMOLED screens",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("Glow", "Pure black").forEach { style ->
+                            val isSelected = (settings.backgroundStyle == style) || (style == "Glow" && settings.backgroundStyle != "Pure black")
+                            Surface(
+                                onClick = { onUpdateBackgroundStyle(style) },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isSelected) StudyAccent else Color(0xFF1E1E1E),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("bg_style_${style.lowercase().replace(" ", "_")}")
+                            ) {
+                                Text(
+                                    text = style,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) Color.Black else TextPrimary,
+                                    modifier = Modifier.padding(vertical = 10.dp),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 4.dp))
+                    Text("Theme Accent", fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text(
+                        text = "Orange (ember glow) or Blue (deep navy glow)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("Orange", "Blue").forEach { themeName ->
+                            val isSelected = settings.appTheme.equals(themeName, ignoreCase = true) ||
+                                (themeName == "Orange" && !settings.appTheme.equals("Blue", ignoreCase = true))
+                            val accentColor = if (themeName == "Blue") WaterAccent else StudyAccent
+                            Surface(
+                                onClick = { onUpdateAppTheme(themeName) },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isSelected) accentColor else Color(0xFF1E1E1E),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .testTag("theme_accent_${themeName.lowercase()}")
+                            ) {
+                                Text(
+                                    text = themeName,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) Color.Black else TextPrimary,
+                                    modifier = Modifier.padding(vertical = 10.dp),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -376,6 +449,7 @@ fun SettingsScreen(
             }
         }
     }
+}
 }
 
 @Composable

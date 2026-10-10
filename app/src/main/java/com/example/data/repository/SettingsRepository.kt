@@ -43,6 +43,7 @@ data class AppSettings(
     val vibrationEnabled: Boolean = true,
     val notificationsEnabled: Boolean = true,
     val isQuietModeActive: Boolean = false,
+    val backgroundStyle: String = "Glow", // "Glow" (default) or "Pure black"
     val dailyTargetHours: Int = 6,
     val keepScreenOn: Boolean = true,
     val debugModeActive: Boolean = false
@@ -81,6 +82,7 @@ class SettingsRepository(private val context: Context) {
         val IS_QUIET_MODE_ACTIVE = booleanPreferencesKey("is_quiet_mode_active")
         val DAILY_TARGET_HOURS = intPreferencesKey("daily_target_hours")
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
+        val BACKGROUND_STYLE = stringPreferencesKey("background_style")
         val DEBUG_MODE = booleanPreferencesKey("debug_mode")
     }
 
@@ -159,6 +161,7 @@ class SettingsRepository(private val context: Context) {
             vibrationEnabled = vibrationOn,
             notificationsEnabled = notificationsOn,
             isQuietModeActive = quietActive,
+            backgroundStyle = prefs[Keys.BACKGROUND_STYLE] ?: "Glow",
             dailyTargetHours = prefs[Keys.DAILY_TARGET_HOURS] ?: 6,
             keepScreenOn = prefs[Keys.KEEP_SCREEN_ON] ?: true,
             debugModeActive = false
@@ -169,6 +172,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun updateShowSeconds(value: Boolean) = edit { it[Keys.SHOW_SECONDS] = value }
     suspend fun updateClockStyle(value: String) = edit { it[Keys.CLOCK_STYLE] = value }
     suspend fun updateAppTheme(value: String) = edit { it[Keys.APP_THEME] = value }
+    suspend fun updateBackgroundStyle(value: String) = edit { it[Keys.BACKGROUND_STYLE] = value }
     suspend fun updateDefaultStudyDuration(minutes: Int) = edit { it[Keys.DEFAULT_STUDY_DURATION] = minutes }
     suspend fun updateSelectedSubject(id: Long, name: String) = edit {
         it[Keys.SELECTED_SUBJECT_ID] = id

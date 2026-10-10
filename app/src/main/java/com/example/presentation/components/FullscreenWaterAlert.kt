@@ -41,13 +41,13 @@ fun FullscreenWaterAlert(
         label = "WaterScale"
     )
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color(0xF2040B14))
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
-    ) {
+    AppBackground(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -147,4 +147,5 @@ fun FullscreenWaterAlert(
             }
         }
     }
+}
 }
