@@ -1,8 +1,10 @@
 package com.example.presentation.screens
 
 import android.app.Activity
+import android.content.res.Configuration
 import android.view.WindowManager
 import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,7 +45,10 @@ import com.example.presentation.components.FullscreenEyeAlert
 import com.example.presentation.components.FullscreenWaterAlert
 import com.example.ui.theme.*
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
+import com.example.data.db.StudySessionEntity
+import com.example.core.stretch.StretchBreakManager
 
 @Composable
 fun WatchScreen(
@@ -52,6 +57,7 @@ fun WatchScreen(
     subjects: List<SubjectEntity>,
     topics: List<TopicEntity>,
     todayGoal: DailyGoalEntity?,
+    sessions: List<StudySessionEntity> = emptyList(),
     onStartSessionClick: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
     onSelectSubject: (SubjectEntity) -> Unit = {},
@@ -84,13 +90,41 @@ fun WatchScreen(
         }
     }
 
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    val todaySessionsCount = remember(sessions) {
+        val cal = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        val startOfToday = cal.timeInMillis
+        sessions.count { it.startTimestamp >= startOfToday }
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(AmoledBlack)
     ) {
-        // Main minimal watch layout
-        Column(
+        if (isLandscape) {
+            LandscapeWatchScreen(
+                snapshot = snapshot,
+                settings = settings,
+                subjects = subjects,
+                topics = topics,
+                todayGoal = todayGoal,
+                todaySessionsCount = todaySessionsCount,
+                onOpenSettings = onOpenSettings,
+                onShowSetTimerDialog = { showSetTimerDialog = true },
+                onSubjectClick = { showSubjectPicker = true },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            // Main minimal watch layout
+            Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
@@ -221,12 +255,30 @@ fun WatchScreen(
                         Text("Reset", fontSize = 12.sp)
                     }
                 }
-                TextButton(
-                    onClick = { showSetTimerDialog = true },
-                    colors = ButtonDefaults.textButtonColors(contentColor = StudyAccent),
-                    modifier = Modifier.testTag("watch_set_timer_button")
-                ) {
-                    Text("Set Timer", fontSize = 12.sp)
+                if (snapshot.state == TimerState.STUDYING) {
+                    TextButton(
+                        onClick = { TimerEngine.enterQuietMode() },
+                        colors = ButtonDefaults.textButtonColors(contentColor = AmberAccent),
+                        modifier = Modifier.testTag("watch_quiet_mode_button")
+                    ) {
+                        Text("Quiet Mode", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                } else if (snapshot.isQuietMode) {
+                    TextButton(
+                        onClick = { TimerEngine.exitQuietMode() },
+                        colors = ButtonDefaults.textButtonColors(contentColor = EmeraldAccent),
+                        modifier = Modifier.testTag("watch_quiet_resume_button")
+                    ) {
+                        Text("Resume", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    TextButton(
+                        onClick = { showSetTimerDialog = true },
+                        colors = ButtonDefaults.textButtonColors(contentColor = StudyAccent),
+                        modifier = Modifier.testTag("watch_set_timer_button")
+                    ) {
+                        Text("Set Timer", fontSize = 12.sp)
+                    }
                 }
             }
 
@@ -294,6 +346,7 @@ fun WatchScreen(
                     color = Color(0xFF4A4A4A)
                 )
             }
+        }
         }
 
         // Fullscreen Eye Rest Alert
@@ -436,17 +489,17 @@ fun CircularStudyTimer(
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = snapshot.formattedActiveDisplay(),
+                text = if (snapshot.isQuietMode) "QUIET" else snapshot.formattedActiveDisplay(),
                 fontSize = 42.sp,
                 fontWeight = FontWeight.Black,
-                color = TextPrimary
+                color = if (snapshot.isQuietMode) AmberAccent else TextPrimary
             )
 
             Text(
-                text = "/ ${snapshot.formatPlanned()}",
+                text = if (snapshot.isQuietMode) "PAUSED IN QUIET MODE" else "/ ${snapshot.formatPlanned()}",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextSecondary
+                color = if (snapshot.isQuietMode) AmberAccent else TextSecondary
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -465,9 +518,12 @@ fun CircularStudyTimer(
                         CircleShape
                     )
                     .clickable {
-                        when (snapshot.state) {
-                            TimerState.STUDYING -> TimerEngine.pause()
-                            TimerState.PAUSED -> TimerEngine.resume()
+                        if (snapshot.isQuietMode) {
+                            TimerEngine.exitQuietMode()
+                        } else {
+                            when (snapshot.state) {
+                                TimerState.STUDYING -> TimerEngine.pause()
+                                TimerState.PAUSED -> TimerEngine.resume()
                             TimerState.IDLE -> {
                                 val selectedSub = subjects.firstOrNull { it.id == snapshot.subjectId }
                                     ?: subjects.firstOrNull()
@@ -488,6 +544,7 @@ fun CircularStudyTimer(
                             else -> {}
                         }
                     }
+                }
                     .testTag("watch_play_pause_button"),
                 contentAlignment = Alignment.Center
             ) {
@@ -1538,4 +1595,653 @@ fun SetTimerDialog(
         },
         containerColor = DarkCard
     )
+}
+
+/**
+ * LandscapeWatchScreen (Part 4C)
+ * Two-column adaptive layout for Home in Landscape mode:
+ * - Left column (55%): Big round analog watch dial + actions row
+ * - Right column (45%): 3 equal stacked cards (Eye Rest, Water+Stretch, Clock)
+ */
+@Composable
+fun LandscapeWatchScreen(
+    snapshot: TimerSnapshot,
+    settings: AppSettings,
+    subjects: List<SubjectEntity>,
+    topics: List<TopicEntity>,
+    todayGoal: DailyGoalEntity?,
+    todaySessionsCount: Int,
+    onOpenSettings: () -> Unit,
+    onShowSetTimerDialog: () -> Unit,
+    onSubjectClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val currentSubjectName = if (snapshot.state != TimerState.IDLE && snapshot.subjectName.isNotEmpty()) {
+        snapshot.subjectName
+    } else {
+        subjects.firstOrNull()?.name ?: "English Literature"
+    }
+    val currentTopicName = if (snapshot.state != TimerState.IDLE && snapshot.topicName.isNotEmpty()) {
+        snapshot.topicName
+    } else {
+        topics.firstOrNull()?.name ?: "Romantic Poetry"
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxSize()
+            .background(AmoledBlack)
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // LEFT COLUMN (about 55% width): Big Analog-Style Watch Dial & Action Row
+        Column(
+            modifier = Modifier
+                .weight(0.55f)
+                .fillMaxHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Big Analog-Style Watch Dial
+            LandscapeAnalogWatch(
+                snapshot = snapshot,
+                settings = settings,
+                subjects = subjects,
+                topics = topics,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            )
+
+            // Actions row under dial (End Session / Reset / Quiet Mode or Set Timer)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (snapshot.state != TimerState.IDLE) {
+                    TextButton(
+                        onClick = { TimerEngine.stop() },
+                        colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
+                        modifier = Modifier.testTag("landscape_end_session")
+                    ) {
+                        Text("End Session", fontSize = 11.sp)
+                    }
+                    TextButton(
+                        onClick = { TimerEngine.reset() },
+                        colors = ButtonDefaults.textButtonColors(contentColor = TextMuted),
+                        modifier = Modifier.testTag("landscape_reset")
+                    ) {
+                        Text("Reset", fontSize = 11.sp)
+                    }
+                }
+                if (snapshot.state == TimerState.STUDYING) {
+                    TextButton(
+                        onClick = { TimerEngine.enterQuietMode() },
+                        colors = ButtonDefaults.textButtonColors(contentColor = AmberAccent),
+                        modifier = Modifier.testTag("landscape_quiet_mode")
+                    ) {
+                        Text("Quiet Mode", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                } else if (snapshot.isQuietMode) {
+                    TextButton(
+                        onClick = { TimerEngine.exitQuietMode() },
+                        colors = ButtonDefaults.textButtonColors(contentColor = EmeraldAccent),
+                        modifier = Modifier.testTag("landscape_resume")
+                    ) {
+                        Text("Resume", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    TextButton(
+                        onClick = onShowSetTimerDialog,
+                        colors = ButtonDefaults.textButtonColors(contentColor = StudyAccent),
+                        modifier = Modifier.testTag("landscape_set_timer")
+                    ) {
+                        Text("Set Timer", fontSize = 11.sp)
+                    }
+                }
+            }
+        }
+
+        // RIGHT COLUMN (about 45% width): 3 cards stacked top to bottom with equal width
+        Column(
+            modifier = Modifier
+                .weight(0.45f)
+                .fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            // 1. TOP: Eye Rest Card
+            LandscapeEyeRestCard(
+                snapshot = snapshot,
+                modifier = Modifier.weight(1f).fillMaxWidth()
+            )
+
+            // 2. MIDDLE: Water + Stretch Card (hidden if both OFF)
+            val isWaterOrStretchOn = snapshot.waterReminderEnabled || snapshot.stretchBreakEnabled
+            if (isWaterOrStretchOn) {
+                val label = when {
+                    snapshot.waterReminderEnabled && snapshot.stretchBreakEnabled -> "Water & Stretch in"
+                    snapshot.stretchBreakEnabled -> "Stretch Break in"
+                    else -> "Water Break in"
+                }
+                LandscapeWaterStretchCard(
+                    snapshot = snapshot,
+                    label = label,
+                    modifier = Modifier.weight(1f).fillMaxWidth()
+                )
+            }
+
+            // 3. BOTTOM: Today's Summary card (Total Study Time, Sessions count, Break count, compact two-column layout)
+            LandscapeTodaySummaryCard(
+                todayGoal = todayGoal,
+                todaySessionsCount = todaySessionsCount,
+                breaksToday = StretchBreakManager.getTodayBreakCount(),
+                modifier = Modifier.weight(1f).fillMaxWidth()
+            )
+
+            // Below the 3 cards: small compact Subject/Task bar (same selection as portrait)
+            LandscapeSubjectTaskBar(
+                subjectName = currentSubjectName,
+                topicName = currentTopicName,
+                onClick = onSubjectClick,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+/**
+ * LandscapeAnalogWatch: Big analog-style round watch dial using all available height.
+ */
+@Composable
+fun LandscapeAnalogWatch(
+    snapshot: TimerSnapshot,
+    settings: AppSettings,
+    subjects: List<SubjectEntity>,
+    topics: List<TopicEntity>,
+    modifier: Modifier = Modifier
+) {
+    val progress = snapshot.progressFraction
+
+    BoxWithConstraints(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        val sizeDp = minOf(maxWidth, maxHeight)
+
+        Box(
+            modifier = Modifier.size(sizeDp),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(modifier = Modifier.fillMaxSize().padding(4.dp)) {
+                val cx = size.width / 2f
+                val cy = size.height / 2f
+                val radius = (size.minDimension / 2f) - 4.dp.toPx()
+
+                // Dial Background surface
+                drawCircle(color = Color(0xFF0C0E14), radius = radius)
+                drawCircle(color = Color(0xFF222632), radius = radius, style = Stroke(1.5.dp.toPx()))
+
+                // 60 minute tick marks (bold tick every 5 minutes)
+                for (i in 0 until 60) {
+                    val angleRad = (i * 6.0) * (Math.PI / 180.0)
+                    val isBold = i % 5 == 0
+                    val tickLen = if (isBold) 8.dp.toPx() else 3.5.dp.toPx()
+                    val tickWidth = if (isBold) 2.dp.toPx() else 1.dp.toPx()
+                    val tickColor = if (isBold) StudyAccent else Color(0xFF4A4E5C)
+
+                    val startX = cx + ((radius - tickLen) * Math.cos(angleRad)).toFloat()
+                    val startY = cy + ((radius - tickLen) * Math.sin(angleRad)).toFloat()
+                    val endX = cx + (radius * Math.cos(angleRad)).toFloat()
+                    val endY = cy + (radius * Math.sin(angleRad)).toFloat()
+
+                    drawLine(
+                        color = tickColor,
+                        start = Offset(startX, startY),
+                        end = Offset(endX, endY),
+                        strokeWidth = tickWidth,
+                        cap = StrokeCap.Round
+                    )
+                }
+
+                // Thin progress ring in accent color
+                val ringRadius = radius - 11.dp.toPx()
+                drawArc(
+                    color = Color(0x22FFA640),
+                    startAngle = -90f,
+                    sweepAngle = 360f,
+                    useCenter = false,
+                    topLeft = Offset(cx - ringRadius, cy - ringRadius),
+                    size = Size(ringRadius * 2, ringRadius * 2),
+                    style = Stroke(width = 2.5.dp.toPx())
+                )
+                if (progress > 0f) {
+                    drawArc(
+                        color = StudyAccent,
+                        startAngle = -90f,
+                        sweepAngle = progress * 360f,
+                        useCenter = false,
+                        topLeft = Offset(cx - ringRadius, cy - ringRadius),
+                        size = Size(ringRadius * 2, ringRadius * 2),
+                        style = Stroke(width = 3.5.dp.toPx(), cap = StrokeCap.Round)
+                    )
+                }
+
+                // Moving hand showing elapsed time
+                val handAngleRad = (progress * 360.0 - 90.0) * (Math.PI / 180.0)
+                val handLen = radius * 0.60f
+                val hx = cx + (handLen * Math.cos(handAngleRad)).toFloat()
+                val hy = cy + (handLen * Math.sin(handAngleRad)).toFloat()
+
+                drawLine(
+                    color = StudyAccent,
+                    start = Offset(cx, cy),
+                    end = Offset(hx, hy),
+                    strokeWidth = 2.5.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+                drawCircle(color = StudyAccent, radius = 4.dp.toPx(), center = Offset(cx, cy))
+            }
+
+            // Center Content: Mode label, Digital remaining time HH:MM:SS, Play/Pause button
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = if (snapshot.isQuietMode) "QUIET MODE" else "STUDY TIMER",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    color = if (snapshot.isQuietMode) AmberAccent else TextSecondary
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = if (snapshot.isQuietMode) "QUIET" else snapshot.formattedActiveDisplay(),
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace,
+                    color = if (snapshot.isQuietMode) AmberAccent else TextPrimary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                val isStudying = snapshot.state == TimerState.STUDYING
+                Surface(
+                    onClick = {
+                        if (snapshot.isQuietMode) {
+                            TimerEngine.exitQuietMode()
+                        } else {
+                            when (snapshot.state) {
+                                TimerState.STUDYING -> TimerEngine.pause()
+                                TimerState.PAUSED -> TimerEngine.resume()
+                                TimerState.IDLE -> {
+                                    val sub = subjects.firstOrNull { it.id == snapshot.subjectId } ?: subjects.firstOrNull() ?: SubjectEntity(name = "English Literature")
+                                    val top = topics.firstOrNull { it.subjectId == sub.id } ?: TopicEntity(subjectId = sub.id, name = "Romantic Poetry")
+                                    TimerEngine.startStudySession(sub.id, top.id, sub.name, top.name, TimerType.STUDY_SESSION, settings.defaultStudyDurationMinutes)
+                                }
+                                else -> {}
+                            }
+                        }
+                    },
+                    shape = CircleShape,
+                    color = if (isStudying) Color(0x33FFA640) else Color(0xFF1E212A),
+                    border = BorderStroke(1.dp, if (isStudying) StudyAccent else CharcoalBorder),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (isStudying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isStudying) "Pause" else "Play",
+                            tint = if (isStudying) StudyAccent else TextPrimary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Right Column Card 1: Eye Rest Card
+ */
+@Composable
+fun LandscapeEyeRestCard(
+    snapshot: TimerSnapshot,
+    modifier: Modifier = Modifier
+) {
+    val totalEyeIntervalSecs = (TimerEngine.eyeStudyIntervalSeconds).coerceAtLeast(1L)
+    val remainingSecs = snapshot.nextEyeRestCountdownSeconds
+    val eyeProgress = ((totalEyeIntervalSecs - remainingSecs).toFloat() / totalEyeIntervalSecs.toFloat()).coerceIn(0f, 1f)
+
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        border = BorderStroke(1.dp, Color(0x3300D675)),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(Color(0x2200D675)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Visibility,
+                            contentDescription = "Eye Rest",
+                            tint = EyeCareAccent,
+                            modifier = Modifier.size(13.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Eye Rest in",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextSecondary
+                    )
+                }
+                Text(
+                    text = snapshot.formattedEyeCountdown(),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace,
+                    color = EyeCareAccent
+                )
+            }
+            LinearProgressIndicator(
+                progress = { eyeProgress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp)),
+                color = EyeCareAccent,
+                trackColor = Color(0xFF222222)
+            )
+        }
+    }
+}
+
+/**
+ * Right Column Card 2: Water + Stretch Card
+ */
+@Composable
+fun LandscapeWaterStretchCard(
+    snapshot: TimerSnapshot,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    val totalWaterIntervalSecs = (TimerEngine.waterIntervalSeconds).coerceAtLeast(1L)
+    val remainingSecs = snapshot.nextWaterCountdownSeconds
+    val waterProgress = ((totalWaterIntervalSecs - remainingSecs).toFloat() / totalWaterIntervalSecs.toFloat()).coerceIn(0f, 1f)
+
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        border = BorderStroke(1.dp, Color(0x3300B4FF)),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(Color(0x2200B4FF)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.WaterDrop,
+                            contentDescription = "Water Break",
+                            tint = WaterAccent,
+                            modifier = Modifier.size(13.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = label,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextSecondary
+                    )
+                }
+                Text(
+                    text = snapshot.formattedWaterCountdown(),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace,
+                    color = WaterAccent
+                )
+            }
+            LinearProgressIndicator(
+                progress = { waterProgress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp)),
+                color = WaterAccent,
+                trackColor = Color(0xFF222222)
+            )
+        }
+    }
+}
+
+/**
+ * Right Column Card 3: Clock Card (Digital time, date, weekday, settings icon)
+ */
+@Composable
+fun LandscapeClockCard(
+    settings: AppSettings,
+    onOpenSettings: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        border = BorderStroke(1.dp, CharcoalBorder),
+        modifier = modifier
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                DeskClockDisplay(
+                    use24Hour = settings.use24HourFormat,
+                    showSeconds = settings.showSeconds,
+                    clockStyle = settings.clockStyle,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(
+                    onClick = onOpenSettings,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Tune,
+                        contentDescription = "Settings",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * LandscapeTodaySummaryCard: Compact two-column summary card showing
+ * Total Study Time, Sessions count, Break count, and target goal.
+ */
+@Composable
+fun LandscapeTodaySummaryCard(
+    todayGoal: DailyGoalEntity?,
+    todaySessionsCount: Int,
+    breaksToday: Int,
+    modifier: Modifier = Modifier
+) {
+    val totalMins = todayGoal?.achievedMinutes ?: 0
+    val targetMins = todayGoal?.targetMinutes ?: 360
+    val studyTimeText = if (totalMins >= 60) {
+        "${totalMins / 60}h ${totalMins % 60}m"
+    } else {
+        "${totalMins}m"
+    }
+
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        border = BorderStroke(1.dp, CharcoalBorder),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "TODAY'S SUMMARY",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    color = TextSecondary
+                )
+                Text(
+                    text = "$totalMins / ${targetMins}m",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (totalMins >= targetMins) EmeraldAccent else AmberAccent
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Column 1: Total Study Time & Sessions
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Study: $studyTimeText",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = StudyAccent
+                    )
+                    Text(
+                        text = "Sessions: $todaySessionsCount done",
+                        fontSize = 10.sp,
+                        color = TextSecondary
+                    )
+                }
+                // Column 2: Break count
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Text(
+                        text = "Breaks: $breaksToday taken",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = WaterAccent
+                    )
+                    Text(
+                        text = "Water & Stretch",
+                        fontSize = 10.sp,
+                        color = TextMuted
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * LandscapeSubjectTaskBar: Single-line compact Subject/Task bar matching portrait selection.
+ */
+@Composable
+fun LandscapeSubjectTaskBar(
+    subjectName: String,
+    topicName: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(10.dp),
+        color = DarkCard,
+        border = BorderStroke(1.dp, CharcoalBorder),
+        modifier = modifier
+            .height(38.dp)
+            .testTag("landscape_subject_task_bar")
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MenuBook,
+                    contentDescription = null,
+                    tint = StudyAccent,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "$subjectName • $topicName",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = "Select Subject / Task",
+                tint = TextSecondary,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
 }

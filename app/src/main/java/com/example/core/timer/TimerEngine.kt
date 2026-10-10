@@ -103,6 +103,17 @@ object TimerEngine {
     var onEyeRestTriggered: ((TimerSnapshot) -> Unit)? = null
     var onWaterBreakTriggered: ((TimerSnapshot) -> Unit)? = null
     var onStateChangedCallback: ((TimerSnapshot) -> Unit)? = null
+    var onSessionStarted: (() -> Unit)? = null
+    var onSessionEnded: ((TimerSnapshot) -> Unit)? = null
+    var onBreakStarted: ((BreakType) -> Unit)? = null
+    var onBreakEnded: ((BreakType) -> Unit)? = null
+    var onQuietModeChanged: ((Boolean) -> Unit)? = null
+
+    // Sound, vibration, notifications and Quiet Mode states
+    var soundEnabled: Boolean = true
+    var vibrationEnabled: Boolean = true
+    var notificationsEnabled: Boolean = true
+    var isQuietMode: Boolean = false
 
     private val _snapshot = MutableStateFlow(TimerSnapshot())
     val snapshot: StateFlow<TimerSnapshot> = _snapshot.asStateFlow()
@@ -175,6 +186,41 @@ object TimerEngine {
         startTicker()
         updateSnapshot()
         notifyStateChange()
+        onSessionStarted?.invoke()
+    }
+
+    @Synchronized
+    fun enterQuietMode() {
+        if (isQuietMode) return
+        val now = SystemClock.elapsedRealtime()
+        commitActiveElapsed(now)
+        isQuietMode = true
+        if (currentState == TimerState.STUDYING) {
+            currentState = TimerState.PAUSED
+            segmentPausedMonotonicMillis = now
+        }
+        stopTicker()
+        StopwatchEngine.pause()
+        updateSnapshot()
+        notifyStateChange()
+        onQuietModeChanged?.invoke(true)
+        AppLogger.i(LogFeature.TimerEngine, "Entered Quiet Mode (all countdowns, timers, alarms silenced)")
+    }
+
+    @Synchronized
+    fun exitQuietMode() {
+        if (!isQuietMode) return
+        val now = SystemClock.elapsedRealtime()
+        isQuietMode = false
+        if (currentState == TimerState.PAUSED && sessionUid.isNotEmpty()) {
+            currentState = TimerState.STUDYING
+            segmentStartMonotonicMillis = now
+            startTicker()
+        }
+        updateSnapshot()
+        notifyStateChange()
+        onQuietModeChanged?.invoke(false)
+        AppLogger.i(LogFeature.TimerEngine, "Exited Quiet Mode")
     }
 
     @Synchronized
@@ -359,6 +405,7 @@ object TimerEngine {
         updateSnapshot()
         val snap = _snapshot.value
         onEyeRestTriggered?.invoke(snap)
+        onBreakStarted?.invoke(BreakType.EYE_REST)
         notifyStateChange()
     }
 
@@ -401,6 +448,7 @@ object TimerEngine {
 
         updateSnapshot()
         notifyStateChange()
+        onBreakEnded?.invoke(BreakType.EYE_REST)
     }
 
     @Synchronized
@@ -435,6 +483,7 @@ object TimerEngine {
         segmentTotalDurationMillis = plannedDurationMillis
         updateSnapshot()
         notifyStateChange()
+        onBreakEnded?.invoke(BreakType.EYE_REST)
     }
 
     // HYDRATION WATER BREAK METHODS
@@ -467,6 +516,7 @@ object TimerEngine {
         updateSnapshot()
         val snap = _snapshot.value
         onWaterBreakTriggered?.invoke(snap)
+        onBreakStarted?.invoke(BreakType.WATER_BREAK)
         notifyStateChange()
     }
 
@@ -509,6 +559,7 @@ object TimerEngine {
 
         updateSnapshot()
         notifyStateChange()
+        onBreakEnded?.invoke(BreakType.WATER_BREAK)
     }
 
     @Synchronized
@@ -576,6 +627,7 @@ object TimerEngine {
         segmentTotalDurationMillis = plannedDurationMillis
         updateSnapshot()
         notifyStateChange()
+        onBreakEnded?.invoke(BreakType.WATER_BREAK)
     }
 
     // BREAK ENGINE METHODS
@@ -607,6 +659,7 @@ object TimerEngine {
 
         updateSnapshot()
         notifyStateChange()
+        onBreakStarted?.invoke(breakType)
     }
 
     @Synchronized
@@ -621,8 +674,8 @@ object TimerEngine {
 
         AppLogger.i(
             LogFeature.BreakEngine,
-            "Break ended or skipped -> resuming study",
-            null,
+            "Break ended or skipped manually",
+            "Resuming study timer",
             currentState.name,
             sessionUid,
             timerId,
@@ -632,6 +685,7 @@ object TimerEngine {
 
         updateSnapshot()
         notifyStateChange()
+        onBreakEnded?.invoke(BreakType.CUSTOM_BREAK)
     }
 
     private fun commitActiveElapsed(now: Long) {
@@ -901,7 +955,8 @@ object TimerEngine {
             laps = lapsList.toList(),
             notes = sessionNotes,
             startTimestampMillis = sessionStartWallTimestamp,
-            debugModeActive = debugModeActive
+            debugModeActive = debugModeActive,
+            isQuietMode = isQuietMode
         )
     }
 

@@ -30,7 +30,8 @@ data class TimerSnapshot(
     val laps: List<LapRecord> = emptyList(),
     val notes: String = "",
     val startTimestampMillis: Long = 0L,
-    val debugModeActive: Boolean = false
+    val debugModeActive: Boolean = false,
+    val isQuietMode: Boolean = false
 ) {
     val totalBreakMillis: Long
         get() = elapsedEyeRestMillis + elapsedWaterBreakMillis + elapsedOtherBreakMillis

@@ -48,6 +48,10 @@ class StudyWatchApplication : Application() {
     }
 
     private fun setupTimerEngineCallbacks() {
+        TimerEngine.onSessionStarted = {
+            notificationManager.showSessionStartedTone()
+        }
+
         TimerEngine.onSessionCompleted = { snapshot ->
             appScope.launch {
                 try {
@@ -56,6 +60,23 @@ class StudyWatchApplication : Application() {
                     StudyWatchWidgetProvider.updateWidget(this@StudyWatchApplication, snapshot)
                 } catch (t: Throwable) {
                     AppLogger.e(LogFeature.Database, "Failed to record completed session", null, null, null, null, t)
+                }
+            }
+        }
+
+        TimerEngine.onBreakStarted = { breakType ->
+            notificationManager.showBreakStartAlert(breakType)
+        }
+
+        TimerEngine.onBreakEnded = { breakType ->
+            notificationManager.showBreakEndAlert(breakType)
+        }
+
+        TimerEngine.onQuietModeChanged = { active ->
+            appScope.launch {
+                settingsRepository.updateQuietModeActive(active)
+                if (active) {
+                    notificationManager.cancelAllAlerts()
                 }
             }
         }

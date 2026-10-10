@@ -54,6 +54,7 @@ fun SettingsScreen(
     onUpdateIncludeStandingExercises: (Boolean) -> Unit = {},
     onUpdateSound: (Boolean) -> Unit,
     onUpdateVibration: (Boolean) -> Unit,
+    onUpdateNotificationsEnabled: (Boolean) -> Unit = {},
     onUpdateKeepScreenOn: (Boolean) -> Unit,
     onToggleDebugMode: (Boolean) -> Unit,
     onExportJsonClick: () -> Unit,
@@ -273,17 +274,31 @@ fun SettingsScreen(
                     )
                     HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
                     SettingSwitchRow(
+                        title = "Notifications",
+                        subtitle = "Master switch for break alerts, session completions and reminders",
+                        checked = settings.notificationsEnabled,
+                        onCheckedChange = onUpdateNotificationsEnabled
+                    )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    SettingSwitchRow(
                         title = "Sound",
-                        subtitle = "Play alert chime on eye rest and breaks",
+                        subtitle = "Play tones for session & break start/end",
                         checked = settings.soundEnabled,
                         onCheckedChange = onUpdateSound
                     )
                     HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
                     SettingSwitchRow(
                         title = "Vibration",
-                        subtitle = "Haptic feedback for timer events",
+                        subtitle = "Haptic feedback for timer alerts and transitions",
                         checked = settings.vibrationEnabled,
                         onCheckedChange = onUpdateVibration
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Phone Silent / Do Not Disturb can still mute tones.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextMuted,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                     )
                 }
             }

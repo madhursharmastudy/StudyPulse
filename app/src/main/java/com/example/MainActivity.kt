@@ -189,6 +189,7 @@ fun StudyWatchRootApp() {
                                 subjects = subjects,
                                 topics = topics,
                                 todayGoal = todayGoal,
+                                sessions = sessions,
                                 onStartSessionClick = { currentTab = NavigationTab.TIMER },
                                 onOpenSettings = { currentTab = NavigationTab.SETTINGS },
                                 onSelectSubject = { sub ->

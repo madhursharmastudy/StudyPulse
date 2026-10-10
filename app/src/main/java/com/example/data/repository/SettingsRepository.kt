@@ -41,6 +41,8 @@ data class AppSettings(
     val pauseBreaksUntilTimestamp: Long = 0L,
     val soundEnabled: Boolean = true,
     val vibrationEnabled: Boolean = true,
+    val notificationsEnabled: Boolean = true,
+    val isQuietModeActive: Boolean = false,
     val dailyTargetHours: Int = 6,
     val keepScreenOn: Boolean = true,
     val debugModeActive: Boolean = false
@@ -75,6 +77,8 @@ class SettingsRepository(private val context: Context) {
         val PAUSE_BREAKS_UNTIL_TIMESTAMP = androidx.datastore.preferences.core.longPreferencesKey("pause_breaks_until_timestamp")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         val VIBRATION_ENABLED = booleanPreferencesKey("vibration_enabled")
+        val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
+        val IS_QUIET_MODE_ACTIVE = booleanPreferencesKey("is_quiet_mode_active")
         val DAILY_TARGET_HOURS = intPreferencesKey("daily_target_hours")
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val DEBUG_MODE = booleanPreferencesKey("debug_mode")
@@ -116,6 +120,16 @@ class SettingsRepository(private val context: Context) {
         TimerEngine.includeStandingExercises = includeStanding
         TimerEngine.pauseBreaksUntilTimestamp = pauseUntil
 
+        val soundOn = prefs[Keys.SOUND_ENABLED] ?: true
+        val vibrationOn = prefs[Keys.VIBRATION_ENABLED] ?: true
+        val notificationsOn = prefs[Keys.NOTIFICATIONS_ENABLED] ?: true
+        val quietActive = prefs[Keys.IS_QUIET_MODE_ACTIVE] ?: false
+
+        TimerEngine.soundEnabled = soundOn
+        TimerEngine.vibrationEnabled = vibrationOn
+        TimerEngine.notificationsEnabled = notificationsOn
+        TimerEngine.isQuietMode = quietActive
+
         AppSettings(
             use24HourFormat = prefs[Keys.USE_24_HOUR] ?: false,
             showSeconds = prefs[Keys.SHOW_SECONDS] ?: false,
@@ -141,8 +155,10 @@ class SettingsRepository(private val context: Context) {
             includeStandingExercises = includeStanding,
             userMode = userMode,
             pauseBreaksUntilTimestamp = pauseUntil,
-            soundEnabled = prefs[Keys.SOUND_ENABLED] ?: true,
-            vibrationEnabled = prefs[Keys.VIBRATION_ENABLED] ?: true,
+            soundEnabled = soundOn,
+            vibrationEnabled = vibrationOn,
+            notificationsEnabled = notificationsOn,
+            isQuietModeActive = quietActive,
             dailyTargetHours = prefs[Keys.DAILY_TARGET_HOURS] ?: 6,
             keepScreenOn = prefs[Keys.KEEP_SCREEN_ON] ?: true,
             debugModeActive = false
@@ -192,6 +208,8 @@ class SettingsRepository(private val context: Context) {
 
     suspend fun updateSoundEnabled(value: Boolean) = edit { it[Keys.SOUND_ENABLED] = value }
     suspend fun updateVibrationEnabled(value: Boolean) = edit { it[Keys.VIBRATION_ENABLED] = value }
+    suspend fun updateNotificationsEnabled(value: Boolean) = edit { it[Keys.NOTIFICATIONS_ENABLED] = value }
+    suspend fun updateQuietModeActive(value: Boolean) = edit { it[Keys.IS_QUIET_MODE_ACTIVE] = value }
     suspend fun updateDailyTargetHours(hours: Int) = edit { it[Keys.DAILY_TARGET_HOURS] = hours }
     suspend fun updateKeepScreenOn(value: Boolean) = edit { it[Keys.KEEP_SCREEN_ON] = value }
 

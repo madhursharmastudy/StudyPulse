@@ -46,9 +46,11 @@ class StudyWatchWidgetProvider : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.widget_root, pendingIntent)
 
-            views.setTextViewText(R.id.widget_status, snapshot.state.name)
+            views.setTextViewText(R.id.widget_status, if (snapshot.isQuietMode) "QUIET" else snapshot.state.name)
 
-            val display = if (snapshot.state == TimerState.IDLE) {
+            val display = if (snapshot.isQuietMode) {
+                "QUIET"
+            } else if (snapshot.state == TimerState.IDLE) {
                 "00:00"
             } else {
                 snapshot.formattedActiveDisplay()
