@@ -23,23 +23,89 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.*
 
 /**
- * LandscapeRectangleTimerCard (Part 4E)
+ * Shared HH:MM:SS time display composable used for ALL timers (Part 5):
+ * Home study timer, Session, Pomodoro, Countdown, Stopwatch, Break.
+ *
+ * Hours:Minutes are BIG and bold, seconds are SMALL and dim placed after them.
+ * Exception: on Stopwatch the seconds are larger (about 55% of the big digits).
+ */
+@Composable
+fun TimerDigitsDisplay(
+    hoursMinutes: String,
+    seconds: String,
+    isStopwatch: Boolean = false,
+    fontSize: TextUnit = 52.sp,
+    textColor: Color = Color.White,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.Center,
+        modifier = modifier
+    ) {
+        // Hours and Minutes: BIG and bold
+        Text(
+            text = hoursMinutes,
+            fontSize = fontSize,
+            fontWeight = FontWeight.Black,
+            fontFamily = FontFamily.Monospace,
+            letterSpacing = (-1).sp,
+            color = textColor
+        )
+        // Seconds: SMALL, dim placed after them (larger on Stopwatch)
+        if (seconds.isNotEmpty()) {
+            val secondsFontSize = if (isStopwatch) {
+                (fontSize.value * 0.55f).sp
+            } else {
+                (fontSize.value * 0.38f).coerceAtLeast(14f).sp
+            }
+            val secondsColor = if (isStopwatch) CyanAccent else Color.White.copy(alpha = 0.55f)
+            val bottomPadding = (fontSize.value * 0.12f).dp
+            Text(
+                text = seconds,
+                fontSize = secondsFontSize,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                color = secondsColor,
+                modifier = Modifier.padding(bottom = bottomPadding)
+            )
+        }
+    }
+}
+
+/**
+ * Normalizes any formatted timer string (HH:MM:SS, MM:SS, M:SS) into HH:MM and :SS
+ * e.g., "05:00" -> ("00:05", ":00")
+ *       "50:00" -> ("00:50", ":00")
+ *       "00:49:34" -> ("00:49", ":34")
+ */
+fun formatTimeToHHMMSS(timeStr: String): Pair<String, String> {
+    val clean = timeStr.trim()
+    val parts = clean.split(":")
+    return when (parts.size) {
+        3 -> "${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}" to ":${parts[2].padStart(2, '0')}"
+        2 -> "00:${parts[0].padStart(2, '0')}" to ":${parts[1].padStart(2, '0')}"
+        1 -> "00:00" to ":${parts[0].padStart(2, '0')}"
+        else -> "00:00" to ":00"
+    }
+}
+
+/**
+ * LandscapeRectangleTimerCard (Part 5)
  * Reusable landscape card used on Home and Timers tabs.
  *
- * Features:
- * - 3dp rounded corners, dark card color with subtle perimeter glow.
- * - Card border IS the progress bar: 5-6dp thick clockwise line starting at top center.
- * - Behind it a faint grey track.
- * - When paused, progress line dims to 50% opacity.
- * - Fixed-time timers fill the border; Stopwatch shows a plain thin grey border (no progress).
- * - Big bold HH:MM digits with small dim seconds in the corner (larger ~55% on Stopwatch).
- * - Clearly visible play/pause button below digits.
- * - Actions row inside/under the card: End Session, Reset, and Quiet Mode / Set Timer / Lap.
+ * Rules:
+ * - NO fill color and NO glow behind it (completely transparent).
+ * - Thick border (5-6dp) with a faint track. Fixed timers fill clockwise from top center.
+ * - Stopwatch has NO progress: plain thin faint border.
+ * - Bright white digits filling about 90% of card width.
+ * - Rounded corners about 3dp.
  */
 @Composable
 fun LandscapeRectangleTimerCard(
@@ -53,6 +119,7 @@ fun LandscapeRectangleTimerCard(
     isPaused: Boolean,
     isQuietMode: Boolean = false,
     isStopwatch: Boolean = false,
+    showPlayButton: Boolean = true,
     accentColor: Color = StudyAccent,
     onPlayPause: () -> Unit,
     onEndSession: () -> Unit,
@@ -62,13 +129,12 @@ fun LandscapeRectangleTimerCard(
     onLap: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val cornerRadius = 4.dp
-    val strokeWidthDp = if (hasProgress) 5.dp else 1.5.dp
+    val cornerRadius = 3.dp
+    val strokeWidthDp = if (hasProgress) 5.5.dp else 1.5.dp
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .clip(RoundedCornerShape(cornerRadius))
-            .background(DarkCard)
             .drawBehind {
                 val strokePx = strokeWidthDp.toPx()
                 val halfStroke = strokePx / 2f
@@ -81,7 +147,7 @@ fun LandscapeRectangleTimerCard(
                 val w = right - left
                 val h = bottom - top
 
-                // Build clockwise rounded rectangle path starting at top center
+                // Clockwise rounded rectangle path starting at top center
                 val basePath = Path().apply {
                     moveTo(left + w / 2f, top)
                     lineTo(right - r, top)
@@ -96,7 +162,7 @@ fun LandscapeRectangleTimerCard(
                     close()
                 }
 
-                // 1. Faint grey track along the card border
+                // 1. Faint grey track along card border
                 val trackColor = Color(0xFF262626)
                 drawPath(
                     path = basePath,
@@ -104,7 +170,7 @@ fun LandscapeRectangleTimerCard(
                     style = Stroke(width = strokePx)
                 )
 
-                // 2. Clockwise progress line for fixed-time timers
+                // 2. Clockwise progress line for fixed-time timers only
                 if (hasProgress) {
                     val pathMeasure = PathMeasure()
                     pathMeasure.setPath(basePath, true)
@@ -129,8 +195,11 @@ fun LandscapeRectangleTimerCard(
                     }
                 }
             }
-            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .padding(horizontal = 14.dp, vertical = 6.dp)
     ) {
+        // Calculate big font size so HH:MM fills about 90% of card width
+        val dynamicFontSize = (maxWidth.value * 0.20f).coerceIn(46f, 66f).sp
+
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -143,64 +212,50 @@ fun LandscapeRectangleTimerCard(
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
                 color = if (isPaused) TextMuted else accentColor,
-                maxLines = 1
+                maxLines = 1,
+                modifier = Modifier.padding(top = 2.dp)
             )
 
-            // 2. Large Digits (HH:MM big, seconds in corner)
-            Row(
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(vertical = 2.dp)
-            ) {
-                Text(
-                    text = timeHoursMinutes,
-                    fontSize = 46.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
-                    letterSpacing = (-1).sp,
-                    color = TextPrimary
-                )
-                if (timeSeconds.isNotEmpty()) {
-                    val secondsSize = if (isStopwatch) 25.sp else 18.sp
-                    val secondsColor = if (isStopwatch) CyanAccent else TextMuted
-                    Text(
-                        text = timeSeconds,
-                        fontSize = secondsSize,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
-                        color = secondsColor,
-                        modifier = Modifier.padding(bottom = 6.dp)
+            // 2. Large Digits (center, bright white, HH:MM big, seconds small)
+            TimerDigitsDisplay(
+                hoursMinutes = timeHoursMinutes,
+                seconds = timeSeconds,
+                isStopwatch = isStopwatch,
+                fontSize = dynamicFontSize,
+                textColor = Color.White
+            )
+
+            // 3. Play / Pause Button below digits
+            if (showPlayButton) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(if (isRunning) Color(0x33FFA640) else accentColor)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onPlayPause
+                        )
+                        .testTag("landscape_timer_play_pause"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isRunning) "Pause" else "Start",
+                        tint = if (isRunning) accentColor else Color.Black,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
+            } else {
+                Spacer(modifier = Modifier.size(44.dp))
             }
 
-            // 3. Play / Pause Button
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(if (isRunning) Color(0x33FFA640) else accentColor)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onPlayPause
-                    )
-                    .testTag("landscape_timer_play_pause"),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isRunning) "Pause" else "Start",
-                    tint = if (isRunning) accentColor else Color.Black,
-                    modifier = Modifier.size(26.dp)
-                )
-            }
-
-            // 4. Actions Row inside/bottom edge of card
+            // 4. Actions Row at the bottom
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(32.dp),
+                    .height(30.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -229,6 +284,8 @@ fun LandscapeRectangleTimerCard(
                                 Text("Lap", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
+                    } else {
+                        Text("Tap Play to start", color = TextMuted, fontSize = 11.sp)
                     }
                 } else {
                     if (isActive) {

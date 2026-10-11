@@ -45,6 +45,8 @@ import com.example.presentation.components.FullscreenEyeAlert
 import com.example.presentation.components.FullscreenWaterAlert
 import com.example.presentation.components.AppBackground
 import com.example.presentation.components.LandscapeRectangleTimerCard
+import com.example.presentation.components.TimerDigitsDisplay
+import com.example.presentation.components.formatTimeToHHMMSS
 import com.example.ui.theme.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.font.FontFamily
@@ -110,6 +112,34 @@ fun WatchScreen(
         sessions.count { it.startTimestamp >= startOfToday }
     }
 
+    // Shared Subject & Topic selection across Home and Timers
+    val currentSubject = remember(subjects, settings.selectedSubjectId) {
+        subjects.firstOrNull { it.id == settings.selectedSubjectId } ?: subjects.firstOrNull()
+    }
+    val filteredTopics = remember(topics, currentSubject) {
+        currentSubject?.let { sub -> topics.filter { it.subjectId == sub.id } } ?: emptyList()
+    }
+    val currentTopic = remember(filteredTopics, settings.selectedTopicId) {
+        filteredTopics.firstOrNull { it.id == settings.selectedTopicId } ?: filteredTopics.firstOrNull()
+    }
+
+    val currentSubjectName = if (snapshot.state != TimerState.IDLE && snapshot.subjectName.isNotEmpty()) {
+        snapshot.subjectName
+    } else {
+        currentSubject?.name ?: "General Study"
+    }
+    val currentTopicName = if (snapshot.state != TimerState.IDLE && snapshot.topicName.isNotEmpty()) {
+        snapshot.topicName
+    } else {
+        currentTopic?.name ?: "Deep Focus"
+    }
+
+    val waterStretchLabel = when {
+        snapshot.waterReminderEnabled && snapshot.stretchBreakEnabled -> "Water & Stretch in"
+        snapshot.stretchBreakEnabled -> "Stretch Break in"
+        else -> "Water Break in"
+    }
+
     AppBackground(
         modifier = modifier.fillMaxSize()
     ) {
@@ -121,6 +151,9 @@ fun WatchScreen(
                 topics = topics,
                 todayGoal = todayGoal,
                 todaySessionsCount = todaySessionsCount,
+                currentSubjectName = currentSubjectName,
+                currentTopicName = currentTopicName,
+                waterStretchLabel = waterStretchLabel,
                 onOpenSettings = onOpenSettings,
                 onShowSetTimerDialog = { showSetTimerDialog = true },
                 onSubjectClick = { showSubjectPicker = true },
@@ -132,7 +165,7 @@ fun WatchScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp),
+                .padding(horizontal = 20.dp, vertical = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // 1. Top Header Bar: Logo & Tagline + Settings Button
@@ -286,13 +319,13 @@ fun WatchScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // 5. Two Compact Cards: Eye Rest and Water Break
             val isWaterOrStretchOn = snapshot.waterReminderEnabled || snapshot.stretchBreakEnabled
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 EyeRestMiniCard(
                     snapshot = snapshot,
@@ -302,38 +335,27 @@ fun WatchScreen(
                 if (isWaterOrStretchOn) {
                     WaterBreakMiniCard(
                         snapshot = snapshot,
-                        label = if (snapshot.waterReminderEnabled) "Water Break in" else "Stretch Break in",
+                        label = waterStretchLabel,
                         modifier = Modifier.weight(1f)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // 6. User-Selected Subject & Topic Card
-            val currentSubjectName = if (snapshot.state != TimerState.IDLE && snapshot.subjectName.isNotEmpty()) {
-                snapshot.subjectName
-            } else {
-                subjects.firstOrNull()?.name ?: "English Literature"
-            }
-            val currentTopicName = if (snapshot.state != TimerState.IDLE && snapshot.topicName.isNotEmpty()) {
-                snapshot.topicName
-            } else {
-                topics.firstOrNull()?.name ?: "Romantic Poetry"
-            }
-
+            // 6. User-Selected Subject & Topic Card (shared state across Home and Timers)
             SubjectTopicCard(
                 subjectName = currentSubjectName,
                 topicName = currentTopicName,
                 onClick = { showSubjectPicker = true }
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // 7. Footer Motivation Tagline
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(bottom = 12.dp)
+                modifier = Modifier.padding(bottom = 16.dp)
             ) {
                 Text(
                     text = "—— A BETTER YOU ——",
@@ -492,12 +514,27 @@ fun CircularStudyTimer(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            Text(
-                text = if (snapshot.isQuietMode) "QUIET" else snapshot.formattedActiveDisplay(),
-                fontSize = 42.sp,
-                fontWeight = FontWeight.Black,
-                color = if (snapshot.isQuietMode) AmberAccent else TextPrimary
-            )
+            if (snapshot.isQuietMode) {
+                Text(
+                    text = "QUIET",
+                    fontSize = 42.sp,
+                    fontWeight = FontWeight.Black,
+                    color = AmberAccent
+                )
+            } else {
+                val displayStr = if (snapshot.state == TimerState.IDLE) {
+                    String.format(Locale.getDefault(), "%02d:00", defaultDurationMinutes)
+                } else {
+                    snapshot.formattedActiveDisplay()
+                }
+                val (hhMm, ss) = formatTimeToHHMMSS(displayStr)
+                TimerDigitsDisplay(
+                    hoursMinutes = hhMm,
+                    seconds = ss,
+                    fontSize = 42.sp,
+                    textColor = Color.White
+                )
+            }
 
             Text(
                 text = if (snapshot.isQuietMode) "PAUSED IN QUIET MODE" else "/ ${snapshot.formatPlanned()}",
@@ -1615,21 +1652,14 @@ fun LandscapeWatchScreen(
     topics: List<TopicEntity>,
     todayGoal: DailyGoalEntity?,
     todaySessionsCount: Int,
+    currentSubjectName: String,
+    currentTopicName: String,
+    waterStretchLabel: String,
     onOpenSettings: () -> Unit,
     onShowSetTimerDialog: () -> Unit,
     onSubjectClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val currentSubjectName = if (snapshot.state != TimerState.IDLE && snapshot.subjectName.isNotEmpty()) {
-        snapshot.subjectName
-    } else {
-        subjects.firstOrNull()?.name ?: "English Literature"
-    }
-    val currentTopicName = if (snapshot.state != TimerState.IDLE && snapshot.topicName.isNotEmpty()) {
-        snapshot.topicName
-    } else {
-        topics.firstOrNull()?.name ?: "Romantic Poetry"
-    }
 
     val activeDisplay = if (snapshot.state == TimerState.IDLE) {
         String.format(Locale.getDefault(), "%02d:00", settings.defaultStudyDurationMinutes)
@@ -1708,28 +1738,25 @@ fun LandscapeWatchScreen(
             // 3. WATER & STRETCH card (hidden if both OFF)
             val isWaterOrStretchOn = snapshot.waterReminderEnabled || snapshot.stretchBreakEnabled
             if (isWaterOrStretchOn) {
-                val label = when {
-                    snapshot.waterReminderEnabled && snapshot.stretchBreakEnabled -> "Water & Stretch in"
-                    snapshot.stretchBreakEnabled -> "Stretch Break in"
-                    else -> "Water Break in"
-                }
                 LandscapeWaterStretchCard(
                     snapshot = snapshot,
-                    label = label,
+                    label = waterStretchLabel,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
                 )
             }
 
-            // 4. ONE slim bottom strip (44dp high): summary on left, Subject/Task on right
+            // 4. ONE slim bottom strip (equal height): summary on left, Subject/Task on right
             LandscapeBottomStrip(
                 todayGoal = todayGoal,
                 breaksToday = StretchBreakManager.getTodayBreakCount(),
                 subjectName = currentSubjectName,
                 topicName = currentTopicName,
                 onSubjectClick = onSubjectClick,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
             )
         }
     }
@@ -1916,60 +1943,84 @@ fun LandscapeCurrentClockCard(
 
     val cal = Calendar.getInstance().apply { timeInMillis = currentTimeMillis }
     val timeFormat = if (settings.use24HourFormat) "HH:mm" else "hh:mm"
+    val amPm = if (settings.use24HourFormat) "" else " " + SimpleDateFormat("a", Locale.getDefault()).format(cal.time)
     val hhMm = SimpleDateFormat(timeFormat, Locale.getDefault()).format(cal.time)
     val ss = if (settings.showSeconds) ":" + SimpleDateFormat("ss", Locale.getDefault()).format(cal.time) else ""
     val dateWeekday = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(cal.time)
 
     Card(
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         border = BorderStroke(1.dp, CharcoalBorder),
         modifier = modifier
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 12.dp, vertical = 6.dp),
-            verticalArrangement = Arrangement.Center
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        text = hhMm,
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Black,
-                        fontFamily = FontFamily.Monospace,
-                        color = TextPrimary
+            // Icon in small circle at the left + date & weekday small
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(Color(0x22FFA640)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Schedule,
+                        contentDescription = "Current Clock",
+                        tint = AmberAccent,
+                        modifier = Modifier.size(13.dp)
                     )
-                    if (ss.isNotEmpty()) {
-                        Text(
-                            text = ss,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace,
-                            color = TextMuted,
-                            modifier = Modifier.padding(bottom = 3.dp)
-                        )
-                    }
                 }
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = dateWeekday,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(bottom = 4.dp)
+                    color = TextSecondary
                 )
+            }
+
+            // Time: HH:MM big, seconds small, AM/PM
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    text = hhMm,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Black,
+                    fontFamily = FontFamily.Monospace,
+                    color = Color.White
+                )
+                if (ss.isNotEmpty()) {
+                    Text(
+                        text = ss,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        color = Color.White.copy(alpha = 0.55f),
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                }
+                if (amPm.isNotEmpty()) {
+                    Text(
+                        text = amPm,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AmberAccent,
+                        modifier = Modifier.padding(bottom = 3.dp, start = 2.dp)
+                    )
+                }
             }
         }
     }
 }
 
 /**
- * Right Column Card 2: Eye Rest Card (large bold time, thin progress bar)
+ * Right Column Card 2: Eye Rest Card (transparent outline, icon in circle, big time, thin progress bar)
  */
 @Composable
 fun LandscapeEyeRestCard(
@@ -1981,8 +2032,8 @@ fun LandscapeEyeRestCard(
     val eyeProgress = ((totalEyeIntervalSecs - remainingSecs).toFloat() / totalEyeIntervalSecs.toFloat()).coerceIn(0f, 1f)
 
     Card(
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         border = BorderStroke(1.dp, Color(0x3300D675)),
         modifier = modifier
     ) {
@@ -2000,7 +2051,7 @@ fun LandscapeEyeRestCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(20.dp)
+                            .size(22.dp)
                             .clip(CircleShape)
                             .background(Color(0x2200D675)),
                         contentAlignment = Alignment.Center
@@ -2009,10 +2060,10 @@ fun LandscapeEyeRestCard(
                             imageVector = Icons.Default.Visibility,
                             contentDescription = "Eye Rest",
                             tint = EyeCareAccent,
-                            modifier = Modifier.size(12.dp)
+                            modifier = Modifier.size(13.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Eye Rest in",
                         fontSize = 11.sp,
@@ -2022,7 +2073,7 @@ fun LandscapeEyeRestCard(
                 }
                 Text(
                     text = snapshot.formattedEyeCountdown(),
-                    fontSize = 26.sp,
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
                     color = EyeCareAccent
@@ -2042,7 +2093,7 @@ fun LandscapeEyeRestCard(
 }
 
 /**
- * Right Column Card 3: Water + Stretch Card (large bold time, blue progress bar)
+ * Right Column Card 3: Water + Stretch Card (transparent outline, icon in circle, big time, blue progress bar)
  */
 @Composable
 fun LandscapeWaterStretchCard(
@@ -2055,8 +2106,8 @@ fun LandscapeWaterStretchCard(
     val waterProgress = ((totalWaterIntervalSecs - remainingSecs).toFloat() / totalWaterIntervalSecs.toFloat()).coerceIn(0f, 1f)
 
     Card(
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         border = BorderStroke(1.dp, Color(0x3300B4FF)),
         modifier = modifier
     ) {
@@ -2074,7 +2125,7 @@ fun LandscapeWaterStretchCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(20.dp)
+                            .size(22.dp)
                             .clip(CircleShape)
                             .background(Color(0x2200B4FF)),
                         contentAlignment = Alignment.Center
@@ -2083,10 +2134,10 @@ fun LandscapeWaterStretchCard(
                             imageVector = Icons.Default.LocalDrink,
                             contentDescription = "Water Break",
                             tint = WaterAccent,
-                            modifier = Modifier.size(12.dp)
+                            modifier = Modifier.size(13.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = label,
                         fontSize = 11.sp,
@@ -2096,7 +2147,7 @@ fun LandscapeWaterStretchCard(
                 }
                 Text(
                     text = snapshot.formattedWaterCountdown(),
-                    fontSize = 26.sp,
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
                     color = WaterAccent
@@ -2116,8 +2167,8 @@ fun LandscapeWaterStretchCard(
 }
 
 /**
- * Right Column Item 4: Single slim strip (44dp high)
- * Left: summary ("Study 0m / 360m • Breaks 0")
+ * Right Column Item 4: Single slim strip (transparent outline, equal height)
+ * Left: summary ("Study 0m / 360m • Breaks 0") with book icon in circle
  * Right: Subject/Task button ("Chemistry • Organic Synthesis ▾")
  */
 @Composable
@@ -2133,29 +2184,45 @@ fun LandscapeBottomStrip(
     val targetMins = todayGoal?.targetMinutes ?: 360
 
     Surface(
-        shape = RoundedCornerShape(10.dp),
-        color = DarkCard,
+        shape = RoundedCornerShape(8.dp),
+        color = Color.Transparent,
         border = BorderStroke(1.dp, CharcoalBorder),
         modifier = modifier
             .fillMaxWidth()
-            .height(44.dp)
             .testTag("landscape_bottom_strip")
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 12.dp),
+                .padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Left: One-line summary
-            Text(
-                text = "Study ${totalMins}m / ${targetMins}m • Breaks $breaksToday",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                color = TextSecondary,
-                maxLines = 1
-            )
+            // Left: Book icon in small circle + one-line summary
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(Color(0x22FFA640)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MenuBook,
+                        contentDescription = "Subject and Topic",
+                        tint = StudyAccent,
+                        modifier = Modifier.size(13.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Study ${totalMins}m / ${targetMins}m • Breaks $breaksToday",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextSecondary,
+                    maxLines = 1
+                )
+            }
 
             // Right: Subject/Task button that opens bottom sheet
             Row(
@@ -2163,15 +2230,8 @@ fun LandscapeBottomStrip(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
                     .clickable(onClick = onSubjectClick)
-                    .padding(horizontal = 6.dp, vertical = 4.dp)
+                    .padding(horizontal = 4.dp, vertical = 4.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.MenuBook,
-                    contentDescription = null,
-                    tint = StudyAccent,
-                    modifier = Modifier.size(13.dp)
-                )
-                Spacer(modifier = Modifier.width(5.dp))
                 Text(
                     text = "$subjectName • $topicName ▾",
                     fontSize = 11.sp,

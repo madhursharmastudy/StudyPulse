@@ -40,6 +40,8 @@ import com.example.data.db.SubjectEntity
 import com.example.data.db.TopicEntity
 import com.example.presentation.components.AppBackground
 import com.example.presentation.components.LandscapeRectangleTimerCard
+import com.example.presentation.components.TimerDigitsDisplay
+import com.example.presentation.components.formatTimeToHHMMSS
 import com.example.ui.theme.*
 
 /**
@@ -204,7 +206,7 @@ fun TimerScreen(
             0 -> "Focus on one subject for a fixed time."
             1 -> "Study in cycles with short rests."
             2 -> "Quick timer for any task."
-            3 -> "Counts up when you do not know how long you will study."
+            3 -> "Counts up. No fixed time."
             else -> "Take a planned rest."
         }
         Text(
@@ -356,7 +358,15 @@ fun TimerScreen(
                             }
                         )
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Text(
+                            text = "Target $sessionDurationMinutes min",
+                            fontSize = 11.sp,
+                            color = TextMuted
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         // Reserved fixed height action row
                         Box(
@@ -419,7 +429,15 @@ fun TimerScreen(
                             }
                         )
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Text(
+                            text = "Target ${pomodoroStudyMinutes}m study / ${pomodoroBreakMinutes}m rest • $pomodoroCycles cycles",
+                            fontSize = 11.sp,
+                            color = TextMuted
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Box(
                             modifier = Modifier
@@ -479,7 +497,15 @@ fun TimerScreen(
                             }
                         )
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Text(
+                            text = if (totalSecs > 0) "Target ${totalSecs / 60}m ${totalSecs % 60}s" else "Target 30 min",
+                            fontSize = 11.sp,
+                            color = TextMuted
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Box(
                             modifier = Modifier
@@ -499,10 +525,6 @@ fun TimerScreen(
                 3 -> { // STOPWATCH TAB
                     val isSwActive = stopwatchSnapshot.isRunning || stopwatchSnapshot.isPaused
                     val timeDisplay = if (isSwActive || stopwatchSnapshot.elapsedMillis > 0) stopwatchSnapshot.formattedDisplay() else "00:00:00"
-                    // Stopwatch ring completes one turn per minute
-                    val stopwatchFraction = if (stopwatchSnapshot.isRunning) {
-                        ((stopwatchSnapshot.elapsedMillis % 60000L) / 60000f)
-                    } else 0f
                     val statusText = if (stopwatchSnapshot.isRunning) "Running" else if (stopwatchSnapshot.isPaused) "Paused" else "Counts Up"
 
                     Column(
@@ -515,8 +537,10 @@ fun TimerScreen(
                             timeDisplay = timeDisplay,
                             isActive = isSwActive,
                             isPaused = stopwatchSnapshot.isPaused,
-                            progressFraction = stopwatchFraction,
+                            progressFraction = 0f,
                             accentColor = CyanAccent,
+                            hasProgress = false,
+                            isStopwatch = true,
                             onPlayPause = {
                                 if (!stopwatchSnapshot.isRunning && !stopwatchSnapshot.isPaused) {
                                     StopwatchEngine.start(
@@ -610,11 +634,57 @@ fun TimerScreen(
                     }
                 }
                 4 -> { // BREAKS TAB
-                    BreaksTab(
-                        onStartBreak = { type, durationSecs ->
-                            TimerEngine.startBreak(type, (durationSecs / 60).toInt())
+                    if (snapshot.state.isBreak) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            TabRoundTimer(
+                                modeLabel = "BREAK",
+                                statusLine = "Break in Progress",
+                                timeDisplay = snapshot.formattedActiveDisplay(),
+                                isActive = true,
+                                isPaused = (snapshot.state == TimerState.PAUSED),
+                                progressFraction = snapshot.progressFraction,
+                                accentColor = EmeraldAccent,
+                                hasProgress = true,
+                                isStopwatch = false,
+                                showPlayButton = true,
+                                onPlayPause = {
+                                    if (snapshot.state == TimerState.PAUSED) TimerEngine.resume() else TimerEngine.pause()
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    TextButton(onClick = { TimerEngine.stop() }) {
+                                        Text("End Break", color = RoseAccent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    }
+                                    TextButton(onClick = { TimerEngine.reset() }) {
+                                        Text("Reset", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    }
+                                }
+                            }
                         }
-                    )
+                    } else {
+                        // When no break is running, show ONLY the three break choices (no duplicate play button)
+                        BreaksTab(
+                            onStartBreak = { type, durationSecs ->
+                                TimerEngine.startBreak(type, (durationSecs / 60).toInt())
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -707,25 +777,30 @@ fun TabRoundTimer(
     isPaused: Boolean,
     progressFraction: Float,
     accentColor: Color,
+    hasProgress: Boolean = true,
+    isStopwatch: Boolean = false,
+    showPlayButton: Boolean = true,
     onPlayPause: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
-            .size(270.dp)
+            .fillMaxWidth(0.80f)
+            .aspectRatio(1f)
             .testTag("tab_round_timer")
     ) {
-        // Circular Progress Ring
+        // Circular Progress Ring (transparent card, no fill, border progress)
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokeWidth = 10.dp.toPx()
+            val strokeWidth = if (hasProgress) 8.dp.toPx() else 2.dp.toPx()
             val diameter = size.minDimension - strokeWidth - 8.dp.toPx()
             val topLeft = Offset((size.width - diameter) / 2f, (size.height - diameter) / 2f)
             val arcSize = Size(diameter, diameter)
 
             // Background track
+            val trackColor = if (hasProgress) Color(0xFF1E1E1E) else Color(0xFF282828)
             drawArc(
-                color = Color(0xFF1E1E1E),
+                color = trackColor,
                 startAngle = 0f,
                 sweepAngle = 360f,
                 useCenter = false,
@@ -734,18 +809,21 @@ fun TabRoundTimer(
                 style = Stroke(width = strokeWidth)
             )
 
-            // Progress arc
-            val sweep = progressFraction.coerceIn(0f, 1f) * 360f
-            if (sweep > 0f) {
-                drawArc(
-                    color = accentColor,
-                    startAngle = -90f,
-                    sweepAngle = sweep,
-                    useCenter = false,
-                    topLeft = topLeft,
-                    size = arcSize,
-                    style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
-                )
+            // Progress arc (fixed timers only, Stopwatch has NO progress)
+            if (hasProgress) {
+                val sweep = progressFraction.coerceIn(0f, 1f) * 360f
+                if (sweep > 0f) {
+                    val drawColor = if (isPaused) accentColor.copy(alpha = 0.5f) else accentColor
+                    drawArc(
+                        color = drawColor,
+                        startAngle = -90f,
+                        sweepAngle = sweep,
+                        useCenter = false,
+                        topLeft = topLeft,
+                        size = arcSize,
+                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                    )
+                }
             }
         }
 
@@ -753,7 +831,7 @@ fun TabRoundTimer(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(horizontal = 24.dp)
+            modifier = Modifier.padding(horizontal = 20.dp)
         ) {
             Text(
                 text = modeLabel,
@@ -763,15 +841,16 @@ fun TabRoundTimer(
                 letterSpacing = 1.sp
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
-            // Time shown strictly ONCE
-            Text(
-                text = timeDisplay,
-                fontSize = 34.sp,
-                fontWeight = FontWeight.Black,
-                fontFamily = FontFamily.Monospace,
-                color = TextPrimary
+            // Time formatted with big HH:MM and small dim seconds
+            val (hhMm, ss) = formatTimeToHHMMSS(timeDisplay)
+            TimerDigitsDisplay(
+                hoursMinutes = hhMm,
+                seconds = ss,
+                isStopwatch = isStopwatch,
+                fontSize = 38.sp,
+                textColor = Color.White
             )
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -787,23 +866,27 @@ fun TabRoundTimer(
             Spacer(modifier = Modifier.height(10.dp))
 
             // Play/Pause button
-            Surface(
-                onClick = onPlayPause,
-                shape = CircleShape,
-                color = if (isActive && !isPaused) CharcoalCard else accentColor,
-                contentColor = if (isActive && !isPaused) accentColor else Color.Black,
-                border = if (isActive && !isPaused) BorderStroke(1.5.dp, accentColor) else null,
-                modifier = Modifier
-                    .size(52.dp)
-                    .testTag("round_timer_play_pause")
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = if (isActive && !isPaused) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isActive && !isPaused) "Pause" else "Play",
-                        modifier = Modifier.size(28.dp)
-                    )
+            if (showPlayButton) {
+                Surface(
+                    onClick = onPlayPause,
+                    shape = CircleShape,
+                    color = if (isActive && !isPaused) CharcoalCard else accentColor,
+                    contentColor = if (isActive && !isPaused) accentColor else Color.Black,
+                    border = if (isActive && !isPaused) BorderStroke(1.5.dp, accentColor) else null,
+                    modifier = Modifier
+                        .size(52.dp)
+                        .testTag("round_timer_play_pause")
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = if (isActive && !isPaused) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isActive && !isPaused) "Pause" else "Play",
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
                 }
+            } else {
+                Spacer(modifier = Modifier.size(52.dp))
             }
         }
     }
@@ -1342,47 +1425,90 @@ fun SubjectTopicBottomSheetContent(
 }
 
 /**
- * Breaks Tab: planned breaks.
+ * Breaks Tab: planned breaks (Part 5 item 8).
+ * Show ONLY the three break choices (Short 5 min, Long 15 min, Lunch 30 min),
+ * each as a compact transparent outline box with its icon, name, minutes and one START button.
+ * Box height about 56-64dp.
  */
 @Composable
 fun BreaksTab(
     onStartBreak: (BreakType, Long) -> Unit
 ) {
     val breakPresets = listOf(
-        Triple("Quick Refresh", BreakType.SHORT_BREAK, 5L * 60),
-        Triple("Coffee & Stretch", BreakType.SHORT_BREAK, 10L * 60),
-        Triple("Meal / Walk Break", BreakType.LONG_BREAK, 20L * 60),
-        Triple("Power Nap", BreakType.LONG_BREAK, 30L * 60)
+        Triple("Short", 5, BreakType.SHORT_BREAK),
+        Triple("Long", 15, BreakType.LONG_BREAK),
+        Triple("Lunch", 30, BreakType.LONG_BREAK)
     )
 
     Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        breakPresets.forEach { (title, type, durationSecs) ->
+        breakPresets.forEach { (name, mins, type) ->
+            val icon = when (name) {
+                "Short" -> Icons.Default.Coffee
+                "Long" -> Icons.Default.SelfImprovement
+                else -> Icons.Default.Restaurant
+            }
             Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = CharcoalCard),
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
                 border = BorderStroke(1.dp, CharcoalBorder),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
             ) {
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
+                        .fillMaxSize()
+                        .padding(horizontal = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text(title, fontWeight = FontWeight.Bold, color = TextPrimary)
-                        Text("${durationSecs / 60} minutes • ${type.name}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(CircleShape)
+                                .background(Color(0x2200D675)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = "$name Break",
+                                tint = EmeraldAccent,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "$name Break",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "$mins min",
+                                fontSize = 11.sp,
+                                color = TextSecondary
+                            )
+                        }
                     }
+
                     Button(
-                        onClick = { onStartBreak(type, durationSecs) },
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldAccent, contentColor = Color.Black),
-                        shape = RoundedCornerShape(8.dp)
+                        onClick = { onStartBreak(type, mins * 60L) },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = EmeraldAccent,
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(6.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                        modifier = Modifier.height(32.dp)
                     ) {
-                        Text("START")
+                        Text("START", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -1678,7 +1804,7 @@ fun LandscapeTimerScreen(
         0 -> "Focus on one subject for a fixed time."
         1 -> "Study in cycles with short rests."
         2 -> "Quick timer for any task."
-        3 -> "Counts up when you do not know how long you will study."
+        3 -> "Counts up. No fixed time."
         else -> "Take a planned rest."
     }
 
@@ -1880,6 +2006,7 @@ fun LandscapeTimerScreen(
                     isRunning = isBreakRunning && snapshot.state != TimerState.PAUSED,
                     isPaused = isBreakRunning && snapshot.state == TimerState.PAUSED,
                     isQuietMode = snapshot.isQuietMode,
+                    showPlayButton = isBreakRunning,
                     accentColor = EmeraldAccent,
                     onPlayPause = {
                         if (isBreakRunning) {
@@ -2077,11 +2204,11 @@ fun LandscapeTimerScreen(
                     }
                 }
                 4 -> {
-                    // Break choices: Short 5 min, Long 15 min, Lunch 30 min
+                    // Break choices: Short 5 min, Long 15 min, Lunch 30 min (transparent outline, 56-64dp)
                     val breakPresets = listOf(
                         Triple("Short", 5, BreakType.SHORT_BREAK),
                         Triple("Long", 15, BreakType.LONG_BREAK),
-                        Triple("Lunch", 30, BreakType.CUSTOM_BREAK)
+                        Triple("Lunch", 30, BreakType.LONG_BREAK)
                     )
                     Column(
                         modifier = Modifier
@@ -2090,9 +2217,14 @@ fun LandscapeTimerScreen(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         breakPresets.forEach { (name, mins, type) ->
+                            val icon = when (name) {
+                                "Short" -> Icons.Default.Coffee
+                                "Long" -> Icons.Default.SelfImprovement
+                                else -> Icons.Default.Restaurant
+                            }
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = CharcoalCard,
+                                color = Color.Transparent,
                                 border = BorderStroke(1.dp, CharcoalBorder),
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -2105,9 +2237,26 @@ fun LandscapeTimerScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Column {
-                                        Text("$name Break", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                                        Text("$mins min", fontSize = 10.sp, color = TextSecondary)
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(22.dp)
+                                                .clip(CircleShape)
+                                                .background(Color(0x2200D675)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = icon,
+                                                contentDescription = "$name Break",
+                                                tint = EmeraldAccent,
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column {
+                                            Text("$name Break", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                            Text("$mins min", fontSize = 10.sp, color = TextSecondary)
+                                        }
                                     }
                                     Button(
                                         onClick = { TimerEngine.startBreak(type, mins) },
@@ -2124,39 +2273,23 @@ fun LandscapeTimerScreen(
                     }
                 }
                 else -> {
-                    // Tabs 0, 1, 2: Compact details card
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = CharcoalCard,
-                        border = BorderStroke(1.dp, CharcoalBorder),
+                    // Small one-line target text (big empty card removed)
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f)
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(10.dp),
-                            verticalArrangement = Arrangement.Center,
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = when (selectedTab) {
-                                    0 -> "$sessionDurationMinutes min Session Target"
-                                    1 -> "$pomodoroStudyMinutes m study / $pomodoroBreakMinutes m rest • $pomodoroCycles cycles"
-                                    else -> if (totalCdSecs > 0) "${totalCdSecs / 60}m ${totalCdSecs % 60}s Target" else "Quick 30m Countdown"
-                                },
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = TextPrimary
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Use Set Timer under the card to adjust.",
-                                fontSize = 10.sp,
-                                color = TextMuted
-                            )
-                        }
+                        Text(
+                            text = when (selectedTab) {
+                                0 -> "Target $sessionDurationMinutes min"
+                                1 -> "Target ${pomodoroStudyMinutes}m study / ${pomodoroBreakMinutes}m rest • $pomodoroCycles cycles"
+                                else -> if (totalCdSecs > 0) "Target ${totalCdSecs / 60}m ${totalCdSecs % 60}s" else "Target 30 min"
+                            },
+                            fontSize = 11.sp,
+                            color = TextMuted,
+                            maxLines = 1
+                        )
                     }
                 }
             }
