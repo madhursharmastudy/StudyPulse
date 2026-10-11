@@ -13,8 +13,10 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -182,7 +184,9 @@ private fun WaterBreakStep(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
     ) {
         Box(
             contentAlignment = Alignment.Center,
@@ -319,6 +323,7 @@ private fun ExerciseStep(
         modifier = Modifier
             .fillMaxSize()
             .padding(vertical = 12.dp)
+            .verticalScroll(rememberScrollState())
     ) {
         // Top row: Progress & Zone pill
         Row(
@@ -635,7 +640,9 @@ private fun ShabashStep(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
     ) {
         Box(
             contentAlignment = Alignment.Center,

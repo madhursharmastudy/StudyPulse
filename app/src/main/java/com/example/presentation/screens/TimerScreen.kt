@@ -1,5 +1,6 @@
 package com.example.presentation.screens
 
+import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -26,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +39,7 @@ import com.example.core.timer.*
 import com.example.data.db.SubjectEntity
 import com.example.data.db.TopicEntity
 import com.example.presentation.components.AppBackground
+import com.example.presentation.components.LandscapeRectangleTimerCard
 import com.example.ui.theme.*
 
 /**
@@ -99,12 +102,35 @@ fun TimerScreen(
     var countdownMinutes by remember { mutableIntStateOf(30) }
     var countdownSeconds by remember { mutableIntStateOf(0) }
 
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
     AppBackground(modifier = modifier) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-        ) {
+        if (isLandscape) {
+            LandscapeTimerScreen(
+                selectedTab = selectedTab,
+                onSelectTab = { selectedTab = it },
+                snapshot = snapshot,
+                stopwatchSnapshot = stopwatchSnapshot,
+                currentSubject = currentSubject,
+                currentTopic = currentTopic,
+                sessionDurationMinutes = sessionDurationMinutes,
+                pomodoroStudyMinutes = pomodoroStudyMinutes,
+                pomodoroBreakMinutes = pomodoroBreakMinutes,
+                pomodoroCycles = pomodoroCycles,
+                countdownHours = countdownHours,
+                countdownMinutes = countdownMinutes,
+                countdownSeconds = countdownSeconds,
+                onOpenSubjectSheet = { showSubjectSheet = true },
+                onOpenSetTimerDialog = { showSetTimerDialog = true },
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
         // 1. Header (back button and title only; top cards and sliders icon removed)
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -591,6 +617,7 @@ fun TimerScreen(
                     )
                 }
             }
+        }
         }
     }
 
@@ -1614,4 +1641,525 @@ private fun formatMillisToLapDisplay(millis: Long): String {
     val m = (totalSecs % 3600) / 60
     val s = totalSecs % 60
     return String.format(java.util.Locale.getDefault(), "%02d:%02d:%02d", h, m, s)
+}
+
+/**
+ * LandscapeTimerScreen (Part 4E)
+ * Two-column layout for Timers screen in landscape mode:
+ * - Left (57%): Big rectangle timer card with perimeter progress border
+ * - Right (43%): Short tabs row ("Session", "Pomo", "Count", "Watch", "Break"),
+ *   one-line description, compact Subject/Task button, dual timer strip,
+ *   and tab-specific content (Lap list for Stopwatch, 3 break choices for Breaks).
+ */
+@Composable
+fun LandscapeTimerScreen(
+    selectedTab: Int,
+    onSelectTab: (Int) -> Unit,
+    snapshot: TimerSnapshot,
+    stopwatchSnapshot: StopwatchSnapshot,
+    currentSubject: SubjectEntity?,
+    currentTopic: TopicEntity?,
+    sessionDurationMinutes: Int,
+    pomodoroStudyMinutes: Int,
+    pomodoroBreakMinutes: Int,
+    pomodoroCycles: Int,
+    countdownHours: Int,
+    countdownMinutes: Int,
+    countdownSeconds: Int,
+    onOpenSubjectSheet: () -> Unit,
+    onOpenSetTimerDialog: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val totalCdSecs = (countdownHours * 3600) + (countdownMinutes * 60) + countdownSeconds
+
+    // Tab labels and metadata
+    val tabTitles = listOf("Session", "Pomo", "Count", "Watch", "Break")
+    val descriptionText = when (selectedTab) {
+        0 -> "Focus on one subject for a fixed time."
+        1 -> "Study in cycles with short rests."
+        2 -> "Quick timer for any task."
+        3 -> "Counts up when you do not know how long you will study."
+        else -> "Take a planned rest."
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // LEFT COLUMN (about 57%): Big rectangle timer card for the selected tab
+        when (selectedTab) {
+            0 -> { // SESSION
+                val isSessionRunning = snapshot.state.isActive && snapshot.timerType == TimerType.STUDY_SESSION
+                val timeDisplay = if (isSessionRunning) snapshot.formattedActiveDisplay() else formatMinutesToHHMMSS(sessionDurationMinutes)
+                val (hhMm, ss) = splitLandscapeDigits(timeDisplay)
+                LandscapeRectangleTimerCard(
+                    modeLabel = "SESSION",
+                    timeHoursMinutes = hhMm,
+                    timeSeconds = ss,
+                    hasProgress = true,
+                    progressFraction = if (isSessionRunning) snapshot.progressFraction else 0f,
+                    isActive = isSessionRunning,
+                    isRunning = snapshot.state == TimerState.STUDYING && snapshot.timerType == TimerType.STUDY_SESSION,
+                    isPaused = snapshot.state == TimerState.PAUSED && snapshot.timerType == TimerType.STUDY_SESSION,
+                    isQuietMode = snapshot.isQuietMode,
+                    accentColor = AmberAccent,
+                    onPlayPause = {
+                        if (!isSessionRunning) {
+                            TimerEngine.startStudySession(
+                                subjectId = currentSubject?.id ?: 0L,
+                                topicId = currentTopic?.id ?: 0L,
+                                subjectName = currentSubject?.name ?: "General Study",
+                                topicName = currentTopic?.name ?: "Deep Focus",
+                                type = TimerType.STUDY_SESSION,
+                                durationMinutes = sessionDurationMinutes
+                            )
+                        } else if (snapshot.state == TimerState.STUDYING) {
+                            TimerEngine.pause()
+                        } else if (snapshot.state == TimerState.PAUSED) {
+                            TimerEngine.resume()
+                        }
+                    },
+                    onEndSession = { TimerEngine.stop() },
+                    onReset = { TimerEngine.reset() },
+                    onQuietModeToggle = {
+                        if (snapshot.isQuietMode) TimerEngine.exitQuietMode() else TimerEngine.enterQuietMode()
+                    },
+                    onSetTimer = onOpenSetTimerDialog,
+                    modifier = Modifier
+                        .weight(0.57f)
+                        .fillMaxHeight()
+                )
+            }
+            1 -> { // POMODORO
+                val isPomoRunning = snapshot.state.isActive && snapshot.timerType == TimerType.POMODORO
+                val timeDisplay = if (isPomoRunning) snapshot.formattedActiveDisplay() else formatMinutesToHHMMSS(pomodoroStudyMinutes)
+                val (hhMm, ss) = splitLandscapeDigits(timeDisplay)
+                val phase = if (snapshot.state.isBreak) "REST" else "FOCUS"
+                val modeLabel = if (isPomoRunning) {
+                    "POMODORO • $phase ${snapshot.currentPomodoroCycle} / ${snapshot.totalPomodoroCycles}"
+                } else {
+                    "POMODORO • CYCLE 1 / $pomodoroCycles"
+                }
+                LandscapeRectangleTimerCard(
+                    modeLabel = modeLabel,
+                    timeHoursMinutes = hhMm,
+                    timeSeconds = ss,
+                    hasProgress = true,
+                    progressFraction = if (isPomoRunning) snapshot.progressFraction else 0f,
+                    isActive = isPomoRunning,
+                    isRunning = (snapshot.state == TimerState.STUDYING || snapshot.state.isBreak) && snapshot.timerType == TimerType.POMODORO,
+                    isPaused = snapshot.state == TimerState.PAUSED && snapshot.timerType == TimerType.POMODORO,
+                    isQuietMode = snapshot.isQuietMode,
+                    accentColor = AmberAccent,
+                    onPlayPause = {
+                        if (!isPomoRunning) {
+                            TimerEngine.startStudySession(
+                                subjectId = currentSubject?.id ?: 0L,
+                                topicId = currentTopic?.id ?: 0L,
+                                subjectName = currentSubject?.name ?: "Pomodoro Study",
+                                topicName = currentTopic?.name ?: "Interval Focus",
+                                type = TimerType.POMODORO,
+                                pomodoroSettings = PomodoroSettings(
+                                    studyMinutes = pomodoroStudyMinutes,
+                                    shortBreakMinutes = pomodoroBreakMinutes,
+                                    cycles = pomodoroCycles
+                                )
+                            )
+                        } else if (snapshot.state == TimerState.STUDYING || snapshot.state.isBreak) {
+                            TimerEngine.pause()
+                        } else if (snapshot.state == TimerState.PAUSED) {
+                            TimerEngine.resume()
+                        }
+                    },
+                    onEndSession = { TimerEngine.stop() },
+                    onReset = { TimerEngine.reset() },
+                    onQuietModeToggle = {
+                        if (snapshot.isQuietMode) TimerEngine.exitQuietMode() else TimerEngine.enterQuietMode()
+                    },
+                    onSetTimer = onOpenSetTimerDialog,
+                    modifier = Modifier
+                        .weight(0.57f)
+                        .fillMaxHeight()
+                )
+            }
+            2 -> { // COUNTDOWN
+                val isCdRunning = snapshot.state.isActive && snapshot.timerType == TimerType.COUNTDOWN
+                val timeDisplay = if (isCdRunning) snapshot.formattedActiveDisplay() else formatTotalSecondsToDisplay(totalCdSecs)
+                val (hhMm, ss) = splitLandscapeDigits(timeDisplay)
+                LandscapeRectangleTimerCard(
+                    modeLabel = "COUNTDOWN",
+                    timeHoursMinutes = hhMm,
+                    timeSeconds = ss,
+                    hasProgress = true,
+                    progressFraction = if (isCdRunning) snapshot.progressFraction else 0f,
+                    isActive = isCdRunning,
+                    isRunning = snapshot.state == TimerState.STUDYING && snapshot.timerType == TimerType.COUNTDOWN,
+                    isPaused = snapshot.state == TimerState.PAUSED && snapshot.timerType == TimerType.COUNTDOWN,
+                    isQuietMode = snapshot.isQuietMode,
+                    accentColor = AmberAccent,
+                    onPlayPause = {
+                        if (!isCdRunning) {
+                            val safeSecs = if (totalCdSecs > 0) totalCdSecs else 1800
+                            TimerEngine.startStudySession(
+                                subjectId = currentSubject?.id ?: 0L,
+                                topicId = currentTopic?.id ?: 0L,
+                                subjectName = currentSubject?.name ?: "General Task",
+                                topicName = currentTopic?.name ?: "Countdown Focus",
+                                type = TimerType.COUNTDOWN,
+                                durationMinutes = (safeSecs / 60).coerceAtLeast(1),
+                                durationSeconds = safeSecs
+                            )
+                        } else if (snapshot.state == TimerState.STUDYING) {
+                            TimerEngine.pause()
+                        } else if (snapshot.state == TimerState.PAUSED) {
+                            TimerEngine.resume()
+                        }
+                    },
+                    onEndSession = { TimerEngine.stop() },
+                    onReset = { TimerEngine.reset() },
+                    onQuietModeToggle = {
+                        if (snapshot.isQuietMode) TimerEngine.exitQuietMode() else TimerEngine.enterQuietMode()
+                    },
+                    onSetTimer = onOpenSetTimerDialog,
+                    modifier = Modifier
+                        .weight(0.57f)
+                        .fillMaxHeight()
+                )
+            }
+            3 -> { // STOPWATCH (No progress border, plain thin grey border)
+                val isSwActive = stopwatchSnapshot.isRunning || stopwatchSnapshot.isPaused
+                val timeDisplay = if (isSwActive || stopwatchSnapshot.elapsedMillis > 0) stopwatchSnapshot.formattedDisplay() else "00:00:00"
+                val (hhMm, ss) = splitLandscapeDigits(timeDisplay)
+                LandscapeRectangleTimerCard(
+                    modeLabel = "STOPWATCH",
+                    timeHoursMinutes = hhMm,
+                    timeSeconds = ss,
+                    hasProgress = false,
+                    progressFraction = 0f,
+                    isActive = isSwActive,
+                    isRunning = stopwatchSnapshot.isRunning,
+                    isPaused = stopwatchSnapshot.isPaused,
+                    isStopwatch = true,
+                    accentColor = CyanAccent,
+                    onPlayPause = {
+                        if (!stopwatchSnapshot.isRunning && !stopwatchSnapshot.isPaused) {
+                            StopwatchEngine.start(
+                                subjectId = currentSubject?.id ?: 0L,
+                                subjectName = currentSubject?.name ?: "Stopwatch",
+                                topicId = currentTopic?.id ?: 0L,
+                                topicName = currentTopic?.name ?: "Open Study"
+                            )
+                        } else if (stopwatchSnapshot.isRunning) {
+                            StopwatchEngine.pause()
+                        } else {
+                            StopwatchEngine.resume()
+                        }
+                    },
+                    onEndSession = { StopwatchEngine.stop() },
+                    onReset = { StopwatchEngine.reset() },
+                    onLap = { StopwatchEngine.recordLap() },
+                    modifier = Modifier
+                        .weight(0.57f)
+                        .fillMaxHeight()
+                )
+            }
+            else -> { // BREAKS
+                val isBreakRunning = snapshot.state.isBreak
+                val timeDisplay = if (isBreakRunning) snapshot.formattedActiveDisplay() else "05:00"
+                val (hhMm, ss) = splitLandscapeDigits(timeDisplay)
+                LandscapeRectangleTimerCard(
+                    modeLabel = if (isBreakRunning) snapshot.state.name.replace("_", " ") else "BREAK",
+                    timeHoursMinutes = hhMm,
+                    timeSeconds = ss,
+                    hasProgress = true,
+                    progressFraction = if (isBreakRunning) snapshot.progressFraction else 0f,
+                    isActive = isBreakRunning,
+                    isRunning = isBreakRunning && snapshot.state != TimerState.PAUSED,
+                    isPaused = isBreakRunning && snapshot.state == TimerState.PAUSED,
+                    isQuietMode = snapshot.isQuietMode,
+                    accentColor = EmeraldAccent,
+                    onPlayPause = {
+                        if (isBreakRunning) {
+                            if (snapshot.state == TimerState.PAUSED) TimerEngine.resume() else TimerEngine.pause()
+                        } else {
+                            TimerEngine.startBreak(BreakType.SHORT_BREAK, 5)
+                        }
+                    },
+                    onEndSession = { TimerEngine.stop() },
+                    onReset = { TimerEngine.reset() },
+                    onQuietModeToggle = {
+                        if (snapshot.isQuietMode) TimerEngine.exitQuietMode() else TimerEngine.enterQuietMode()
+                    },
+                    modifier = Modifier
+                        .weight(0.57f)
+                        .fillMaxHeight()
+                )
+            }
+        }
+
+        // RIGHT COLUMN (about 43%): Tabs, description, compact subject, strip, content
+        Column(
+            modifier = Modifier
+                .weight(0.43f)
+                .fillMaxHeight(),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // 1. Single row of 5 short tabs across the top, equal width
+            TabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = CharcoalCard,
+                contentColor = AmberAccent,
+                indicator = { tabPositions ->
+                    if (selectedTab < tabPositions.size) {
+                        TabRowDefaults.SecondaryIndicator(
+                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                            color = AmberAccent,
+                            height = 2.dp
+                        )
+                    }
+                },
+                divider = {},
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+            ) {
+                tabTitles.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = { onSelectTab(index) },
+                        text = {
+                            Text(
+                                text = title,
+                                fontSize = 11.sp,
+                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
+                                color = if (selectedTab == index) AmberAccent else TextSecondary,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        },
+                        modifier = Modifier.testTag("landscape_timer_tab_$index")
+                    )
+                }
+            }
+
+            // 2. One-line short description
+            Text(
+                text = descriptionText,
+                fontSize = 11.sp,
+                color = TextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 2.dp)
+            )
+
+            // 3. Compact Subject/Task button (tabs 0..3)
+            if (selectedTab != 4) {
+                val subName = currentSubject?.name
+                val topName = currentTopic?.name
+                val buttonText = if (!subName.isNullOrBlank() && !topName.isNullOrBlank()) {
+                    "$subName • $topName ▾"
+                } else if (!subName.isNullOrBlank()) {
+                    "$subName ▾"
+                } else {
+                    "Select Subject/Task ▾"
+                }
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = CharcoalCard,
+                    border = BorderStroke(1.dp, CharcoalBorder),
+                    onClick = onOpenSubjectSheet,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(34.dp)
+                        .testTag("landscape_compact_subject_button")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = buttonText,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            // 4. Slim strip for OTHER running timer (shown only when another timer runs)
+            if (selectedTab in 0..2 || selectedTab == 4) {
+                if (stopwatchSnapshot.isRunning || stopwatchSnapshot.isPaused) {
+                    OtherTimerRunningStrip(
+                        title = "Stopwatch ${stopwatchSnapshot.formattedDisplay()} ${if (stopwatchSnapshot.isRunning) "running" else "paused"}",
+                        isRunning = stopwatchSnapshot.isRunning,
+                        accentColor = CyanAccent,
+                        onTapText = { onSelectTab(3) },
+                        onPauseResume = {
+                            if (stopwatchSnapshot.isRunning) StopwatchEngine.pause() else StopwatchEngine.resume()
+                        },
+                        onStop = { StopwatchEngine.stop() }
+                    )
+                }
+            } else if (selectedTab == 3) {
+                if (snapshot.state.isActive) {
+                    OtherTimerRunningStrip(
+                        title = "${snapshot.timerType.displayName} ${snapshot.formattedActiveDisplay()} ${if (snapshot.state == TimerState.STUDYING) "running" else "paused"}",
+                        isRunning = (snapshot.state == TimerState.STUDYING),
+                        accentColor = AmberAccent,
+                        onTapText = {
+                            onSelectTab(
+                                when (snapshot.timerType) {
+                                    TimerType.POMODORO -> 1
+                                    TimerType.COUNTDOWN -> 2
+                                    else -> 0
+                                }
+                            )
+                        },
+                        onPauseResume = {
+                            if (snapshot.state == TimerState.STUDYING) TimerEngine.pause() else TimerEngine.resume()
+                        },
+                        onStop = { TimerEngine.stop() }
+                    )
+                }
+            }
+
+            // 5. Tab specific content area
+            when (selectedTab) {
+                3 -> {
+                    // Stopwatch Lap List (scrollable)
+                    if (stopwatchSnapshot.laps.isNotEmpty()) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            items(stopwatchSnapshot.laps.asReversed()) { lap ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(CharcoalCard)
+                                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Lap ${lap.lapNumber}", color = TextSecondary, fontSize = 11.sp)
+                                    Text(
+                                        formatMillisToLapDisplay(lap.lapDurationMillis),
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        color = CyanAccent,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("No laps recorded. Tap Lap while running.", color = TextMuted, fontSize = 11.sp)
+                        }
+                    }
+                }
+                4 -> {
+                    // Break choices: Short 5 min, Long 15 min, Lunch 30 min
+                    val breakPresets = listOf(
+                        Triple("Short", 5, BreakType.SHORT_BREAK),
+                        Triple("Long", 15, BreakType.LONG_BREAK),
+                        Triple("Lunch", 30, BreakType.CUSTOM_BREAK)
+                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        breakPresets.forEach { (name, mins, type) ->
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = CharcoalCard,
+                                border = BorderStroke(1.dp, CharcoalBorder),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 10.dp, vertical = 2.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text("$name Break", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                        Text("$mins min", fontSize = 10.sp, color = TextSecondary)
+                                    }
+                                    Button(
+                                        onClick = { TimerEngine.startBreak(type, mins) },
+                                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldAccent, contentColor = Color.Black),
+                                        shape = RoundedCornerShape(6.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                                        modifier = Modifier.height(28.dp)
+                                    ) {
+                                        Text("START", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                else -> {
+                    // Tabs 0, 1, 2: Compact details card
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = CharcoalCard,
+                        border = BorderStroke(1.dp, CharcoalBorder),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(10.dp),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = when (selectedTab) {
+                                    0 -> "$sessionDurationMinutes min Session Target"
+                                    1 -> "$pomodoroStudyMinutes m study / $pomodoroBreakMinutes m rest • $pomodoroCycles cycles"
+                                    else -> if (totalCdSecs > 0) "${totalCdSecs / 60}m ${totalCdSecs % 60}s Target" else "Quick 30m Countdown"
+                                },
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = TextPrimary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Use Set Timer under the card to adjust.",
+                                fontSize = 10.sp,
+                                color = TextMuted
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

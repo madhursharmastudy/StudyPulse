@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
@@ -24,6 +25,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -110,6 +112,9 @@ fun StudyWatchRootApp() {
         app.repository.getOrCreateTodayGoal()
     }
 
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
     StudyWatchTheme(
         isAmoled = settings.appTheme != "Light",
         themeName = settings.appTheme,
@@ -121,8 +126,8 @@ fun StudyWatchRootApp() {
                 containerColor = Color.Transparent,
             contentWindowInsets = WindowInsets.systemBars,
             bottomBar = {
-                // Secondary navigation bar only when user is navigating secondary feature tabs
-                if (!isViewingLogBook && currentTab != NavigationTab.WATCH && snapshot.state != TimerState.EYE_REST && snapshot.state != TimerState.WATER_BREAK) {
+                // Secondary navigation bar only in portrait mode when user is navigating secondary feature tabs
+                if (!isLandscape && !isViewingLogBook && currentTab != NavigationTab.WATCH && snapshot.state != TimerState.EYE_REST && snapshot.state != TimerState.WATER_BREAK) {
                     NavigationBar(
                         containerColor = DarkCard,
                         contentColor = TextPrimary,
@@ -155,6 +160,44 @@ fun StudyWatchRootApp() {
                     .consumeWindowInsets(innerPadding)
                     .imePadding()
             ) {
+                Row(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // Left Navigation Rail in Landscape mode (64-72dp wide)
+                    if (isLandscape && !isViewingLogBook && !isManagingSubjects && snapshot.state != TimerState.EYE_REST && snapshot.state != TimerState.WATER_BREAK) {
+                        NavigationRail(
+                            containerColor = DarkCard,
+                            contentColor = TextPrimary,
+                            modifier = Modifier
+                                .width(68.dp)
+                                .fillMaxHeight()
+                                .testTag("main_landscape_nav_rail")
+                        ) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            NavigationTab.entries.forEach { tab ->
+                                NavigationRailItem(
+                                    selected = currentTab == tab,
+                                    onClick = { currentTab = tab },
+                                    icon = { Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(20.dp)) },
+                                    label = { Text(tab.label, fontSize = 10.sp, maxLines = 1) },
+                                    colors = NavigationRailItemDefaults.colors(
+                                        selectedIconColor = StudyAccent,
+                                        selectedTextColor = StudyAccent,
+                                        indicatorColor = Color(0x33FFA640),
+                                        unselectedIconColor = TextMuted,
+                                        unselectedTextColor = TextMuted
+                                    ),
+                                    modifier = Modifier.testTag("nav_rail_${tab.name.lowercase()}")
+                                )
+                            }
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                    ) {
                 // Main Screen Navigation Router
                 if (isViewingLogBook) {
                     LogBookScreen(
@@ -383,6 +426,8 @@ fun StudyWatchRootApp() {
                         }
                     }
                 }
+            }
+        }
 
                 // Fullscreen Overlay for 20-20-20 Eye Care
                 AnimatedVisibility(
