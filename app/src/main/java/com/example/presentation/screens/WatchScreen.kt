@@ -1945,7 +1945,7 @@ fun LandscapeCurrentClockCard(
 
     val cal = Calendar.getInstance().apply { timeInMillis = currentTimeMillis }
     val timeFormat = if (settings.use24HourFormat) "HH:mm" else "hh:mm"
-    val amPm = if (settings.use24HourFormat) "" else SimpleDateFormat("a", Locale.getDefault()).format(cal.time)
+    val amPm = if (settings.use24HourFormat) "" else SimpleDateFormat("a", Locale.US).format(cal.time).uppercase()
     val hhMm = SimpleDateFormat(timeFormat, Locale.getDefault()).format(cal.time)
     val dateWeekday = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(cal.time)
 
@@ -1970,16 +1970,16 @@ fun LandscapeCurrentClockCard(
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
                 )
             }
-            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon on the left (about 40dp circle)
+            // Icon on the left (about 34dp circle)
             Box(
                 modifier = Modifier
-                    .size(38.dp)
+                    .size(34.dp)
                     .clip(CircleShape)
                     .background(Color(0x33FFA640)),
                 contentAlignment = Alignment.Center
@@ -1988,11 +1988,11 @@ fun LandscapeCurrentClockCard(
                     imageVector = Icons.Default.Schedule,
                     contentDescription = "Clock",
                     tint = AmberAccent,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(6.dp))
 
             // Two stacked lines
             Column(
@@ -2081,13 +2081,13 @@ fun LandscapeEyeRestCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Icon on the left (about 40dp circle)
+                // Icon on the left
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
+                        .size(34.dp)
                         .clip(CircleShape)
                         .background(Color(0x3300D675)),
                     contentAlignment = Alignment.Center
@@ -2096,11 +2096,11 @@ fun LandscapeEyeRestCard(
                         imageVector = Icons.Default.Visibility,
                         contentDescription = "Eye Rest",
                         tint = EyeCareAccent,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
 
                 // Line 1: Eye Rest in, Line 2: Countdown big & bold green
                 Column(
@@ -2185,13 +2185,13 @@ fun LandscapeWaterStretchCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Icon on the left (about 40dp circle)
+                // Icon on the left
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
+                        .size(34.dp)
                         .clip(CircleShape)
                         .background(Color(0x3300B4FF)),
                     contentAlignment = Alignment.Center
@@ -2200,11 +2200,11 @@ fun LandscapeWaterStretchCard(
                         imageVector = Icons.Default.LocalDrink,
                         contentDescription = "Water Break",
                         tint = WaterAccent,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
 
                 // Line 1: Water & Stretch in, Line 2: Countdown big & bold blue
                 Column(
@@ -2216,6 +2216,7 @@ fun LandscapeWaterStretchCard(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         color = TextSecondary,
+                        letterSpacing = (-0.3).sp,
                         maxLines = 1,
                         softWrap = false
                     )
@@ -2301,13 +2302,13 @@ fun LandscapeBottomStrip(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                    .padding(start = 8.dp, end = 26.dp, top = 2.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Icon on the left (about 40dp circle)
+                // Icon on the left (about 34dp circle)
                 Box(
                     modifier = Modifier
-                        .size(38.dp)
+                        .size(34.dp)
                         .clip(CircleShape)
                         .background(Color(0x33FFA640)),
                     contentAlignment = Alignment.Center
@@ -2316,32 +2317,35 @@ fun LandscapeBottomStrip(
                         imageVector = Icons.Default.MenuBook,
                         contentDescription = "Subject and Topic",
                         tint = StudyAccent,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
 
-                // Three stacked lines
+                // Three stacked lines (tight line spacing, proper sizes per requirement 11)
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
                         text = "Study",
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         color = TextSecondary,
                         maxLines = 1,
-                        softWrap = false
+                        softWrap = false,
+                        lineHeight = 13.sp
                     )
                     Text(
                         text = "${totalMins}m / ${targetMins}m",
-                        fontSize = 15.sp,
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary,
                         maxLines = 1,
-                        softWrap = false
+                        softWrap = false,
+                        letterSpacing = (-0.5).sp,
+                        lineHeight = 19.sp
                     )
                     Text(
                         text = "Breaks $breaksToday • $subjectTopicPart",
@@ -2349,20 +2353,16 @@ fun LandscapeBottomStrip(
                         fontWeight = FontWeight.Medium,
                         color = TextSecondary,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 12.sp
                     )
                 }
-
-                // ">" arrow on the far right
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = "Select Subject",
-                    tint = AmberAccent,
-                    modifier = Modifier.size(20.dp)
-                )
             }
 
-            // Progress line at bottom (study done / daily target)
+            // 6dp gap between last text line and progress line (requirement 10)
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Progress line at very bottom, in its own space (requirement 10)
             LinearProgressIndicator(
                 progress = { summaryProgress },
                 modifier = Modifier
@@ -2374,5 +2374,16 @@ fun LandscapeBottomStrip(
                 trackColor = Color(0xFF26190E)
             )
         }
+
+        // ">" arrow on far right of card, vertically centered, aligned properly, never on top of text (requirement 9)
+        Icon(
+            imageVector = Icons.Default.ChevronRight,
+            contentDescription = "Select Subject",
+            tint = AmberAccent,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 4.dp)
+                .size(18.dp)
+        )
     }
 }

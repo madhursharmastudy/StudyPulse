@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -45,43 +46,85 @@ fun TimerDigitsDisplay(
     isStopwatch: Boolean = false,
     fontSize: TextUnit = 52.sp,
     textColor: Color = Color.White,
+    isHomeStyle: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        verticalAlignment = Alignment.Bottom,
-        horizontalArrangement = Arrangement.Center,
-        modifier = modifier
-    ) {
-        // Hours and Minutes: BIG and bold
-        Text(
-            text = hoursMinutes,
-            fontSize = fontSize,
-            fontWeight = FontWeight.Black,
-            fontFamily = FontFamily.Monospace,
-            letterSpacing = (-1).sp,
-            color = textColor,
-            maxLines = 1,
-            softWrap = false
-        )
-        // Seconds: SMALL, dim placed after them (larger on Stopwatch)
-        if (seconds.isNotEmpty()) {
-            val secondsFontSize = if (isStopwatch) {
-                (fontSize.value * 0.55f).sp
-            } else {
-                (fontSize.value * 0.38f).coerceAtLeast(14f).sp
-            }
-            val secondsColor = if (isStopwatch) CyanAccent else Color.White.copy(alpha = 0.55f)
-            val bottomPadding = (fontSize.value * 0.12f).dp
+    if (isHomeStyle) {
+        // Landscape Home style: vertically stretched tall digits, seconds at bottom-right just below the last digit's bottom line
+        Box(
+            modifier = modifier.wrapContentSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            // Hours and Minutes: Stretched vertically (scaleY = 1.36f) keeping exact same width
             Text(
-                text = seconds,
-                fontSize = secondsFontSize,
-                fontWeight = FontWeight.Bold,
+                text = hoursMinutes,
+                fontSize = fontSize,
+                fontWeight = FontWeight.Black,
                 fontFamily = FontFamily.Monospace,
-                color = secondsColor,
+                letterSpacing = (-1).sp,
+                color = textColor,
                 maxLines = 1,
                 softWrap = false,
-                modifier = Modifier.padding(bottom = bottomPadding)
+                modifier = Modifier.graphicsLayer(scaleY = 1.36f)
             )
+
+            // Seconds: positioned at bottom-right of big digits, just below last digit's bottom line
+            if (seconds.isNotEmpty()) {
+                val secondsFontSize = (fontSize.value * 0.28f).coerceIn(13f, 22f).sp
+                Text(
+                    text = seconds,
+                    fontSize = secondsFontSize,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    color = Color.White.copy(alpha = 0.55f),
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(
+                            x = (fontSize.value * 0.16f).dp,
+                            y = (fontSize.value * 0.22f).dp
+                        )
+                )
+            }
+        }
+    } else {
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.Center,
+            modifier = modifier
+        ) {
+            // Hours and Minutes: BIG and bold
+            Text(
+                text = hoursMinutes,
+                fontSize = fontSize,
+                fontWeight = FontWeight.Black,
+                fontFamily = FontFamily.Monospace,
+                letterSpacing = (-1).sp,
+                color = textColor,
+                maxLines = 1,
+                softWrap = false
+            )
+            // Seconds: SMALL, dim placed after them (larger on Stopwatch)
+            if (seconds.isNotEmpty()) {
+                val secondsFontSize = if (isStopwatch) {
+                    (fontSize.value * 0.55f).sp
+                } else {
+                    (fontSize.value * 0.38f).coerceAtLeast(14f).sp
+                }
+                val secondsColor = if (isStopwatch) CyanAccent else Color.White.copy(alpha = 0.55f)
+                val bottomPadding = (fontSize.value * 0.12f).dp
+                Text(
+                    text = seconds,
+                    fontSize = secondsFontSize,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    color = secondsColor,
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier.padding(bottom = bottomPadding)
+                )
+            }
         }
     }
 }
@@ -281,23 +324,25 @@ fun LandscapeRectangleTimerCard(
                     seconds = timeSeconds,
                     isStopwatch = isStopwatch,
                     fontSize = dynamicFontSize,
-                    textColor = Color.White
+                    textColor = Color.White,
+                    isHomeStyle = useHomeStyle
                 )
             }
 
             if (useHomeStyle) {
-                // Home Screen: Play button and "Set Timer" button side-by-side with at least 16dp gap, centered
+                // Home Screen: Pause button, End Session, Reset and Quiet Mode stay in ONE line, centered, equal gaps
+                // Real buttons (outlined style, rounded corners, proper padding), at least 12dp bottom padding
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                        .padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (showPlayButton) {
                         Box(
                             modifier = Modifier
-                                .size(46.dp)
+                                .size(44.dp)
                                 .clip(CircleShape)
                                 .background(if (isRunning) Color(0x33FFA640) else accentColor)
                                 .clickable(
@@ -334,33 +379,67 @@ fun LandscapeRectangleTimerCard(
                             Text("Set Timer", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
                     } else {
-                        TextButton(
+                        OutlinedButton(
                             onClick = onEndSession,
-                            colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
-                            modifier = Modifier.testTag("landscape_end_session")
+                            border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.55f)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = Color(0x18FFFFFF),
+                                contentColor = TextSecondary
+                            ),
+                            modifier = Modifier
+                                .height(38.dp)
+                                .testTag("landscape_end_session")
                         ) {
-                            Text("End Session", fontSize = 12.sp)
+                            Text("End Session", fontSize = 12.sp, fontWeight = FontWeight.Medium)
                         }
-                        TextButton(
+
+                        OutlinedButton(
                             onClick = onReset,
-                            colors = ButtonDefaults.textButtonColors(contentColor = TextMuted),
-                            modifier = Modifier.testTag("landscape_reset")
+                            border = BorderStroke(1.dp, TextMuted.copy(alpha = 0.5f)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = Color(0x12FFFFFF),
+                                contentColor = TextMuted
+                            ),
+                            modifier = Modifier
+                                .height(38.dp)
+                                .testTag("landscape_reset")
                         ) {
-                            Text("Reset", fontSize = 12.sp)
+                            Text("Reset", fontSize = 12.sp, fontWeight = FontWeight.Medium)
                         }
+
                         if (isRunning) {
-                            TextButton(
+                            OutlinedButton(
                                 onClick = onQuietModeToggle,
-                                colors = ButtonDefaults.textButtonColors(contentColor = AmberAccent),
-                                modifier = Modifier.testTag("landscape_quiet_mode")
+                                border = BorderStroke(1.dp, AmberAccent.copy(alpha = 0.75f)),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = Color(0x22FFA640),
+                                    contentColor = AmberAccent
+                                ),
+                                modifier = Modifier
+                                    .height(38.dp)
+                                    .testTag("landscape_quiet_mode")
                             ) {
                                 Text("Quiet Mode", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         } else if (isQuietMode) {
-                            TextButton(
+                            OutlinedButton(
                                 onClick = onQuietModeToggle,
-                                colors = ButtonDefaults.textButtonColors(contentColor = EmeraldAccent),
-                                modifier = Modifier.testTag("landscape_resume")
+                                border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.75f)),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = Color(0x2200D675),
+                                    contentColor = EmeraldAccent
+                                ),
+                                modifier = Modifier
+                                    .height(38.dp)
+                                    .testTag("landscape_resume")
                             ) {
                                 Text("Resume", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
