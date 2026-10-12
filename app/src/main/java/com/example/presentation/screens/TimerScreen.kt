@@ -1743,22 +1743,14 @@ fun SetCountdownTimerDialog(
 private fun formatMinutesToHHMMSS(minutes: Int): String {
     val h = minutes / 60
     val m = minutes % 60
-    return if (h > 0) {
-        String.format(java.util.Locale.getDefault(), "%02d:%02d:00", h, m)
-    } else {
-        String.format(java.util.Locale.getDefault(), "%02d:00", m)
-    }
+    return String.format(java.util.Locale.getDefault(), "%02d:%02d:00", h, m)
 }
 
 private fun formatTotalSecondsToDisplay(totalSecs: Int): String {
     val h = totalSecs / 3600
     val m = (totalSecs % 3600) / 60
     val s = totalSecs % 60
-    return if (h > 0) {
-        String.format(java.util.Locale.getDefault(), "%02d:%02d:%02d", h, m, s)
-    } else {
-        String.format(java.util.Locale.getDefault(), "%02d:%02d", m, s)
-    }
+    return String.format(java.util.Locale.getDefault(), "%02d:%02d:%02d", h, m, s)
 }
 
 private fun formatMillisToLapDisplay(millis: Long): String {
@@ -1820,7 +1812,7 @@ fun LandscapeTimerScreen(
             0 -> { // SESSION
                 val isSessionRunning = snapshot.state.isActive && snapshot.timerType == TimerType.STUDY_SESSION
                 val timeDisplay = if (isSessionRunning) snapshot.formattedActiveDisplay() else formatMinutesToHHMMSS(sessionDurationMinutes)
-                val (hhMm, ss) = splitLandscapeDigits(timeDisplay)
+                val (hhMm, ss) = formatTimeToHHMMSS(timeDisplay)
                 LandscapeRectangleTimerCard(
                     modeLabel = "SESSION",
                     timeHoursMinutes = hhMm,
@@ -1862,7 +1854,7 @@ fun LandscapeTimerScreen(
             1 -> { // POMODORO
                 val isPomoRunning = snapshot.state.isActive && snapshot.timerType == TimerType.POMODORO
                 val timeDisplay = if (isPomoRunning) snapshot.formattedActiveDisplay() else formatMinutesToHHMMSS(pomodoroStudyMinutes)
-                val (hhMm, ss) = splitLandscapeDigits(timeDisplay)
+                val (hhMm, ss) = formatTimeToHHMMSS(timeDisplay)
                 val phase = if (snapshot.state.isBreak) "REST" else "FOCUS"
                 val modeLabel = if (isPomoRunning) {
                     "POMODORO • $phase ${snapshot.currentPomodoroCycle} / ${snapshot.totalPomodoroCycles}"
@@ -1914,7 +1906,7 @@ fun LandscapeTimerScreen(
             2 -> { // COUNTDOWN
                 val isCdRunning = snapshot.state.isActive && snapshot.timerType == TimerType.COUNTDOWN
                 val timeDisplay = if (isCdRunning) snapshot.formattedActiveDisplay() else formatTotalSecondsToDisplay(totalCdSecs)
-                val (hhMm, ss) = splitLandscapeDigits(timeDisplay)
+                val (hhMm, ss) = formatTimeToHHMMSS(timeDisplay)
                 LandscapeRectangleTimerCard(
                     modeLabel = "COUNTDOWN",
                     timeHoursMinutes = hhMm,
@@ -1958,7 +1950,7 @@ fun LandscapeTimerScreen(
             3 -> { // STOPWATCH (No progress border, plain thin grey border)
                 val isSwActive = stopwatchSnapshot.isRunning || stopwatchSnapshot.isPaused
                 val timeDisplay = if (isSwActive || stopwatchSnapshot.elapsedMillis > 0) stopwatchSnapshot.formattedDisplay() else "00:00:00"
-                val (hhMm, ss) = splitLandscapeDigits(timeDisplay)
+                val (hhMm, ss) = formatTimeToHHMMSS(timeDisplay)
                 LandscapeRectangleTimerCard(
                     modeLabel = "STOPWATCH",
                     timeHoursMinutes = hhMm,
@@ -1994,8 +1986,8 @@ fun LandscapeTimerScreen(
             }
             else -> { // BREAKS
                 val isBreakRunning = snapshot.state.isBreak
-                val timeDisplay = if (isBreakRunning) snapshot.formattedActiveDisplay() else "05:00"
-                val (hhMm, ss) = splitLandscapeDigits(timeDisplay)
+                val timeDisplay = if (isBreakRunning) snapshot.formattedActiveDisplay() else "00:05:00"
+                val (hhMm, ss) = formatTimeToHHMMSS(timeDisplay)
                 LandscapeRectangleTimerCard(
                     modeLabel = if (isBreakRunning) snapshot.state.name.replace("_", " ") else "BREAK",
                     timeHoursMinutes = hhMm,

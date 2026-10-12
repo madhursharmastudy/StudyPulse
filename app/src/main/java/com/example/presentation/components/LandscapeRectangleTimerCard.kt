@@ -56,7 +56,9 @@ fun TimerDigitsDisplay(
             fontWeight = FontWeight.Black,
             fontFamily = FontFamily.Monospace,
             letterSpacing = (-1).sp,
-            color = textColor
+            color = textColor,
+            maxLines = 1,
+            softWrap = false
         )
         // Seconds: SMALL, dim placed after them (larger on Stopwatch)
         if (seconds.isNotEmpty()) {
@@ -73,6 +75,8 @@ fun TimerDigitsDisplay(
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
                 color = secondsColor,
+                maxLines = 1,
+                softWrap = false,
                 modifier = Modifier.padding(bottom = bottomPadding)
             )
         }
@@ -197,8 +201,13 @@ fun LandscapeRectangleTimerCard(
             }
             .padding(horizontal = 14.dp, vertical = 6.dp)
     ) {
-        // Calculate big font size so HH:MM fills about 90% of card width
-        val dynamicFontSize = (maxWidth.value * 0.20f).coerceIn(46f, 66f).sp
+        // Calculate big font size so digits fill most of card width (~88-90%) and height
+        val availableWidth = (maxWidth.value - 28f).coerceAtLeast(100f)
+        val availableHeight = (maxHeight.value - 100f).coerceAtLeast(40f)
+        val widthFactor = if (isStopwatch) 4.1f else 3.8f
+        val widthBasedSize = (availableWidth * 0.88f) / widthFactor
+        val heightBasedSize = availableHeight * 0.90f
+        val dynamicFontSize = minOf(widthBasedSize, heightBasedSize).coerceIn(46f, 105f).sp
 
         Column(
             modifier = Modifier.fillMaxSize(),
