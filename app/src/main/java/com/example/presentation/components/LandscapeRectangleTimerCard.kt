@@ -55,7 +55,7 @@ fun TimerDigitsDisplay(
             modifier = modifier.wrapContentSize(),
             contentAlignment = Alignment.Center
         ) {
-            // Hours and Minutes: Stretched vertically (scaleY = 1.36f) keeping exact same width
+            // Hours and Minutes: Stretched vertically (scaleY = 1.38f) target ~470px height (48% card height)
             Text(
                 text = hoursMinutes,
                 fontSize = fontSize,
@@ -65,12 +65,12 @@ fun TimerDigitsDisplay(
                 color = textColor,
                 maxLines = 1,
                 softWrap = false,
-                modifier = Modifier.graphicsLayer(scaleY = 1.36f)
+                modifier = Modifier.graphicsLayer(scaleY = 1.38f)
             )
 
             // Seconds: positioned at bottom-right of big digits, just below last digit's bottom line
             if (seconds.isNotEmpty()) {
-                val secondsFontSize = (fontSize.value * 0.28f).coerceIn(13f, 22f).sp
+                val secondsFontSize = (fontSize.value * 0.14f).coerceIn(16f, 24f).sp
                 Text(
                     text = seconds,
                     fontSize = secondsFontSize,
@@ -82,8 +82,8 @@ fun TimerDigitsDisplay(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .offset(
-                            x = (fontSize.value * 0.16f).dp,
-                            y = (fontSize.value * 0.22f).dp
+                            x = (fontSize.value * 0.10f).dp,
+                            y = (fontSize.value * 0.18f).dp
                         )
                 )
             }
@@ -276,13 +276,20 @@ fun LandscapeRectangleTimerCard(
                 bottom = if (useHomeStyle) 14.dp else 14.dp
             )
     ) {
-        // Auto-scale big font size: HH:MM fills width & 55-60% inner height, no cut/wrap
+        // Auto-scale big font size:
+        // Landscape Home Style: 1.23x larger digits (target 78% card width ~1200px, 48% card height ~470px)
+        val homeTargetFontSize = minOf(
+            (maxWidth.value * 0.78f) / 2.55f,
+            (maxHeight.value * 0.48f) / 0.98f
+        ).coerceIn(48f, 220f).sp
+
         val innerWidth = (maxWidth.value - 24f).coerceAtLeast(100f)
         val innerHeight = (maxHeight.value - (if (useHomeStyle) 76f else 22f)).coerceAtLeast(100f)
-        val widthBasedSize = if (useHomeStyle) (innerWidth * 0.90f) / 3.42f else (innerWidth * 0.90f) / 2.9f
+        val widthBasedSize = (innerWidth * 0.90f) / 2.9f
         val maxSafeWidthSize = (innerWidth * 0.97f) / (if (isStopwatch) 3.9f else 3.56f)
-        val heightBasedSize = if (useHomeStyle) innerHeight * 0.60f else (innerHeight * 0.58f) / 1.15f
-        val dynamicFontSize = minOf(widthBasedSize, maxSafeWidthSize, heightBasedSize).coerceIn(48f, 150f).sp
+        val heightBasedSize = (innerHeight * 0.58f) / 1.15f
+        val defaultFontSize = minOf(widthBasedSize, maxSafeWidthSize, heightBasedSize).coerceIn(48f, 150f).sp
+        val dynamicFontSize = if (useHomeStyle) homeTargetFontSize else defaultFontSize
 
         Column(
             modifier = Modifier.fillMaxSize(),

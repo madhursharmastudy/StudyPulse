@@ -325,19 +325,21 @@ fun WatchScreen(
             // 5. Two Compact Cards: Eye Rest and Water Break
             val isWaterOrStretchOn = snapshot.waterReminderEnabled || snapshot.stretchBreakEnabled
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Max),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 EyeRestMiniCard(
                     snapshot = snapshot,
-                    modifier = if (isWaterOrStretchOn) Modifier.weight(1f) else Modifier.fillMaxWidth()
+                    modifier = if (isWaterOrStretchOn) Modifier.weight(1f).fillMaxHeight() else Modifier.fillMaxWidth()
                 )
 
                 if (isWaterOrStretchOn) {
                     WaterBreakMiniCard(
                         snapshot = snapshot,
                         label = waterStretchLabel,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f).fillMaxHeight()
                     )
                 }
             }
@@ -723,10 +725,18 @@ fun WaterBreakMiniCard(
                 Spacer(modifier = Modifier.width(10.dp))
 
                 Column {
+                    var titleFontSize by remember(label) { mutableStateOf(10.5.sp) }
                     Text(
                         text = label,
-                        fontSize = 11.sp,
-                        color = TextSecondary
+                        fontSize = titleFontSize,
+                        maxLines = 1,
+                        softWrap = false,
+                        color = TextSecondary,
+                        onTextLayout = { result ->
+                            if (result.hasVisualOverflow && titleFontSize > 8.sp) {
+                                titleFontSize = (titleFontSize.value - 0.5f).sp
+                            }
+                        }
                     )
                     Text(
                         text = snapshot.formattedWaterCountdown(),
