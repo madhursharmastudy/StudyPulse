@@ -23,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -1674,10 +1675,10 @@ fun LandscapeWatchScreen(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 14.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // LEFT COLUMN (about 57% width): Big Rectangle Timer Card
+        // LEFT COLUMN (takes about 78% width): Wide Study Timer Card
         LandscapeRectangleTimerCard(
             modeLabel = if (snapshot.state.isBreak) "BREAK" else "STUDY TIMER",
             timeHoursMinutes = hhMm,
@@ -1689,6 +1690,7 @@ fun LandscapeWatchScreen(
             isPaused = snapshot.state == TimerState.PAUSED,
             isQuietMode = snapshot.isQuietMode,
             accentColor = StudyAccent,
+            useHomeStyle = true,
             onPlayPause = {
                 when (snapshot.state) {
                     TimerState.IDLE -> {
@@ -1710,47 +1712,44 @@ fun LandscapeWatchScreen(
             },
             onSetTimer = onShowSetTimerDialog,
             modifier = Modifier
-                .weight(0.57f)
+                .weight(0.78f)
                 .fillMaxHeight()
         )
 
-        // RIGHT COLUMN (about 43% width): Stacked at top with 8dp gap, fixed heights (56dp/40dp)
+        // RIGHT COLUMN (about 22% width): 4 equal cards stacked with 8dp gap
         Column(
             modifier = Modifier
-                .weight(0.43f)
+                .weight(0.22f)
                 .fillMaxHeight(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalAlignment = Alignment.Start
+            horizontalAlignment = Alignment.End
         ) {
-            // 1. TOP: CURRENT CLOCK card (fixed 56dp height)
+            // 1. CLOCK card (equal height)
             LandscapeCurrentClockCard(
                 settings = settings,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .weight(1f)
             )
 
-            // 2. EYE REST card (fixed 56dp height)
+            // 2. EYE REST card (equal height)
             LandscapeEyeRestCard(
                 snapshot = snapshot,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .weight(1f)
             )
 
-            // 3. WATER & STRETCH card (hidden if both OFF, fixed 56dp height)
-            val isWaterOrStretchOn = snapshot.waterReminderEnabled || snapshot.stretchBreakEnabled
-            if (isWaterOrStretchOn) {
-                LandscapeWaterStretchCard(
-                    snapshot = snapshot,
-                    label = waterStretchLabel,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                )
-            }
+            // 3. WATER & STRETCH card (equal height)
+            LandscapeWaterStretchCard(
+                snapshot = snapshot,
+                label = waterStretchLabel,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            )
 
-            // 4. ONE slim summary strip (fixed 40dp height)
+            // 4. SUMMARY card (equal height)
             LandscapeBottomStrip(
                 todayGoal = todayGoal,
                 breaksToday = StretchBreakManager.getTodayBreakCount(),
@@ -1759,7 +1758,7 @@ fun LandscapeWatchScreen(
                 onSubjectClick = onSubjectClick,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(40.dp)
+                    .weight(1f)
             )
         }
     }
@@ -1946,76 +1945,94 @@ fun LandscapeCurrentClockCard(
 
     val cal = Calendar.getInstance().apply { timeInMillis = currentTimeMillis }
     val timeFormat = if (settings.use24HourFormat) "HH:mm" else "hh:mm"
-    val amPm = if (settings.use24HourFormat) "" else " " + SimpleDateFormat("a", Locale.getDefault()).format(cal.time)
+    val amPm = if (settings.use24HourFormat) "" else SimpleDateFormat("a", Locale.getDefault()).format(cal.time)
     val hhMm = SimpleDateFormat(timeFormat, Locale.getDefault()).format(cal.time)
-    val ss = if (settings.showSeconds) ":" + SimpleDateFormat("ss", Locale.getDefault()).format(cal.time) else ""
     val dateWeekday = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(cal.time)
 
-    Card(
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        border = BorderStroke(1.5.dp, CharcoalBorder),
+    Box(
         modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(Color(0xFF22140A), Color(0xFF130B05))
+                )
+            )
+            .border(
+                BorderStroke(1.dp, Color(0x66FFA640)),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .drawBehind {
+                drawRoundRect(
+                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                        colors = listOf(Color(0x28FFA640), Color.Transparent),
+                        radius = size.maxDimension * 0.9f
+                    ),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
+                )
+            }
+            .padding(horizontal = 10.dp, vertical = 6.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Icon (24dp) on the left + date & weekday
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clip(CircleShape)
-                        .background(Color(0x22FFA640)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Schedule,
-                        contentDescription = "Clock",
-                        tint = AmberAccent,
-                        modifier = Modifier.size(15.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
+            // Icon on the left (about 40dp circle)
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(Color(0x33FFA640)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Schedule,
+                    contentDescription = "Clock",
+                    tint = AmberAccent,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // Two stacked lines
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
+                // Line 1: Date
                 Text(
                     text = dateWeekday,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextSecondary
+                    color = TextSecondary,
+                    maxLines = 1,
+                    softWrap = false
                 )
-            }
-
-            // Time: HH:MM big (26sp), seconds small (:SS), AM/PM small
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    text = hhMm,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
-                    color = Color.White
-                )
-                if (ss.isNotEmpty()) {
+                // Line 2: Time big & bold, with AM/PM next to it
+                Row(
+                    verticalAlignment = Alignment.Bottom
+                ) {
                     Text(
-                        text = ss,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
+                        text = hhMm,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace,
-                        color = Color.White.copy(alpha = 0.55f),
-                        modifier = Modifier.padding(bottom = 2.dp)
+                        color = Color.White,
+                        maxLines = 1,
+                        softWrap = false
                     )
-                }
-                if (amPm.isNotEmpty()) {
-                    Text(
-                        text = amPm,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AmberAccent,
-                        modifier = Modifier.padding(bottom = 3.dp, start = 2.dp)
-                    )
+                    if (amPm.isNotEmpty()) {
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            text = amPm,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = AmberAccent,
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier.padding(bottom = 2.dp)
+                        )
+                    }
                 }
             }
         }
@@ -2023,7 +2040,7 @@ fun LandscapeCurrentClockCard(
 }
 
 /**
- * Right Column Card 2: Eye Rest Card (transparent outline, icon in circle, big time, thin progress bar)
+ * Right Column Card 2: Eye Rest Card (dark green gradient + glow, 16dp rounded, 3dp progress bar)
  */
 @Composable
 fun LandscapeEyeRestCard(
@@ -2034,11 +2051,27 @@ fun LandscapeEyeRestCard(
     val remainingSecs = snapshot.nextEyeRestCountdownSeconds
     val eyeProgress = ((totalEyeIntervalSecs - remainingSecs).toFloat() / totalEyeIntervalSecs.toFloat()).coerceIn(0f, 1f)
 
-    Card(
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        border = BorderStroke(1.5.dp, Color(0x6600D675)),
+    Box(
         modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(Color(0xFF091F14), Color(0xFF04120A))
+                )
+            )
+            .border(
+                BorderStroke(1.dp, Color(0x6600D675)),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .drawBehind {
+                drawRoundRect(
+                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                        colors = listOf(Color(0x2800D675), Color.Transparent),
+                        radius = size.maxDimension * 0.9f
+                    ),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
+                )
+            }
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -2048,57 +2081,69 @@ fun LandscapeEyeRestCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(Color(0x2200D675)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Visibility,
-                            contentDescription = "Eye Rest",
-                            tint = EyeCareAccent,
-                            modifier = Modifier.size(15.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
+                // Icon on the left (about 40dp circle)
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(Color(0x3300D675)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Visibility,
+                        contentDescription = "Eye Rest",
+                        tint = EyeCareAccent,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Line 1: Eye Rest in, Line 2: Countdown big & bold green
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
                     Text(
                         text = "Eye Rest in",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextSecondary
+                        color = TextSecondary,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Text(
+                        text = snapshot.formattedEyeCountdown(),
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace,
+                        color = EyeCareAccent,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
-                Text(
-                    text = snapshot.formattedEyeCountdown(),
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
-                    color = EyeCareAccent
-                )
             }
+
+            // Progress line at bottom (3dp thick, 8dp side padding, 6dp bottom padding)
             LinearProgressIndicator(
                 progress = { eyeProgress },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 6.dp, end = 6.dp, bottom = 4.dp)
+                    .padding(start = 8.dp, end = 8.dp, bottom = 6.dp)
                     .height(3.dp)
                     .clip(RoundedCornerShape(2.dp)),
                 color = EyeCareAccent,
-                trackColor = Color(0xFF222222)
+                trackColor = Color(0xFF14241B)
             )
         }
     }
 }
 
 /**
- * Right Column Card 3: Water + Stretch Card (transparent outline, icon in circle, big time, blue progress bar)
+ * Right Column Card 3: Water + Stretch Card (dark blue gradient + glow, 16dp rounded, 3dp progress bar)
  */
 @Composable
 fun LandscapeWaterStretchCard(
@@ -2110,11 +2155,27 @@ fun LandscapeWaterStretchCard(
     val remainingSecs = snapshot.nextWaterCountdownSeconds
     val waterProgress = ((totalWaterIntervalSecs - remainingSecs).toFloat() / totalWaterIntervalSecs.toFloat()).coerceIn(0f, 1f)
 
-    Card(
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        border = BorderStroke(1.5.dp, Color(0x6600B4FF)),
+    Box(
         modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(Color(0xFF091C2E), Color(0xFF040F1A))
+                )
+            )
+            .border(
+                BorderStroke(1.dp, Color(0x6600B4FF)),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .drawBehind {
+                drawRoundRect(
+                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                        colors = listOf(Color(0x2800B4FF), Color.Transparent),
+                        radius = size.maxDimension * 0.9f
+                    ),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
+                )
+            }
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -2124,58 +2185,70 @@ fun LandscapeWaterStretchCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(Color(0x2200B4FF)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.LocalDrink,
-                            contentDescription = "Water Break",
-                            tint = WaterAccent,
-                            modifier = Modifier.size(15.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = label,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = TextSecondary
+                // Icon on the left (about 40dp circle)
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(Color(0x3300B4FF)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocalDrink,
+                        contentDescription = "Water Break",
+                        tint = WaterAccent,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
-                Text(
-                    text = snapshot.formattedWaterCountdown(),
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace,
-                    color = WaterAccent
-                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Line 1: Water & Stretch in, Line 2: Countdown big & bold blue
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "Water & Stretch in",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextSecondary,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Text(
+                        text = snapshot.formattedWaterCountdown(),
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace,
+                        color = WaterAccent,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
             }
+
+            // Progress line at bottom (3dp thick, 8dp side padding, 6dp bottom padding)
             LinearProgressIndicator(
                 progress = { waterProgress },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 6.dp, end = 6.dp, bottom = 4.dp)
+                    .padding(start = 8.dp, end = 8.dp, bottom = 6.dp)
                     .height(3.dp)
                     .clip(RoundedCornerShape(2.dp)),
                 color = WaterAccent,
-                trackColor = Color(0xFF222222)
+                trackColor = Color(0xFF10202F)
             )
         }
     }
 }
 
 /**
- * Right Column Item 4: Single slim strip (transparent outline, 40dp height)
- * Icon (24dp), "Study 0m / 360m • Breaks 0 • English Lit..." with ellipsis only at very end
+ * Right Column Item 4: Summary Card (dark orange/brown gradient + glow, 16dp rounded, 3dp progress bar)
+ * Icon on left, 3 stacked lines, ">" arrow on far right, opens Subject selection
  */
 @Composable
 fun LandscapeBottomStrip(
@@ -2188,55 +2261,117 @@ fun LandscapeBottomStrip(
 ) {
     val totalMins = todayGoal?.achievedMinutes ?: 0
     val targetMins = todayGoal?.targetMinutes ?: 360
+    val summaryProgress = if (targetMins > 0) (totalMins.toFloat() / targetMins.toFloat()).coerceIn(0f, 1f) else 0f
 
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = Color.Transparent,
-        border = BorderStroke(1.5.dp, CharcoalBorder),
+    val subjectTopicPart = if (topicName.isNotBlank() && topicName != "General") {
+        "$subjectName • $topicName"
+    } else {
+        subjectName
+    }
+
+    Box(
         modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(Color(0xFF22140A), Color(0xFF130B05))
+                )
+            )
+            .border(
+                BorderStroke(1.dp, Color(0x66FFA640)),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .drawBehind {
+                drawRoundRect(
+                    brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                        colors = listOf(Color(0x28FFA640), Color.Transparent),
+                        radius = size.maxDimension * 0.9f
+                    ),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
+                )
+            }
             .clickable(onClick = onSubjectClick)
             .testTag("landscape_bottom_strip")
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Icon (24dp) in circle
-            Box(
+            Row(
                 modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(Color(0x22FFA640)),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Icon on the left (about 40dp circle)
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(Color(0x33FFA640)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MenuBook,
+                        contentDescription = "Subject and Topic",
+                        tint = StudyAccent,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Three stacked lines
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "Study",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextSecondary,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Text(
+                        text = "${totalMins}m / ${targetMins}m",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Text(
+                        text = "Breaks $breaksToday • $subjectTopicPart",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // ">" arrow on the far right
                 Icon(
-                    imageVector = Icons.Default.MenuBook,
-                    contentDescription = "Subject and Topic",
-                    tint = StudyAccent,
-                    modifier = Modifier.size(15.dp)
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = "Select Subject",
+                    tint = AmberAccent,
+                    modifier = Modifier.size(20.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
 
-            // Full text on one line, ellipsizing only at the very end
-            val subjectTopicPart = if (topicName.isNotBlank() && topicName != "General") {
-                "$subjectName • $topicName"
-            } else {
-                subjectName
-            }
-            val summaryText = "Study ${totalMins}m / ${targetMins}m • Breaks $breaksToday • $subjectTopicPart ▾"
-            Text(
-                text = summaryText,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                color = TextPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
+            // Progress line at bottom (study done / daily target)
+            LinearProgressIndicator(
+                progress = { summaryProgress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 8.dp, end = 8.dp, bottom = 6.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp)),
+                color = StudyAccent,
+                trackColor = Color(0xFF26190E)
             )
         }
     }

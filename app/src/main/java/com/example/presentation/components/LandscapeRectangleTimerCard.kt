@@ -16,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
@@ -126,6 +128,7 @@ fun LandscapeRectangleTimerCard(
     isStopwatch: Boolean = false,
     showPlayButton: Boolean = true,
     accentColor: Color = StudyAccent,
+    useHomeStyle: Boolean = false,
     onPlayPause: () -> Unit,
     onEndSession: () -> Unit,
     onReset: () -> Unit,
@@ -134,12 +137,35 @@ fun LandscapeRectangleTimerCard(
     onLap: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val cornerRadius = 3.dp
-    val strokeWidthDp = if (hasProgress) 5.5.dp else 1.5.dp
+    val cornerRadius = if (useHomeStyle) 24.dp else 3.dp
+    val strokeWidthDp = if (hasProgress) (if (useHomeStyle) 3.5.dp else 5.5.dp) else 1.5.dp
 
     BoxWithConstraints(
         modifier = modifier
             .clip(RoundedCornerShape(cornerRadius))
+            .then(
+                if (useHomeStyle) {
+                    Modifier
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(Color(0xFF22140A), Color(0xFF130B05), Color(0xFF0C0703))
+                            )
+                        )
+                        .drawBehind {
+                            // Soft orange glow at the bottom of the card
+                            drawRoundRect(
+                                brush = Brush.verticalGradient(
+                                    0.55f to Color.Transparent,
+                                    1.0f to Color(0x35FFA640)
+                                ),
+                                size = size,
+                                cornerRadius = CornerRadius(24.dp.toPx())
+                            )
+                        }
+                } else {
+                    Modifier
+                }
+            )
             .drawBehind {
                 val strokePx = strokeWidthDp.toPx()
                 val halfStroke = strokePx / 2f
@@ -167,8 +193,8 @@ fun LandscapeRectangleTimerCard(
                     close()
                 }
 
-                // 1. Faint grey track along card border
-                val trackColor = Color(0xFF262626)
+                // 1. Border track along card border
+                val trackColor = if (useHomeStyle) Color(0x44FFA640) else Color(0xFF262626)
                 drawPath(
                     path = basePath,
                     color = trackColor,
@@ -200,31 +226,50 @@ fun LandscapeRectangleTimerCard(
                     }
                 }
             }
-            .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 14.dp)
+            .padding(
+                start = if (useHomeStyle) 16.dp else 12.dp,
+                end = if (useHomeStyle) 16.dp else 12.dp,
+                top = if (useHomeStyle) 10.dp else 8.dp,
+                bottom = if (useHomeStyle) 14.dp else 14.dp
+            )
     ) {
         // Auto-scale big font size: HH:MM fills width & 55-60% inner height, no cut/wrap
         val innerWidth = (maxWidth.value - 24f).coerceAtLeast(100f)
-        val innerHeight = (maxHeight.value - 22f).coerceAtLeast(100f)
-        val widthBasedSize = (innerWidth * 0.90f) / 2.9f
+        val innerHeight = (maxHeight.value - (if (useHomeStyle) 76f else 22f)).coerceAtLeast(100f)
+        val widthBasedSize = if (useHomeStyle) (innerWidth * 0.90f) / 3.42f else (innerWidth * 0.90f) / 2.9f
         val maxSafeWidthSize = (innerWidth * 0.97f) / (if (isStopwatch) 3.9f else 3.56f)
-        val heightBasedSize = (innerHeight * 0.58f) / 1.15f
-        val dynamicFontSize = minOf(widthBasedSize, maxSafeWidthSize, heightBasedSize).coerceIn(48f, 120f).sp
+        val heightBasedSize = if (useHomeStyle) innerHeight * 0.60f else (innerHeight * 0.58f) / 1.15f
+        val dynamicFontSize = minOf(widthBasedSize, maxSafeWidthSize, heightBasedSize).coerceIn(48f, 150f).sp
 
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // 1. Mode Label on Top
-            Text(
-                text = modeLabel,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.5.sp,
-                color = if (isPaused) TextMuted else accentColor,
-                maxLines = 1,
-                modifier = Modifier.padding(top = 2.dp)
-            )
+            // 1. Mode Label on Top + small orange underline if Home screen
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(top = if (useHomeStyle) 4.dp else 2.dp)
+            ) {
+                Text(
+                    text = modeLabel,
+                    fontSize = if (useHomeStyle) 12.sp else 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = if (useHomeStyle) 2.sp else 1.5.sp,
+                    color = if (isPaused) TextMuted else accentColor,
+                    maxLines = 1
+                )
+                if (useHomeStyle) {
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(28.dp)
+                            .height(2.dp)
+                            .clip(RoundedCornerShape(1.dp))
+                            .background(accentColor)
+                    )
+                }
+            }
 
             // 2. Large Digits: vertically centered between mode label and play button
             Box(
@@ -240,120 +285,205 @@ fun LandscapeRectangleTimerCard(
                 )
             }
 
-            // 3. Play / Pause Button below digits
-            if (showPlayButton) {
-                Box(
+            if (useHomeStyle) {
+                // Home Screen: Play button and "Set Timer" button side-by-side with at least 16dp gap, centered
+                Row(
                     modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(if (isRunning) Color(0x33FFA640) else accentColor)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = onPlayPause
-                        )
-                        .testTag("landscape_timer_play_pause"),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .padding(bottom = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isRunning) "Pause" else "Start",
-                        tint = if (isRunning) accentColor else Color.Black,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            } else {
-                Spacer(modifier = Modifier.size(44.dp))
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // 4. Actions Row at the bottom
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(30.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (isStopwatch) {
-                    if (isActive) {
-                        TextButton(
-                            onClick = onEndSession,
-                            colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
-                            modifier = Modifier.testTag("landscape_sw_end")
+                    if (showPlayButton) {
+                        Box(
+                            modifier = Modifier
+                                .size(46.dp)
+                                .clip(CircleShape)
+                                .background(if (isRunning) Color(0x33FFA640) else accentColor)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = onPlayPause
+                                )
+                                .testTag("landscape_timer_play_pause"),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text("End Session", fontSize = 11.sp)
+                            Icon(
+                                imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = if (isRunning) "Pause" else "Start",
+                                tint = if (isRunning) accentColor else Color.Black,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
-                        TextButton(
-                            onClick = onReset,
-                            colors = ButtonDefaults.textButtonColors(contentColor = TextMuted),
-                            modifier = Modifier.testTag("landscape_sw_reset")
+                    }
+
+                    if (!isActive) {
+                        OutlinedButton(
+                            onClick = onSetTimer,
+                            border = BorderStroke(1.2.dp, StudyAccent.copy(alpha = 0.85f)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = Color.Transparent,
+                                contentColor = StudyAccent
+                            ),
+                            modifier = Modifier
+                                .height(38.dp)
+                                .testTag("landscape_set_timer")
                         ) {
-                            Text("Reset", fontSize = 11.sp)
-                        }
-                        if (isRunning) {
-                            TextButton(
-                                onClick = onLap,
-                                colors = ButtonDefaults.textButtonColors(contentColor = CyanAccent),
-                                modifier = Modifier.testTag("landscape_sw_lap")
-                            ) {
-                                Text("Lap", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
+                            Text("Set Timer", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
                     } else {
-                        Text("Tap Play to start", color = TextMuted, fontSize = 11.sp)
-                    }
-                } else {
-                    if (isActive) {
                         TextButton(
                             onClick = onEndSession,
                             colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
                             modifier = Modifier.testTag("landscape_end_session")
                         ) {
-                            Text("End Session", fontSize = 11.sp)
+                            Text("End Session", fontSize = 12.sp)
                         }
                         TextButton(
                             onClick = onReset,
                             colors = ButtonDefaults.textButtonColors(contentColor = TextMuted),
                             modifier = Modifier.testTag("landscape_reset")
                         ) {
-                            Text("Reset", fontSize = 11.sp)
+                            Text("Reset", fontSize = 12.sp)
+                        }
+                        if (isRunning) {
+                            TextButton(
+                                onClick = onQuietModeToggle,
+                                colors = ButtonDefaults.textButtonColors(contentColor = AmberAccent),
+                                modifier = Modifier.testTag("landscape_quiet_mode")
+                            ) {
+                                Text("Quiet Mode", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        } else if (isQuietMode) {
+                            TextButton(
+                                onClick = onQuietModeToggle,
+                                colors = ButtonDefaults.textButtonColors(contentColor = EmeraldAccent),
+                                modifier = Modifier.testTag("landscape_resume")
+                            ) {
+                                Text("Resume", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
+                }
+            } else {
+                // Default style for Timers tabs
+                // 3. Play / Pause Button below digits
+                if (showPlayButton) {
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(if (isRunning) Color(0x33FFA640) else accentColor)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onPlayPause
+                            )
+                            .testTag("landscape_timer_play_pause"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isRunning) "Pause" else "Start",
+                            tint = if (isRunning) accentColor else Color.Black,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                } else {
+                    Spacer(modifier = Modifier.size(44.dp))
+                }
 
-                    if (isRunning) {
-                        TextButton(
-                            onClick = onQuietModeToggle,
-                            colors = ButtonDefaults.textButtonColors(contentColor = AmberAccent),
-                            modifier = Modifier.testTag("landscape_quiet_mode")
-                        ) {
-                            Text("Quiet Mode", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // 4. Actions Row at the bottom
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(30.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (isStopwatch) {
+                        if (isActive) {
+                            TextButton(
+                                onClick = onEndSession,
+                                colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
+                                modifier = Modifier.testTag("landscape_sw_end")
+                            ) {
+                                Text("End Session", fontSize = 11.sp)
+                            }
+                            TextButton(
+                                onClick = onReset,
+                                colors = ButtonDefaults.textButtonColors(contentColor = TextMuted),
+                                modifier = Modifier.testTag("landscape_sw_reset")
+                            ) {
+                                Text("Reset", fontSize = 11.sp)
+                            }
+                            if (isRunning) {
+                                TextButton(
+                                    onClick = onLap,
+                                    colors = ButtonDefaults.textButtonColors(contentColor = CyanAccent),
+                                    modifier = Modifier.testTag("landscape_sw_lap")
+                                ) {
+                                    Text("Lap", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        } else {
+                            Text("Tap Play to start", color = TextMuted, fontSize = 11.sp)
                         }
-                    } else if (isQuietMode) {
-                        TextButton(
-                            onClick = onQuietModeToggle,
-                            colors = ButtonDefaults.textButtonColors(contentColor = EmeraldAccent),
-                            modifier = Modifier.testTag("landscape_resume")
-                        ) {
-                            Text("Resume", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    } else {
+                        if (isActive) {
+                            TextButton(
+                                onClick = onEndSession,
+                                colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
+                                modifier = Modifier.testTag("landscape_end_session")
+                            ) {
+                                Text("End Session", fontSize = 11.sp)
+                            }
+                            TextButton(
+                                onClick = onReset,
+                                colors = ButtonDefaults.textButtonColors(contentColor = TextMuted),
+                                modifier = Modifier.testTag("landscape_reset")
+                            ) {
+                                Text("Reset", fontSize = 11.sp)
+                            }
                         }
-                    } else if (!isActive) {
-                        // Proper outlined button for Set Timer, fully inside card
-                        OutlinedButton(
-                            onClick = onSetTimer,
-                            border = BorderStroke(1.dp, StudyAccent.copy(alpha = 0.8f)),
-                            shape = RoundedCornerShape(6.dp),
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 2.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = Color.Transparent,
-                                contentColor = StudyAccent
-                            ),
-                            modifier = Modifier
-                                .height(28.dp)
-                                .testTag("landscape_set_timer")
-                        ) {
-                            Text("Set Timer", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+
+                        if (isRunning) {
+                            TextButton(
+                                onClick = onQuietModeToggle,
+                                colors = ButtonDefaults.textButtonColors(contentColor = AmberAccent),
+                                modifier = Modifier.testTag("landscape_quiet_mode")
+                            ) {
+                                Text("Quiet Mode", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        } else if (isQuietMode) {
+                            TextButton(
+                                onClick = onQuietModeToggle,
+                                colors = ButtonDefaults.textButtonColors(contentColor = EmeraldAccent),
+                                modifier = Modifier.testTag("landscape_resume")
+                            ) {
+                                Text("Resume", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        } else if (!isActive) {
+                            // Proper outlined button for Set Timer, fully inside card
+                            OutlinedButton(
+                                onClick = onSetTimer,
+                                border = BorderStroke(1.dp, StudyAccent.copy(alpha = 0.8f)),
+                                shape = RoundedCornerShape(6.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 2.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = Color.Transparent,
+                                    contentColor = StudyAccent
+                                ),
+                                modifier = Modifier
+                                    .height(28.dp)
+                                    .testTag("landscape_set_timer")
+                            ) {
+                                Text("Set Timer", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            }
                         }
                     }
                 }
