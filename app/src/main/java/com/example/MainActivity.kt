@@ -60,7 +60,7 @@ class MainActivity : ComponentActivity() {
 }
 
 enum class NavigationTab(val label: String, val icon: ImageVector) {
-    WATCH("Watch", Icons.Default.Schedule),
+    WATCH("Clock", Icons.Default.Schedule),
     TIMER("Timers", Icons.Default.Timer),
     PLANNER("Planner", Icons.Default.CalendarMonth),
     STATS("Stats", Icons.Default.BarChart),

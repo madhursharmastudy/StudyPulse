@@ -1,5 +1,6 @@
 package com.example.presentation.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -199,15 +200,15 @@ fun LandscapeRectangleTimerCard(
                     }
                 }
             }
-            .padding(horizontal = 14.dp, vertical = 6.dp)
+            .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 14.dp)
     ) {
-        // Calculate big font size so digits fill most of card width (~88-90%) and height
-        val availableWidth = (maxWidth.value - 28f).coerceAtLeast(100f)
-        val availableHeight = (maxHeight.value - 100f).coerceAtLeast(40f)
-        val widthFactor = if (isStopwatch) 4.1f else 3.8f
-        val widthBasedSize = (availableWidth * 0.88f) / widthFactor
-        val heightBasedSize = availableHeight * 0.90f
-        val dynamicFontSize = minOf(widthBasedSize, heightBasedSize).coerceIn(46f, 105f).sp
+        // Auto-scale big font size: HH:MM fills width & 55-60% inner height, no cut/wrap
+        val innerWidth = (maxWidth.value - 24f).coerceAtLeast(100f)
+        val innerHeight = (maxHeight.value - 22f).coerceAtLeast(100f)
+        val widthBasedSize = (innerWidth * 0.90f) / 2.9f
+        val maxSafeWidthSize = (innerWidth * 0.97f) / (if (isStopwatch) 3.9f else 3.56f)
+        val heightBasedSize = (innerHeight * 0.58f) / 1.15f
+        val dynamicFontSize = minOf(widthBasedSize, maxSafeWidthSize, heightBasedSize).coerceIn(48f, 120f).sp
 
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -225,14 +226,19 @@ fun LandscapeRectangleTimerCard(
                 modifier = Modifier.padding(top = 2.dp)
             )
 
-            // 2. Large Digits (center, bright white, HH:MM big, seconds small)
-            TimerDigitsDisplay(
-                hoursMinutes = timeHoursMinutes,
-                seconds = timeSeconds,
-                isStopwatch = isStopwatch,
-                fontSize = dynamicFontSize,
-                textColor = Color.White
-            )
+            // 2. Large Digits: vertically centered between mode label and play button
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                TimerDigitsDisplay(
+                    hoursMinutes = timeHoursMinutes,
+                    seconds = timeSeconds,
+                    isStopwatch = isStopwatch,
+                    fontSize = dynamicFontSize,
+                    textColor = Color.White
+                )
+            }
 
             // 3. Play / Pause Button below digits
             if (showPlayButton) {
@@ -259,6 +265,8 @@ fun LandscapeRectangleTimerCard(
             } else {
                 Spacer(modifier = Modifier.size(44.dp))
             }
+
+            Spacer(modifier = Modifier.height(6.dp))
 
             // 4. Actions Row at the bottom
             Row(
@@ -331,12 +339,21 @@ fun LandscapeRectangleTimerCard(
                             Text("Resume", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     } else if (!isActive) {
-                        TextButton(
+                        // Proper outlined button for Set Timer, fully inside card
+                        OutlinedButton(
                             onClick = onSetTimer,
-                            colors = ButtonDefaults.textButtonColors(contentColor = StudyAccent),
-                            modifier = Modifier.testTag("landscape_set_timer")
+                            border = BorderStroke(1.dp, StudyAccent.copy(alpha = 0.8f)),
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 2.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = Color.Transparent,
+                                contentColor = StudyAccent
+                            ),
+                            modifier = Modifier
+                                .height(28.dp)
+                                .testTag("landscape_set_timer")
                         ) {
-                            Text("Set Timer", fontSize = 11.sp)
+                            Text("Set Timer", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
