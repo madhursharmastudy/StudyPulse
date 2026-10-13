@@ -1791,7 +1791,7 @@ fun LandscapeTimerScreen(
     val totalCdSecs = (countdownHours * 3600) + (countdownMinutes * 60) + countdownSeconds
 
     // Tab labels and metadata
-    val tabTitles = listOf("Session", "Pomo", "Count", "Watch", "Break")
+    val tabTitles = listOf("Session", "Pomodoro", "Countdown", "Stopwatch", "Break")
     val descriptionText = when (selectedTab) {
         0 -> "Focus on one subject for a fixed time."
         1 -> "Study in cycles with short rests."
@@ -1999,6 +1999,8 @@ fun LandscapeTimerScreen(
                     isPaused = isBreakRunning && snapshot.state == TimerState.PAUSED,
                     isQuietMode = snapshot.isQuietMode,
                     showPlayButton = isBreakRunning,
+                    showSetTimer = false,
+                    endSessionLabel = if (isBreakRunning) "End Break" else "End Session",
                     accentColor = EmeraldAccent,
                     onPlayPause = {
                         if (isBreakRunning) {
@@ -2026,11 +2028,12 @@ fun LandscapeTimerScreen(
                 .fillMaxHeight(),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            // 1. Single row of 5 short tabs across the top, equal width
-            TabRow(
+            // 1. Horizontally scrollable row of 5 tabs across the top: full names in landscape
+            ScrollableTabRow(
                 selectedTabIndex = selectedTab,
                 containerColor = CharcoalCard,
                 contentColor = AmberAccent,
+                edgePadding = 0.dp,
                 indicator = { tabPositions ->
                     if (selectedTab < tabPositions.size) {
                         TabRowDefaults.SecondaryIndicator(
@@ -2056,7 +2059,8 @@ fun LandscapeTimerScreen(
                                 fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
                                 color = if (selectedTab == index) AmberAccent else TextSecondary,
                                 maxLines = 1,
-                                softWrap = false
+                                softWrap = false,
+                                modifier = Modifier.padding(horizontal = 12.dp)
                             )
                         },
                         modifier = Modifier.testTag("landscape_timer_tab_$index")
@@ -2111,6 +2115,39 @@ fun LandscapeTimerScreen(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
                         )
+                    }
+                }
+
+                // Target card directly below Subject dropdown with 8dp gap for Session, Pomodoro, Countdown (tabs 0..2)
+                if (selectedTab in 0..2) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = CharcoalCard,
+                        border = BorderStroke(1.dp, CharcoalBorder),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(28.dp)
+                            .testTag("landscape_target_card")
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 10.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Text(
+                                text = when (selectedTab) {
+                                    0 -> "Target $sessionDurationMinutes min"
+                                    1 -> "Target ${pomodoroStudyMinutes}m study / ${pomodoroBreakMinutes}m rest • $pomodoroCycles cycles"
+                                    else -> if (totalCdSecs > 0) "Target ${totalCdSecs / 60}m ${totalCdSecs % 60}s" else "Target 30 min"
+                                },
+                                fontSize = 11.sp,
+                                color = TextMuted,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }
@@ -2196,19 +2233,20 @@ fun LandscapeTimerScreen(
                     }
                 }
                 4 -> {
-                    // Break choices: Short 5 min, Long 15 min, Lunch 30 min (transparent outline, 56-64dp)
+                    // Break choices: Short 5 min, Long 15 min, Lunch 30 min (scrollable list with 16dp bottom padding)
                     val breakPresets = listOf(
                         Triple("Short", 5, BreakType.SHORT_BREAK),
                         Triple("Long", 15, BreakType.LONG_BREAK),
                         Triple("Lunch", 30, BreakType.LONG_BREAK)
                     )
-                    Column(
+                    LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        contentPadding = PaddingValues(bottom = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        breakPresets.forEach { (name, mins, type) ->
+                        items(breakPresets) { (name, mins, type) ->
                             val icon = when (name) {
                                 "Short" -> Icons.Default.Coffee
                                 "Long" -> Icons.Default.SelfImprovement
@@ -2220,7 +2258,7 @@ fun LandscapeTimerScreen(
                                 border = BorderStroke(1.dp, CharcoalBorder),
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .weight(1f)
+                                    .height(52.dp)
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -2232,7 +2270,7 @@ fun LandscapeTimerScreen(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Box(
                                             modifier = Modifier
-                                                .size(22.dp)
+                                                .size(24.dp)
                                                 .clip(CircleShape)
                                                 .background(Color(0x2200D675)),
                                             contentAlignment = Alignment.Center
@@ -2241,7 +2279,7 @@ fun LandscapeTimerScreen(
                                                 imageVector = icon,
                                                 contentDescription = "$name Break",
                                                 tint = EmeraldAccent,
-                                                modifier = Modifier.size(12.dp)
+                                                modifier = Modifier.size(14.dp)
                                             )
                                         }
                                         Spacer(modifier = Modifier.width(8.dp))
@@ -2265,24 +2303,12 @@ fun LandscapeTimerScreen(
                     }
                 }
                 else -> {
-                    // Small one-line target text (big empty card removed)
-                    Box(
+                    // Empty space below target card for Session, Pomodoro, Countdown
+                    Spacer(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = when (selectedTab) {
-                                0 -> "Target $sessionDurationMinutes min"
-                                1 -> "Target ${pomodoroStudyMinutes}m study / ${pomodoroBreakMinutes}m rest • $pomodoroCycles cycles"
-                                else -> if (totalCdSecs > 0) "Target ${totalCdSecs / 60}m ${totalCdSecs % 60}s" else "Target 30 min"
-                            },
-                            fontSize = 11.sp,
-                            color = TextMuted,
-                            maxLines = 1
-                        )
-                    }
+                            .weight(1f)
+                    )
                 }
             }
         }
