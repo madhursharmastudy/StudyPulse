@@ -436,12 +436,12 @@ private fun ExerciseStep(
         }
 
         TextButton(onClick = onSkipAll) {
-            Text("Skip all", color = TextMuted, fontSize = 12.sp)
+            Text("Skip all", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
         }
 
         // Disclaimer
         Text(
-            text = "General wellness tips, not medical advice. Dard ho to ruk jao.",
+            text = "General wellness tips, not medical advice. Stop if you feel any pain.",
             style = MaterialTheme.typography.labelSmall,
             color = TextMuted,
             textAlign = TextAlign.Center,

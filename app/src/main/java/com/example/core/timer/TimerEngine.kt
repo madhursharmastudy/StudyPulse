@@ -911,7 +911,9 @@ object TimerEngine {
 
         val eyeIntervalMillis = eyeStudyIntervalSeconds * 1000L
         val productiveSinceEye = (currentProductive - productiveStudyMillisAtLastEyeRest).coerceAtLeast(0)
-        val nextEyeSeconds = if (currentState == TimerState.EYE_REST) {
+        val nextEyeSeconds = if (!eyeCareEnabled) {
+            0L
+        } else if (currentState == TimerState.EYE_REST) {
             (segmentRemaining / 1000).coerceAtLeast(0)
         } else {
             ((eyeIntervalMillis - productiveSinceEye) / 1000).coerceAtLeast(0)
@@ -947,6 +949,7 @@ object TimerEngine {
             nextWaterCountdownSeconds = nextWaterSeconds,
             stretchBreakEnabled = stretchBreakEnabled,
             waterReminderEnabled = waterReminderEnabled,
+            eyeCareEnabled = eyeCareEnabled,
             isStretchOnlyBreak = (!waterReminderEnabled && stretchBreakEnabled),
             isCombinedBreak = (waterReminderEnabled && stretchBreakEnabled),
             currentPomodoroCycle = currentPomodoroCycle,

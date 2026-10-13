@@ -74,7 +74,7 @@ class StudyNotificationManager(private val context: Context) {
      * Plays short system alert tone and triggers haptic vibration based on current settings.
      */
     fun playAlertToneAndVibrate() {
-        if (TimerEngine.isQuietMode || !TimerEngine.notificationsEnabled) return
+        if (TimerEngine.isQuietMode) return
 
         // 1. System tone
         if (TimerEngine.soundEnabled) {
@@ -111,10 +111,10 @@ class StudyNotificationManager(private val context: Context) {
      * Notification & tone at START of any break (Eye, Water, Stretch, Short, Long, Lunch).
      */
     fun showBreakStartAlert(breakType: BreakType) {
-        if (TimerEngine.isQuietMode || !TimerEngine.notificationsEnabled) return
+        if (TimerEngine.isQuietMode) return
         playAlertToneAndVibrate()
 
-        if (!hasNotificationPermission()) return
+        if (!TimerEngine.notificationsEnabled || !hasNotificationPermission()) return
 
         val (title, body, iconRes) = when (breakType) {
             BreakType.EYE_REST -> Triple(
@@ -173,10 +173,10 @@ class StudyNotificationManager(private val context: Context) {
         // Break notification disappears automatically when that break ends
         cancelBreakAlerts()
 
-        if (TimerEngine.isQuietMode || !TimerEngine.notificationsEnabled) return
+        if (TimerEngine.isQuietMode) return
         playAlertToneAndVibrate()
 
-        if (!hasNotificationPermission()) return
+        if (!TimerEngine.notificationsEnabled || !hasNotificationPermission()) return
 
         val title = when (breakType) {
             BreakType.EYE_REST -> "👁 Eye Rest Finished"
@@ -211,7 +211,7 @@ class StudyNotificationManager(private val context: Context) {
      * Notification & tone when study session starts.
      */
     fun showSessionStartedTone() {
-        if (TimerEngine.isQuietMode || !TimerEngine.notificationsEnabled) return
+        if (TimerEngine.isQuietMode) return
         playAlertToneAndVibrate()
     }
 
@@ -219,10 +219,10 @@ class StudyNotificationManager(private val context: Context) {
      * Notification & tone when study session finishes.
      */
     fun showSessionCompletedNotification(snapshot: TimerSnapshot) {
-        if (TimerEngine.isQuietMode || !TimerEngine.notificationsEnabled) return
+        if (TimerEngine.isQuietMode) return
         playAlertToneAndVibrate()
 
-        if (!hasNotificationPermission()) return
+        if (!TimerEngine.notificationsEnabled || !hasNotificationPermission()) return
 
         val openAppIntent = Intent(context, MainActivity::class.java)
         val contentPendingIntent = PendingIntent.getActivity(

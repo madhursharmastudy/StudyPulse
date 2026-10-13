@@ -68,6 +68,14 @@ fun TimerScreen(
     onDeleteSubject: (Long) -> Unit = {},
     onUpdateTopic: (TopicEntity) -> Unit = {},
     onDeleteTopic: (Long) -> Unit = {},
+    initialSessionMinutes: Int = 50,
+    initialPomodoroStudyMinutes: Int = 25,
+    initialPomodoroBreakMinutes: Int = 5,
+    initialPomodoroCycles: Int = 4,
+    initialCountdownMinutes: Int = 30,
+    onSaveSessionMinutes: (Int) -> Unit = {},
+    onSavePomodoroSettings: (Int, Int, Int) -> Unit = { _, _, _ -> },
+    onSaveCountdownMinutes: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // 5 tabs with clean title case
@@ -92,16 +100,16 @@ fun TimerScreen(
     var showSetTimerDialog by remember { mutableStateOf(false) }
 
     // Session duration (minutes)
-    var sessionDurationMinutes by remember { mutableIntStateOf(50) }
+    var sessionDurationMinutes by remember(initialSessionMinutes) { mutableIntStateOf(initialSessionMinutes) }
 
     // Pomodoro settings
-    var pomodoroStudyMinutes by remember { mutableIntStateOf(25) }
-    var pomodoroBreakMinutes by remember { mutableIntStateOf(5) }
-    var pomodoroCycles by remember { mutableIntStateOf(4) }
+    var pomodoroStudyMinutes by remember(initialPomodoroStudyMinutes) { mutableIntStateOf(initialPomodoroStudyMinutes) }
+    var pomodoroBreakMinutes by remember(initialPomodoroBreakMinutes) { mutableIntStateOf(initialPomodoroBreakMinutes) }
+    var pomodoroCycles by remember(initialPomodoroCycles) { mutableIntStateOf(initialPomodoroCycles) }
 
     // Countdown settings (hours, minutes, seconds)
-    var countdownHours by remember { mutableIntStateOf(0) }
-    var countdownMinutes by remember { mutableIntStateOf(30) }
+    var countdownHours by remember(initialCountdownMinutes) { mutableIntStateOf(initialCountdownMinutes / 60) }
+    var countdownMinutes by remember(initialCountdownMinutes) { mutableIntStateOf(initialCountdownMinutes % 60) }
     var countdownSeconds by remember { mutableIntStateOf(0) }
 
     val configuration = LocalConfiguration.current
@@ -732,6 +740,7 @@ fun TimerScreen(
                 onDismiss = { showSetTimerDialog = false },
                 onApply = { minutes ->
                     sessionDurationMinutes = minutes
+                    onSaveSessionMinutes(minutes)
                     showSetTimerDialog = false
                 }
             )
@@ -744,6 +753,7 @@ fun TimerScreen(
                     pomodoroStudyMinutes = s
                     pomodoroBreakMinutes = b
                     pomodoroCycles = c
+                    onSavePomodoroSettings(s, b, c)
                     showSetTimerDialog = false
                 }
             )
@@ -756,6 +766,8 @@ fun TimerScreen(
                     countdownHours = h
                     countdownMinutes = m
                     countdownSeconds = s
+                    val totalMinutes = (h * 60) + m
+                    onSaveCountdownMinutes(if (totalMinutes > 0) totalMinutes else 1)
                     showSetTimerDialog = false
                 }
             )

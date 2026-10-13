@@ -46,7 +46,12 @@ data class AppSettings(
     val backgroundStyle: String = "Glow", // "Glow" (default) or "Pure black"
     val dailyTargetHours: Int = 6,
     val keepScreenOn: Boolean = true,
-    val debugModeActive: Boolean = false
+    val debugModeActive: Boolean = false,
+    val lastSessionMinutes: Int = 50,
+    val lastPomodoroStudyMinutes: Int = 25,
+    val lastPomodoroBreakMinutes: Int = 5,
+    val lastPomodoroCycles: Int = 4,
+    val lastCountdownMinutes: Int = 30
 )
 
 class SettingsRepository(private val context: Context) {
@@ -84,6 +89,11 @@ class SettingsRepository(private val context: Context) {
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val BACKGROUND_STYLE = stringPreferencesKey("background_style")
         val DEBUG_MODE = booleanPreferencesKey("debug_mode")
+        val LAST_SESSION_MINUTES = intPreferencesKey("last_session_minutes")
+        val LAST_POMODORO_STUDY_MINUTES = intPreferencesKey("last_pomodoro_study_minutes")
+        val LAST_POMODORO_BREAK_MINUTES = intPreferencesKey("last_pomodoro_break_minutes")
+        val LAST_POMODORO_CYCLES = intPreferencesKey("last_pomodoro_cycles")
+        val LAST_COUNTDOWN_MINUTES = intPreferencesKey("last_countdown_minutes")
     }
 
     val settingsFlow: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -164,7 +174,12 @@ class SettingsRepository(private val context: Context) {
             backgroundStyle = prefs[Keys.BACKGROUND_STYLE] ?: "Glow",
             dailyTargetHours = prefs[Keys.DAILY_TARGET_HOURS] ?: 6,
             keepScreenOn = prefs[Keys.KEEP_SCREEN_ON] ?: true,
-            debugModeActive = false
+            debugModeActive = false,
+            lastSessionMinutes = prefs[Keys.LAST_SESSION_MINUTES] ?: 50,
+            lastPomodoroStudyMinutes = prefs[Keys.LAST_POMODORO_STUDY_MINUTES] ?: 25,
+            lastPomodoroBreakMinutes = prefs[Keys.LAST_POMODORO_BREAK_MINUTES] ?: 5,
+            lastPomodoroCycles = prefs[Keys.LAST_POMODORO_CYCLES] ?: 4,
+            lastCountdownMinutes = prefs[Keys.LAST_COUNTDOWN_MINUTES] ?: 30
         )
     }
 
@@ -216,6 +231,14 @@ class SettingsRepository(private val context: Context) {
     suspend fun updateQuietModeActive(value: Boolean) = edit { it[Keys.IS_QUIET_MODE_ACTIVE] = value }
     suspend fun updateDailyTargetHours(hours: Int) = edit { it[Keys.DAILY_TARGET_HOURS] = hours }
     suspend fun updateKeepScreenOn(value: Boolean) = edit { it[Keys.KEEP_SCREEN_ON] = value }
+
+    suspend fun updateLastSessionMinutes(minutes: Int) = edit { it[Keys.LAST_SESSION_MINUTES] = minutes }
+    suspend fun updateLastPomodoroSettings(studyMinutes: Int, breakMinutes: Int, cycles: Int) = edit {
+        it[Keys.LAST_POMODORO_STUDY_MINUTES] = studyMinutes
+        it[Keys.LAST_POMODORO_BREAK_MINUTES] = breakMinutes
+        it[Keys.LAST_POMODORO_CYCLES] = cycles
+    }
+    suspend fun updateLastCountdownMinutes(minutes: Int) = edit { it[Keys.LAST_COUNTDOWN_MINUTES] = minutes }
 
     suspend fun toggleDebugMode(active: Boolean) {
         edit { it[Keys.DEBUG_MODE] = false }

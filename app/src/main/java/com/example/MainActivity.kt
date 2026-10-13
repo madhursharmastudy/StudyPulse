@@ -327,6 +327,20 @@ fun StudyWatchRootApp() {
                                 },
                                 onDeleteTopic = { id ->
                                     coroutineScope.launch { app.repository.deleteTopic(id) }
+                                },
+                                initialSessionMinutes = settings.lastSessionMinutes,
+                                initialPomodoroStudyMinutes = settings.lastPomodoroStudyMinutes,
+                                initialPomodoroBreakMinutes = settings.lastPomodoroBreakMinutes,
+                                initialPomodoroCycles = settings.lastPomodoroCycles,
+                                initialCountdownMinutes = settings.lastCountdownMinutes,
+                                onSaveSessionMinutes = { mins ->
+                                    coroutineScope.launch { app.settingsRepository.updateLastSessionMinutes(mins) }
+                                },
+                                onSavePomodoroSettings = { s, b, c ->
+                                    coroutineScope.launch { app.settingsRepository.updateLastPomodoroSettings(s, b, c) }
+                                },
+                                onSaveCountdownMinutes = { mins ->
+                                    coroutineScope.launch { app.settingsRepository.updateLastCountdownMinutes(mins) }
                                 }
                             )
                         }
@@ -394,6 +408,7 @@ fun StudyWatchRootApp() {
                                 onUpdateIncludeStandingExercises = { coroutineScope.launch { app.settingsRepository.updateIncludeStandingExercises(it) } },
                                 onUpdateSound = { coroutineScope.launch { app.settingsRepository.updateSoundEnabled(it) } },
                                 onUpdateVibration = { coroutineScope.launch { app.settingsRepository.updateVibrationEnabled(it) } },
+                                onUpdateNotificationsEnabled = { coroutineScope.launch { app.settingsRepository.updateNotificationsEnabled(it) } },
                                 onUpdateKeepScreenOn = { coroutineScope.launch { app.settingsRepository.updateKeepScreenOn(it) } },
                                 onToggleDebugMode = { coroutineScope.launch { app.settingsRepository.toggleDebugMode(it) } },
                                 onExportJsonClick = {
@@ -421,7 +436,9 @@ fun StudyWatchRootApp() {
                                     }
                                 },
                                 onOpenLogBook = { isViewingLogBook = true },
-                                onUpdateDailyTarget = { coroutineScope.launch { app.settingsRepository.updateDailyTargetHours(it) } }
+                                onUpdateDailyTarget = { coroutineScope.launch { app.settingsRepository.updateDailyTargetHours(it) } },
+                                onResetTodayStats = { coroutineScope.launch { app.repository.resetTodayStats() } },
+                                onClearAllData = { coroutineScope.launch { app.repository.clearAllData() } }
                             )
                         }
                     }

@@ -88,11 +88,14 @@ fun WatchScreen(
     var showSubjectPicker by remember { mutableStateOf(false) }
     var showSetTimerDialog by remember { mutableStateOf(false) }
 
-    // Keep screen on in Desk Clock Mode
-    DisposableEffect(settings.keepScreenOn) {
+    // F4: Keep screen awake ONLY while a timer is running
+    val isTimerRunning = (snapshot.state == TimerState.STUDYING || snapshot.state.isBreak)
+    DisposableEffect(settings.keepScreenOn, isTimerRunning) {
         val activity = context as? Activity
-        if (settings.keepScreenOn) {
+        if (settings.keepScreenOn && isTimerRunning) {
             activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
         onDispose {
             activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -322,25 +325,30 @@ fun WatchScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // 5. Two Compact Cards: Eye Rest and Water Break
+            // 5. Two Compact Cards: Eye Rest and Water Break (F1)
             val isWaterOrStretchOn = snapshot.waterReminderEnabled || snapshot.stretchBreakEnabled
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Max),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                EyeRestMiniCard(
-                    snapshot = snapshot,
-                    modifier = if (isWaterOrStretchOn) Modifier.weight(1f).fillMaxHeight() else Modifier.fillMaxWidth()
-                )
+            val isEyeCareOn = snapshot.eyeCareEnabled
+            if (isEyeCareOn || isWaterOrStretchOn) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Max),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (isEyeCareOn) {
+                        EyeRestMiniCard(
+                            snapshot = snapshot,
+                            modifier = if (isWaterOrStretchOn) Modifier.weight(1f).fillMaxHeight() else Modifier.fillMaxWidth()
+                        )
+                    }
 
-                if (isWaterOrStretchOn) {
-                    WaterBreakMiniCard(
-                        snapshot = snapshot,
-                        label = waterStretchLabel,
-                        modifier = Modifier.weight(1f).fillMaxHeight()
-                    )
+                    if (isWaterOrStretchOn) {
+                        WaterBreakMiniCard(
+                            snapshot = snapshot,
+                            label = waterStretchLabel,
+                            modifier = if (isEyeCareOn) Modifier.weight(1f).fillMaxHeight() else Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
 
@@ -1742,22 +1750,26 @@ fun LandscapeWatchScreen(
                     .weight(1f)
             )
 
-            // 2. EYE REST card (equal height)
-            LandscapeEyeRestCard(
-                snapshot = snapshot,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            )
+            // 2. EYE REST card (equal height) (F1: hidden when eyeCareEnabled is false)
+            if (snapshot.eyeCareEnabled) {
+                LandscapeEyeRestCard(
+                    snapshot = snapshot,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                )
+            }
 
             // 3. WATER & STRETCH card (equal height)
-            LandscapeWaterStretchCard(
-                snapshot = snapshot,
-                label = waterStretchLabel,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            )
+            if (snapshot.waterReminderEnabled || snapshot.stretchBreakEnabled) {
+                LandscapeWaterStretchCard(
+                    snapshot = snapshot,
+                    label = waterStretchLabel,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                )
+            }
 
             // 4. SUMMARY card (equal height)
             LandscapeBottomStrip(

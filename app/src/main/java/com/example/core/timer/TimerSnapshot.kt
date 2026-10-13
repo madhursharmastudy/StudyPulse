@@ -22,6 +22,7 @@ data class TimerSnapshot(
     val nextWaterCountdownSeconds: Long = 45 * 60L,
     val stretchBreakEnabled: Boolean = true,
     val waterReminderEnabled: Boolean = true,
+    val eyeCareEnabled: Boolean = true,
     val isStretchOnlyBreak: Boolean = false,
     val isCombinedBreak: Boolean = false,
     val currentPomodoroCycle: Int = 1,

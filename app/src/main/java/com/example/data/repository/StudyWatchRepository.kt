@@ -410,6 +410,41 @@ class StudyWatchRepository(private val dao: StudyWatchDao) {
         }
     }
 
+    suspend fun resetTodayStats() {
+        val today = getTodayDateString()
+        val calendar = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val startOfDay = calendar.timeInMillis
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+        val endOfDay = calendar.timeInMillis
+
+        dao.deleteStudySessionsBetween(startOfDay, endOfDay)
+        dao.deleteDailyGoalForDate(today)
+        dao.deleteBreakSessionsBetween(startOfDay, endOfDay)
+        dao.deleteEyeRestEventsBetween(startOfDay, endOfDay)
+        dao.deleteWaterEventsBetween(startOfDay, endOfDay)
+        AppLogger.i(LogFeature.Database, "Today's stats reset successfully ($today)")
+    }
+
+    suspend fun clearAllData() {
+        dao.clearAllStudySessions()
+        dao.deleteAllDailyGoals()
+        dao.deleteAllBreakSessions()
+        dao.deleteAllEyeRestEvents()
+        dao.deleteAllWaterEvents()
+        dao.deleteAllLapRecords()
+        dao.resetAllSubjectsStudyTime()
+        dao.resetAllTopicsStudyTime()
+        AppLogger.i(LogFeature.Database, "All study session and stats data cleared successfully")
+    }
+
     companion object {
         fun getTodayDateString(): String {
             val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())

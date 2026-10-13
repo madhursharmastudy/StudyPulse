@@ -209,4 +209,40 @@ interface StudyWatchDao {
 
     @Query("DELETE FROM topics")
     suspend fun clearAllTopics()
+
+    @Query("DELETE FROM study_sessions WHERE startTimestamp >= :startOfDay AND startTimestamp <= :endOfDay")
+    suspend fun deleteStudySessionsBetween(startOfDay: Long, endOfDay: Long)
+
+    @Query("DELETE FROM daily_goals WHERE dateString = :dateString")
+    suspend fun deleteDailyGoalForDate(dateString: String)
+
+    @Query("DELETE FROM break_sessions WHERE startTimestamp >= :startOfDay AND startTimestamp <= :endOfDay")
+    suspend fun deleteBreakSessionsBetween(startOfDay: Long, endOfDay: Long)
+
+    @Query("DELETE FROM eye_rest_events WHERE startTimestamp >= :startOfDay AND startTimestamp <= :endOfDay")
+    suspend fun deleteEyeRestEventsBetween(startOfDay: Long, endOfDay: Long)
+
+    @Query("DELETE FROM water_events WHERE timestamp >= :startOfDay AND timestamp <= :endOfDay")
+    suspend fun deleteWaterEventsBetween(startOfDay: Long, endOfDay: Long)
+
+    @Query("DELETE FROM daily_goals")
+    suspend fun deleteAllDailyGoals()
+
+    @Query("DELETE FROM break_sessions")
+    suspend fun deleteAllBreakSessions()
+
+    @Query("DELETE FROM eye_rest_events")
+    suspend fun deleteAllEyeRestEvents()
+
+    @Query("DELETE FROM water_events")
+    suspend fun deleteAllWaterEvents()
+
+    @Query("DELETE FROM lap_records")
+    suspend fun deleteAllLapRecords()
+
+    @Query("UPDATE subjects SET totalStudySeconds = 0")
+    suspend fun resetAllSubjectsStudyTime()
+
+    @Query("UPDATE topics SET totalStudySeconds = 0")
+    suspend fun resetAllTopicsStudyTime()
 }

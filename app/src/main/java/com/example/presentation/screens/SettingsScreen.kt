@@ -65,6 +65,8 @@ fun SettingsScreen(
     onExportTxtClick: () -> Unit = {},
     onOpenLogBook: () -> Unit,
     onUpdateDailyTarget: (Int) -> Unit = {},
+    onResetTodayStats: () -> Unit = {},
+    onClearAllData: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     AppBackground(modifier = modifier) {
@@ -99,6 +101,60 @@ fun SettingsScreen(
             containerColor = Color.Transparent,
             modifier = Modifier.fillMaxSize()
         ) { innerPadding ->
+        var showResetStatsDialog by remember { mutableStateOf(false) }
+        var showClearAllDialog by remember { mutableStateOf(false) }
+        val context = LocalContext.current
+
+        if (showResetStatsDialog) {
+            AlertDialog(
+                onDismissRequest = { showResetStatsDialog = false },
+                title = { Text("Reset today's stats", fontWeight = FontWeight.Bold, color = TextPrimary) },
+                text = { Text("Are you sure you want to reset today's study time and break counts? All past days will stay intact.", color = TextSecondary) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            onResetTodayStats()
+                            showResetStatsDialog = false
+                            Toast.makeText(context, "Today's stats have been reset", Toast.LENGTH_SHORT).show()
+                        }
+                    ) {
+                        Text("Confirm", color = StudyAccent, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showResetStatsDialog = false }) {
+                        Text("Cancel", color = TextMuted)
+                    }
+                },
+                containerColor = DarkCard
+            )
+        }
+
+        if (showClearAllDialog) {
+            AlertDialog(
+                onDismissRequest = { showClearAllDialog = false },
+                title = { Text("Clear all data", fontWeight = FontWeight.Bold, color = TextPrimary) },
+                text = { Text("Are you sure you want to delete all saved study sessions and stats history? Your settings will remain unchanged.", color = TextSecondary) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            onClearAllData()
+                            showClearAllDialog = false
+                            Toast.makeText(context, "All study data cleared", Toast.LENGTH_SHORT).show()
+                        }
+                    ) {
+                        Text("Confirm", color = Color(0xFFFF5252), fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showClearAllDialog = false }) {
+                        Text("Cancel", color = TextMuted)
+                    }
+                },
+                containerColor = DarkCard
+            )
+        }
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -106,40 +162,12 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // SECTION 1: STUDY
+            // SECTION 1: STUDY (O1)
             item {
                 SettingsCard(
                     title = "STUDY",
-                    subtitle = "Default study session goals and defaults"
+                    subtitle = "Your daily study goal"
                 ) {
-                    Text("Default session length", fontWeight = FontWeight.Bold, color = TextPrimary)
-                    val durations = listOf(15, 25, 30, 45, 50, 60, 90)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        durations.forEach { dur ->
-                            val isSelected = settings.defaultStudyDurationMinutes == dur
-                            Surface(
-                                onClick = { onUpdateDefaultStudyDuration(dur) },
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (isSelected) StudyAccent else Color(0xFF1E1E1E),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(
-                                    text = "${dur}m",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isSelected) Color.Black else TextPrimary,
-                                    modifier = Modifier.padding(vertical = 8.dp),
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                    }
-
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 4.dp))
-
                     Text("Daily target (hours)", fontWeight = FontWeight.Bold, color = TextPrimary)
                     val targets = listOf(2, 4, 6, 8, 10)
                     Row(
@@ -168,7 +196,176 @@ fun SettingsScreen(
                 }
             }
 
-            // SECTION 2: DISPLAY
+            // SECTION 2: REMINDERS (O1)
+            item {
+                val bothRemindersOff = !settings.waterReminderEnabled && !settings.stretchBreakEnabled
+                val dependentAlpha = if (bothRemindersOff) 0.4f else 1f
+
+                SettingsCard(
+                    title = "REMINDERS",
+                    subtitle = "Configure healthy study habits and break alerts"
+                ) {
+                    SettingSwitchRow(
+                        title = "Eye Care (20-20-20)",
+                        subtitle = "Pause study timer and rest eyes periodically (20 min)",
+                        extraNote = "When OFF: the Eye Rest card is hidden and no eye-rest breaks appear.",
+                        checked = settings.eyeCareEnabled,
+                        onCheckedChange = onUpdateEyeCareEnabled
+                    )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    SettingSwitchRow(
+                        title = "Water Reminder",
+                        subtitle = "Periodic reminders to drink water and take a short walk",
+                        extraNote = "When OFF: no water reminders. If Stretch Break is also OFF, the Water & Stretch card is hidden.",
+                        checked = settings.waterReminderEnabled,
+                        onCheckedChange = onUpdateWaterEnabled
+                    )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    SettingSwitchRow(
+                        title = "Stretch Break",
+                        subtitle = "Gentle ergonomic exercises for neck, shoulders, back & legs",
+                        extraNote = "When OFF: no stretch exercises. If Water Reminder is also OFF, the Water & Stretch card is hidden.",
+                        checked = settings.stretchBreakEnabled,
+                        onCheckedChange = onUpdateStretchBreakEnabled
+                    )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+
+                    // Break interval (dimmed & disabled if both off)
+                    Column(modifier = Modifier.padding(vertical = 2.dp)) {
+                        Text(
+                            "Break interval",
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary.copy(alpha = dependentAlpha)
+                        )
+                        Text(
+                            "Shared by Water Reminder and Stretch Break",
+                            fontSize = 12.sp,
+                            color = TextSecondary.copy(alpha = dependentAlpha)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        val intervals = listOf(30, 45, 60)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            intervals.forEach { interval ->
+                                val isSelected = settings.breakIntervalMinutes == interval
+                                Surface(
+                                    onClick = {
+                                        if (!bothRemindersOff) {
+                                            onUpdateBreakInterval(interval)
+                                        }
+                                    },
+                                    enabled = !bothRemindersOff,
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isSelected) WaterAccent.copy(alpha = dependentAlpha) else Color(0xFF1E1E1E).copy(alpha = dependentAlpha),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = "$interval min",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isSelected) Color.Black.copy(alpha = dependentAlpha) else TextPrimary.copy(alpha = dependentAlpha),
+                                        modifier = Modifier.padding(vertical = 8.dp),
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    SettingSwitchRow(
+                        title = "Short mode (3 min)",
+                        subtitle = "1 min water + 3 exercises instead of 6 exercises",
+                        checked = settings.shortModeEnabled,
+                        enabled = !bothRemindersOff,
+                        alpha = dependentAlpha,
+                        onCheckedChange = onUpdateShortModeEnabled
+                    )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    SettingSwitchRow(
+                        title = "Only sitting exercises",
+                        subtitle = "Filters out standing exercises (calf raises, back extension)",
+                        checked = !settings.includeStandingExercises,
+                        enabled = !bothRemindersOff,
+                        alpha = dependentAlpha,
+                        onCheckedChange = { sittingOnly -> onUpdateIncludeStandingExercises(!sittingOnly) }
+                    )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    SettingSwitchRow(
+                        title = "Auto-Resume After Break",
+                        subtitle = "Automatically resume study when break or eye rest finishes",
+                        checked = settings.eyeAutoResume,
+                        onCheckedChange = {
+                            onUpdateEyeAutoResume(it)
+                            onUpdateWaterAutoResume(it)
+                        }
+                    )
+                }
+            }
+
+            // SECTION 3: ALERTS (O1)
+            item {
+                SettingsCard(
+                    title = "ALERTS",
+                    subtitle = "Notifications, tones and vibration"
+                ) {
+                    SettingSwitchRow(
+                        title = "Notifications",
+                        subtitle = "Master switch for break alerts, session completions and reminders",
+                        checked = settings.notificationsEnabled,
+                        onCheckedChange = onUpdateNotificationsEnabled,
+                        bottomContent = {
+                            TextButton(
+                                onClick = {
+                                    val intent = android.content.Intent().apply {
+                                        action = android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS
+                                        putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                    }
+                                    try {
+                                        context.startActivity(intent)
+                                    } catch (_: Exception) {
+                                        val fallback = android.content.Intent(android.provider.Settings.ACTION_SETTINGS)
+                                        context.startActivity(fallback)
+                                    }
+                                },
+                                contentPadding = PaddingValues(0.dp),
+                                modifier = Modifier.height(30.dp)
+                            ) {
+                                Text(
+                                    text = "Open phone notification settings",
+                                    fontSize = 12.sp,
+                                    color = StudyAccent
+                                )
+                            }
+                        }
+                    )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    SettingSwitchRow(
+                        title = "Sound",
+                        subtitle = "Play tones for session & break start/end",
+                        checked = settings.soundEnabled,
+                        onCheckedChange = onUpdateSound
+                    )
+                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    SettingSwitchRow(
+                        title = "Vibration",
+                        subtitle = "Haptic feedback for timer alerts and transitions",
+                        checked = settings.vibrationEnabled,
+                        onCheckedChange = onUpdateVibration
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Phone Silent / Do Not Disturb can still mute tones.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextMuted,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            // SECTION 4: DISPLAY (O1)
             item {
                 SettingsCard(
                     title = "DISPLAY",
@@ -182,15 +379,8 @@ fun SettingsScreen(
                     )
                     HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
                     SettingSwitchRow(
-                        title = "Show Seconds",
-                        subtitle = "Display ticking seconds beside the desk clock",
-                        checked = settings.showSeconds,
-                        onCheckedChange = onUpdateShowSeconds
-                    )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
-                    SettingSwitchRow(
                         title = "Keep Screen Awake",
-                        subtitle = "Prevent display sleep in desk watch mode",
+                        subtitle = "Keep the screen on while a timer is running",
                         checked = settings.keepScreenOn,
                         onCheckedChange = onUpdateKeepScreenOn
                     )
@@ -266,121 +456,59 @@ fun SettingsScreen(
                 }
             }
 
-            // SECTION 3: REMINDERS
+            // SECTION 5: DATA (A3)
             item {
                 SettingsCard(
-                    title = "REMINDERS",
-                    subtitle = "Configure healthy study habits and break alerts"
+                    title = "DATA",
+                    subtitle = "Manage your saved study data"
                 ) {
-                    SettingSwitchRow(
-                        title = "Eye Care (20-20-20)",
-                        subtitle = "Pause study timer and rest eyes periodically (20 min)",
-                        checked = settings.eyeCareEnabled,
-                        onCheckedChange = onUpdateEyeCareEnabled
-                    )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
-                    SettingSwitchRow(
-                        title = "Water Reminder",
-                        subtitle = "Periodic reminders to drink water and take a short walk",
-                        checked = settings.waterReminderEnabled,
-                        onCheckedChange = onUpdateWaterEnabled
-                    )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
-                    SettingSwitchRow(
-                        title = "Stretch Break",
-                        subtitle = "Gentle ergonomic exercises for neck, shoulders, back & legs",
-                        checked = settings.stretchBreakEnabled,
-                        onCheckedChange = onUpdateStretchBreakEnabled
-                    )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
-
-                    Text("Break interval", fontWeight = FontWeight.Bold, color = TextPrimary)
-                    Text("Shared by Water Reminder and Stretch Break", fontSize = 12.sp, color = TextSecondary)
-                    val intervals = listOf(30, 45, 60)
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showResetStatsDialog = true }
+                            .padding(vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        intervals.forEach { interval ->
-                            val isSelected = settings.breakIntervalMinutes == interval
-                            Surface(
-                                onClick = { onUpdateBreakInterval(interval) },
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (isSelected) WaterAccent else Color(0xFF1E1E1E),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(
-                                    text = "$interval min",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isSelected) Color.Black else TextPrimary,
-                                    modifier = Modifier.padding(vertical = 8.dp),
-                                    textAlign = TextAlign.Center
-                                )
-                            }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Reset today's stats", fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Text("Resets only today's study time and break counts", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                         }
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Reset today's stats",
+                            tint = StudyAccent
+                        )
                     }
 
                     HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
-                    SettingSwitchRow(
-                        title = "Short mode (3 min)",
-                        subtitle = "1 min water + 3 exercises instead of 6 exercises",
-                        checked = settings.shortModeEnabled,
-                        onCheckedChange = onUpdateShortModeEnabled
-                    )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
-                    SettingSwitchRow(
-                        title = "Only sitting exercises",
-                        subtitle = "Filters out standing exercises (calf raises, back extension)",
-                        checked = !settings.includeStandingExercises,
-                        onCheckedChange = { sittingOnly -> onUpdateIncludeStandingExercises(!sittingOnly) }
-                    )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
-                    SettingSwitchRow(
-                        title = "Auto-Resume After Break",
-                        subtitle = "Automatically resume study when break or eye rest finishes",
-                        checked = settings.eyeAutoResume,
-                        onCheckedChange = {
-                            onUpdateEyeAutoResume(it)
-                            onUpdateWaterAutoResume(it)
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showClearAllDialog = true }
+                            .padding(vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Clear all data", fontWeight = FontWeight.Bold, color = Color(0xFFFF5252))
+                            Text("Deletes all saved study sessions and stats history", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                         }
-                    )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
-                    SettingSwitchRow(
-                        title = "Notifications",
-                        subtitle = "Master switch for break alerts, session completions and reminders",
-                        checked = settings.notificationsEnabled,
-                        onCheckedChange = onUpdateNotificationsEnabled
-                    )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
-                    SettingSwitchRow(
-                        title = "Sound",
-                        subtitle = "Play tones for session & break start/end",
-                        checked = settings.soundEnabled,
-                        onCheckedChange = onUpdateSound
-                    )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
-                    SettingSwitchRow(
-                        title = "Vibration",
-                        subtitle = "Haptic feedback for timer alerts and transitions",
-                        checked = settings.vibrationEnabled,
-                        onCheckedChange = onUpdateVibration
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Phone Silent / Do Not Disturb can still mute tones.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextMuted,
-                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
-                    )
+                        Icon(
+                            imageVector = Icons.Default.DeleteOutline,
+                            contentDescription = "Clear all data",
+                            tint = Color(0xFFFF5252)
+                        )
+                    }
                 }
             }
 
-            // SECTION 4: ABOUT
+            // SECTION 6: ABOUT (O1 & F6)
             item {
                 SettingsCard(
                     title = "ABOUT",
-                    subtitle = "About StudyPulse and system developer tools"
+                    subtitle = "About StudyPulse"
                 ) {
                     var showDevTools by remember { mutableStateOf(false) }
 
@@ -497,7 +625,11 @@ fun SettingSwitchRow(
     title: String,
     subtitle: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    extraNote: String? = null,
+    enabled: Boolean = true,
+    alpha: Float = 1f,
+    bottomContent: (@Composable () -> Unit)? = null
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -505,17 +637,38 @@ fun SettingSwitchRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.Bold, color = TextPrimary)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            Text(
+                title,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary.copy(alpha = alpha)
+            )
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary.copy(alpha = alpha)
+            )
+            if (!extraNote.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = extraNote,
+                    fontSize = 12.sp,
+                    color = TextMuted.copy(alpha = alpha)
+                )
+            }
+            if (bottomContent != null) {
+                Spacer(modifier = Modifier.height(2.dp))
+                bottomContent()
+            }
         }
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
+            enabled = enabled,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = StudyAccent,
-                checkedTrackColor = Color(0x66FFA640),
-                uncheckedThumbColor = TextMuted,
-                uncheckedTrackColor = Color(0xFF222222)
+                checkedThumbColor = StudyAccent.copy(alpha = alpha),
+                checkedTrackColor = Color(0x66FFA640).copy(alpha = alpha),
+                uncheckedThumbColor = TextMuted.copy(alpha = alpha),
+                uncheckedTrackColor = Color(0xFF222222).copy(alpha = alpha)
             )
         )
     }
