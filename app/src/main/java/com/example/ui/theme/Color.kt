@@ -19,6 +19,7 @@ val TextPrimary = Color(0xFFF5F1E8) // Off-white / cream
 val CreamWhite = TextPrimary
 val TextSecondary = Color(0xFFA8A8A8)
 val TextMuted = Color(0xFF71717A)
+val UltraPremiumGlass = Color(0x0FFFFFFF) // White at 6% fill
 
 // StudyPulse Functional Accents
 val StudyAccent = Color(0xFFFFA640) // Orange / study progress

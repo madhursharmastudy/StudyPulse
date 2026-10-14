@@ -22,6 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import com.example.core.timer.TimerEngine
 import com.example.core.timer.TimerSnapshot
 import com.example.ui.theme.*
@@ -33,7 +35,7 @@ fun FullscreenEyeAlert(
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "EyePulse")
     val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.95f,
+        initialValue = 0.96f,
         targetValue = 1.05f,
         animationSpec = infiniteRepeatable(
             animation = tween(1200, easing = FastOutSlowInEasing),
@@ -48,7 +50,7 @@ fun FullscreenEyeAlert(
 
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val isClassic = activeTheme == "Classic"
+    val isClassic = isExistingTheme(activeTheme)
     val textColor = if (isClassic) TextPrimary else tokens.text
     val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
     val trackCol = if (isClassic) Color(0xFF1C1C1E) else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.10f) else tokens.chipFill
@@ -63,7 +65,9 @@ fun FullscreenEyeAlert(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
         ) {
             // Animated Eye Icon
             Box(

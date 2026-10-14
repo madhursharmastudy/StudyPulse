@@ -44,7 +44,9 @@ data class AppThemeTokens(
     val secondaryText: Color,
     val accent: Color,
     val textOnAccent: Color,
-    val danger: Color
+    val danger: Color,
+    val divider: Color = chipFill,
+    val track: Color = chipFill
 )
 
 val DarkThemeTokens = AppThemeTokens(
@@ -56,7 +58,9 @@ val DarkThemeTokens = AppThemeTokens(
     secondaryText = Color(0xFF9AA7B8),
     accent = Color(0xFF8F86FF),
     textOnAccent = Color(0xFF0E1218),
-    danger = Color(0xFFF2706E)
+    danger = Color(0xFFF2706E),
+    divider = Color(0xFF212A36),
+    track = Color(0xFF212A36)
 )
 
 val LightThemeTokens = AppThemeTokens(
@@ -68,32 +72,69 @@ val LightThemeTokens = AppThemeTokens(
     secondaryText = Color(0xFF5A6578),
     accent = Color(0xFF5B50E6),
     textOnAccent = Color(0xFFFFFFFF),
-    danger = Color(0xFFD64545)
+    danger = Color(0xFFD64545),
+    divider = Color(0xFFDDE2EE),
+    track = Color(0xFFDDE2EE)
 )
 
 val UltraPremiumThemeTokens = AppThemeTokens(
     themeName = "Ultra Premium",
     background = Color(0xFF02050B),
-    cardFill = Color.Transparent,
+    cardFill = UltraPremiumGlass,
     chipFill = Color(0x14FFFFFF), // white at 8% fill
     text = Color(0xFFFFFFFF),
     secondaryText = Color(0xFFA3B3D1),
     accent = Color(0xFFFFB52E), // amber
     textOnAccent = Color(0xFF02050B),
-    danger = Color(0xFFF2706E)
+    danger = Color(0xFFF2706E),
+    divider = Color(0x1FFFFFFF),
+    track = Color(0x14FFFFFF)
 )
 
-fun classicThemeTokens(isBlue: Boolean) = AppThemeTokens(
-    themeName = "Classic",
+val DarkBlackThemeTokens = AppThemeTokens(
+    themeName = "Dark Black",
     background = AmoledBlack,
     cardFill = DarkCard,
     chipFill = Color(0xFF1E1E1E),
     text = TextPrimary,
     secondaryText = TextSecondary,
-    accent = if (isBlue) WaterAccent else StudyAccent,
+    accent = StudyAccent,
     textOnAccent = Color.Black,
-    danger = RoseAccent
+    danger = RoseAccent,
+    divider = DarkBorder,
+    track = DarkBorder
 )
+
+val GlowingBlueThemeTokens = AppThemeTokens(
+    themeName = "Glowing Blue",
+    background = Color(0xFF0B0C10),
+    cardFill = DarkCard,
+    chipFill = Color(0xFF1E1E1E),
+    text = TextPrimary,
+    secondaryText = TextSecondary,
+    accent = WaterAccent,
+    textOnAccent = Color.Black,
+    danger = RoseAccent,
+    divider = DarkBorder,
+    track = DarkBorder
+)
+
+val GlowingGoldThemeTokens = AppThemeTokens(
+    themeName = "Glowing Gold",
+    background = Color(0xFF0B0C10),
+    cardFill = DarkCard,
+    chipFill = Color(0xFF1E1E1E),
+    text = TextPrimary,
+    secondaryText = TextSecondary,
+    accent = StudyAccent,
+    textOnAccent = Color.Black,
+    danger = RoseAccent,
+    divider = DarkBorder,
+    track = DarkBorder
+)
+
+fun isExistingTheme(theme: String): Boolean =
+    theme in listOf("Dark Black", "Glowing Blue", "Glowing Gold", "Classic")
 
 val LocalBackgroundStyle = compositionLocalOf { "Glow" }
 val LocalThemeName = compositionLocalOf { "Orange" }
@@ -145,10 +186,7 @@ fun StudyWatchTheme(
 ) {
     val colorScheme = if (isAmoled) StudyWatchDarkColorScheme else StudyWatchLightColorScheme
 
-    // Part 4D: Color tokens following the theme:
-    // Blue theme: deep navy glow (#1B2A5E at ~40% strength at center)
-    // Orange theme: deep warm ember glow (#4A2A0C at ~35% strength at center)
-    val backgroundTokens = if (themeName.equals("Blue", ignoreCase = true)) {
+    val backgroundTokens = if (activeTheme == "Glowing Blue" || themeName.equals("Blue", ignoreCase = true)) {
         BackgroundThemeTokens(
             baseColor = Color(0xFF0B0C10),
             glowColor = Color(0x661B2A5E) // ~40% strength #1B2A5E
@@ -163,11 +201,14 @@ fun StudyWatchTheme(
     val themeTokens = when (activeTheme) {
         "Light" -> LightThemeTokens
         "Ultra Premium" -> UltraPremiumThemeTokens
-        "Classic" -> classicThemeTokens(themeName.equals("Blue", ignoreCase = true))
+        "Dark Black" -> DarkBlackThemeTokens
+        "Glowing Blue" -> GlowingBlueThemeTokens
+        "Glowing Gold" -> GlowingGoldThemeTokens
+        "Classic" -> DarkBlackThemeTokens
         else -> DarkThemeTokens // Default to Dark
     }
 
-    // TH-14: System bar icons: light icons on Dark and Ultra Premium, dark icons on Light
+    // F9: System bar icons: light icons on every theme except Light, no scrim
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -177,6 +218,12 @@ fun StudyWatchTheme(
                 val darkIcons = activeTheme == "Light"
                 insetsController.isAppearanceLightStatusBars = darkIcons
                 insetsController.isAppearanceLightNavigationBars = darkIcons
+                window.statusBarColor = android.graphics.Color.TRANSPARENT
+                window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                    window.isNavigationBarContrastEnforced = false
+                    window.isStatusBarContrastEnforced = false
+                }
             }
         }
     }
@@ -207,10 +254,10 @@ fun MyApplicationTheme(
 }
 
 /**
- * ThemedCard (TH-18, TH-29, Addendum B)
+ * ThemedCard (C1, M4)
  * In Dark & Light: flat fill (card fill), corner radius 20dp, inner padding 16dp, no border, no shadow.
- * In Ultra Premium: NO fill, border or shadow. Content sits directly on background.
- * In Classic: 16dp shape, DarkCard fill, DarkBorder 1.dp border, 14dp padding.
+ * In Ultra Premium: white at 6% fill, corner radius 24dp, inner padding 16dp, no border, no shadow.
+ * In Existing themes: keeps current card look (cornerRadius, DarkCard fill, DarkBorder 1.dp border, 14dp padding).
  */
 @Composable
 fun ThemedCard(
@@ -227,55 +274,51 @@ fun ThemedCard(
     val tagModifier = if (testTag != null) Modifier.testTag(testTag) else Modifier
     val cardModifier = modifier.then(clickModifier).then(tagModifier)
 
-    when (activeTheme) {
-        "Classic" -> {
-            Card(
-                shape = RoundedCornerShape(cornerRadius),
-                colors = CardDefaults.cardColors(containerColor = DarkCard),
-                border = CardDefaults.outlinedCardBorder().copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)
-                ),
-                modifier = cardModifier
-            ) {
-                Column(modifier = Modifier.padding(innerPadding)) {
-                    content()
-                }
+    if (isExistingTheme(activeTheme)) {
+        Card(
+            shape = RoundedCornerShape(cornerRadius),
+            colors = CardDefaults.cardColors(containerColor = tokens.cardFill),
+            border = CardDefaults.outlinedCardBorder().copy(
+                brush = androidx.compose.ui.graphics.SolidColor(tokens.divider)
+            ),
+            modifier = cardModifier
+        ) {
+            Column(modifier = Modifier.padding(innerPadding)) {
+                content()
             }
         }
-        "Ultra Premium" -> {
-            Card(
-                shape = RoundedCornerShape(0.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                border = null,
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                modifier = cardModifier
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    content()
-                }
+    } else if (activeTheme == "Ultra Premium") {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = UltraPremiumGlass),
+            border = null,
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            modifier = cardModifier
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                content()
             }
         }
-        else -> {
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = tokens.cardFill),
-                border = null,
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                modifier = cardModifier
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    content()
-                }
+    } else {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = tokens.cardFill),
+            border = null,
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            modifier = cardModifier
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                content()
             }
         }
     }
 }
 
 /**
- * ThemedActionPill (TH-20, TH-33)
+ * ThemedActionPill (C3)
  * Plain-text actions become pill-shaped tonal buttons: chip fill, no border, height 40dp, horizontal padding 16dp.
  * Filled actions (Done, Resume, START) become accent-filled pills with text on accent.
- * In Classic: uses standard button/text button.
+ * In Existing themes: keeps current button shape.
  */
 @Composable
 fun ThemedActionPill(
@@ -290,13 +333,13 @@ fun ThemedActionPill(
     val tokens = LocalAppThemeTokens.current
     val tagModifier = if (testTag != null) Modifier.testTag(testTag) else Modifier
 
-    if (activeTheme == "Classic") {
+    if (isExistingTheme(activeTheme)) {
         if (isFilled) {
             Button(
                 onClick = onClick,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = StudyAccent,
-                    contentColor = Color.Black
+                    containerColor = tokens.accent,
+                    contentColor = tokens.textOnAccent
                 ),
                 shape = RoundedCornerShape(8.dp),
                 modifier = modifier.then(tagModifier)
@@ -307,7 +350,7 @@ fun ThemedActionPill(
             TextButton(
                 onClick = onClick,
                 colors = ButtonDefaults.textButtonColors(
-                    contentColor = textColor ?: TextSecondary
+                    contentColor = textColor ?: tokens.secondaryText
                 ),
                 modifier = modifier.then(tagModifier)
             ) {
@@ -342,10 +385,10 @@ fun ThemedActionPill(
 }
 
 /**
- * ThemedOptionChip (TH-19, TH-33)
+ * ThemedOptionChip (C2)
  * In Dark & Light: no border, chip fill, corner radius 14dp. Selected = accent fill with text on accent.
  * In Ultra Premium: white at 8% fill, no border, corner radius 14dp. Selected = accent fill with text on accent.
- * In Classic: unchanged (existing RoundedCornerShape(8.dp) with DarkCard/CharcoalElevated).
+ * In Existing themes: unchanged shape (RoundedCornerShape(8.dp) with chipFill / accent).
  */
 @Composable
 fun ThemedOptionChip(
@@ -359,18 +402,18 @@ fun ThemedOptionChip(
     val tokens = LocalAppThemeTokens.current
     val tagModifier = if (testTag != null) Modifier.testTag(testTag) else Modifier
 
-    if (activeTheme == "Classic") {
+    if (isExistingTheme(activeTheme)) {
         Surface(
             onClick = onClick,
             shape = RoundedCornerShape(8.dp),
-            color = if (isSelected) StudyAccent else Color(0xFF1E1E1E),
+            color = if (isSelected) tokens.accent else tokens.chipFill,
             modifier = modifier.then(tagModifier)
         ) {
             Text(
                 text = text,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (isSelected) Color.Black else TextPrimary,
+                color = if (isSelected) tokens.textOnAccent else tokens.text,
                 modifier = Modifier.padding(vertical = 10.dp, horizontal = 12.dp),
                 textAlign = TextAlign.Center
             )

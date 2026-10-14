@@ -76,7 +76,7 @@ fun TimerDigitsDisplay(
                     fontSize = secondsFontSize,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
-                    color = Color.White.copy(alpha = 0.55f),
+                    color = textColor.copy(alpha = 0.55f),
                     maxLines = 1,
                     softWrap = false,
                     modifier = Modifier
@@ -112,7 +112,7 @@ fun TimerDigitsDisplay(
                 } else {
                     (fontSize.value * 0.38f).coerceAtLeast(14f).sp
                 }
-                val secondsColor = if (isStopwatch) CyanAccent else Color.White.copy(alpha = 0.55f)
+                val secondsColor = if (isStopwatch) CyanAccent else textColor.copy(alpha = 0.55f)
                 val bottomPadding = (fontSize.value * 0.12f).dp
                 Text(
                     text = seconds,
@@ -184,10 +184,10 @@ fun LandscapeRectangleTimerCard(
 ) {
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val isClassic = activeTheme == "Classic"
+    val isClassic = isExistingTheme(activeTheme)
     val isUltra = activeTheme == "Ultra Premium"
 
-    val cornerRadius = if (isClassic) (if (useHomeStyle) 24.dp else 3.dp) else (if (isUltra) 0.dp else 20.dp)
+    val cornerRadius = if (isClassic) (if (useHomeStyle) 24.dp else 3.dp) else (if (isUltra) 24.dp else 20.dp)
     val strokeWidthDp = if (hasProgress) (if (useHomeStyle) 3.5.dp else 5.5.dp) else 1.5.dp
 
     val cardBgModifier = when {
@@ -210,7 +210,7 @@ fun LandscapeRectangleTimerCard(
                     )
                 }
         } else Modifier
-        isUltra -> Modifier // TH-29: Content sits directly on background
+        isUltra -> if (useHomeStyle) Modifier.background(UltraPremiumGlass) else Modifier
         else -> if (useHomeStyle) Modifier.background(tokens.cardFill) else Modifier
     }
 
@@ -344,7 +344,7 @@ fun LandscapeRectangleTimerCard(
                     seconds = timeSeconds,
                     isStopwatch = isStopwatch,
                     fontSize = dynamicFontSize,
-                    textColor = Color.White,
+                    textColor = if (isClassic) Color.White else tokens.text,
                     isHomeStyle = useHomeStyle
                 )
             }

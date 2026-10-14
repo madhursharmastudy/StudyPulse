@@ -50,6 +50,13 @@ fun DeskClockDisplay(
     val dateDayStr = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(currentTime.time).uppercase()
     val dayOfWeekStr = SimpleDateFormat("EEEE", Locale.getDefault()).format(currentTime.time).uppercase()
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = isExistingTheme(activeTheme)
+    val textColor = if (isClassic) TextPrimary else tokens.text
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val weekdayColor = if (isClassic) StudyAccent else if (activeTheme == "Light") tokens.text else tokens.accent
+
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -61,22 +68,22 @@ fun DeskClockDisplay(
                 letterSpacing = 3.sp,
                 fontWeight = FontWeight.Medium
             ),
-            color = TextSecondary,
+            color = subTextColor,
             modifier = Modifier.padding(bottom = 2.dp)
         )
 
-        // Day row: e.g. "WEDNESDAY" in warm gold
+        // Day row: e.g. "WEDNESDAY" (S4)
         Text(
             text = dayOfWeekStr,
             style = MaterialTheme.typography.labelMedium.copy(
                 letterSpacing = 4.sp,
                 fontWeight = FontWeight.Bold
             ),
-            color = StudyAccent,
+            color = weekdayColor,
             modifier = Modifier.padding(bottom = 6.dp)
         )
 
-        // Hero Clock row: e.g. "11:13 AM"
+        // Hero Clock row: e.g. "11:13 AM" (S2)
         Row(
             verticalAlignment = Alignment.Bottom,
             horizontalArrangement = Arrangement.Center
@@ -86,7 +93,7 @@ fun DeskClockDisplay(
                 fontSize = 82.sp,
                 fontWeight = FontWeight.Black,
                 letterSpacing = (-2).sp,
-                color = TextPrimary,
+                color = textColor,
                 lineHeight = 84.sp
             )
 
@@ -96,7 +103,7 @@ fun DeskClockDisplay(
                     text = ":$secondsStr",
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextSecondary,
+                    color = subTextColor,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
             }
@@ -107,7 +114,7 @@ fun DeskClockDisplay(
                     text = amPmStr,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextSecondary,
+                    color = subTextColor,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
             }

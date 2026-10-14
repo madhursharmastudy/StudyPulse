@@ -100,9 +100,7 @@ class SettingsRepository(private val context: Context) {
 
     val settingsFlow: Flow<AppSettings> = context.dataStore.data.map { prefs ->
         val debug = false // Force debug to false always
-        val hasExistingSettings = prefs[Keys.BACKGROUND_STYLE] != null || prefs[Keys.APP_THEME] != null || prefs[Keys.USE_24_HOUR] != null || prefs[Keys.EYE_CARE_ENABLED] != null
-        val defaultTheme = if (hasExistingSettings) "Classic" else "Dark"
-        val resolvedTheme = prefs[Keys.THEME] ?: defaultTheme
+        val resolvedTheme = prefs[Keys.THEME] ?: "Dark"
         val eyeEnabled = prefs[Keys.EYE_CARE_ENABLED] ?: true
         val eyeInterval = prefs[Keys.EYE_STUDY_INTERVAL_MINUTES] ?: 20
         val eyeRest = prefs[Keys.EYE_REST_DURATION_SECONDS] ?: 20

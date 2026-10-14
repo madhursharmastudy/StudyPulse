@@ -21,6 +21,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import com.example.core.timer.TimerEngine
 import com.example.core.timer.TimerSnapshot
 import com.example.ui.theme.*
@@ -43,7 +45,7 @@ fun FullscreenWaterAlert(
 
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val isClassic = activeTheme == "Classic"
+    val isClassic = isExistingTheme(activeTheme)
     val textColor = if (isClassic) TextPrimary else tokens.text
 
     AppBackground(modifier = modifier) {
@@ -56,7 +58,9 @@ fun FullscreenWaterAlert(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
         ) {
             // Animated Water Drop
             Box(

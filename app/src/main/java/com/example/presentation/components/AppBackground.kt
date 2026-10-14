@@ -31,48 +31,51 @@ fun AppBackground(
     content: @Composable () -> Unit
 ) {
     when (activeTheme) {
-        "Classic" -> {
-            if (backgroundStyle == "Pure black") {
-                Box(
-                    modifier = modifier
-                        .fillMaxSize()
-                        .background(AmoledBlack)
-                ) {
-                    content()
-                }
+        "Dark Black" -> {
+            Box(
+                modifier = modifier
+                    .fillMaxSize()
+                    .background(AmoledBlack)
+            ) {
+                content()
+            }
+        }
+        "Glowing Blue", "Glowing Gold" -> {
+            val tokens = LocalBackgroundThemeTokens.current
+            val baseColor = tokens.baseColor
+            val glowColor = if (activeTheme == "Glowing Blue") {
+                Color(0x661B2A5E) // deep navy glow
             } else {
-                val tokens = LocalBackgroundThemeTokens.current
-                val baseColor = tokens.baseColor
-                val glowColor = tokens.glowColor
+                Color(0x594A2A0C) // warm amber glow
+            }
 
-                Box(
-                    modifier = modifier
-                        .fillMaxSize()
-                        .drawBehind {
-                            val isLandscape = size.width > size.height
-                            val centerY = if (isLandscape) size.height * 0.50f else size.height * 0.56f
-                            val centerX = size.width * 0.50f
-                            val glowRadius = maxOf(size.width, size.height) * 0.85f
+            Box(
+                modifier = modifier
+                    .fillMaxSize()
+                    .drawBehind {
+                        val isLandscape = size.width > size.height
+                        val centerY = if (isLandscape) size.height * 0.50f else size.height * 0.56f
+                        val centerX = size.width * 0.50f
+                        val glowRadius = maxOf(size.width, size.height) * 0.85f
 
-                            drawRect(color = baseColor)
+                        drawRect(color = baseColor)
 
-                            drawCircle(
-                                brush = Brush.radialGradient(
-                                    colorStops = arrayOf(
-                                        0.0f to glowColor,
-                                        0.45f to glowColor.copy(alpha = glowColor.alpha * 0.45f),
-                                        1.0f to Color.Transparent
-                                    ),
-                                    center = Offset(centerX, centerY),
-                                    radius = glowRadius
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colorStops = arrayOf(
+                                    0.0f to glowColor,
+                                    0.45f to glowColor.copy(alpha = glowColor.alpha * 0.45f),
+                                    1.0f to Color.Transparent
                                 ),
-                                radius = glowRadius,
-                                center = Offset(centerX, centerY)
-                            )
-                        }
-                ) {
-                    content()
-                }
+                                center = Offset(centerX, centerY),
+                                radius = glowRadius
+                            ),
+                            radius = glowRadius,
+                            center = Offset(centerX, centerY)
+                        )
+                    }
+            ) {
+                content()
             }
         }
         "Ultra Premium" -> {

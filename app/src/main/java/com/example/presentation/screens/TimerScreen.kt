@@ -35,6 +35,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 import com.example.core.timer.*
 import com.example.data.db.SubjectEntity
 import com.example.data.db.TopicEntity
@@ -80,7 +81,7 @@ fun TimerScreen(
 ) {
     // 5 tabs with clean title case
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabTitles = listOf("Session", "Pomodoro", "Countdown", "Stopwatch", "Breaks")
+    val tabTitles = listOf("Session", "Pomo", "Count", "Watch", "Break")
 
     // Current selected Subject and Topic
     val currentSubject = remember(subjects, selectedSubjectId) {
@@ -286,44 +287,59 @@ fun TimerScreen(
             Spacer(modifier = Modifier.height(8.dp))
         }
 
-        // 5. Dual Running Timer Strip (slim strip between button and round timer)
-        if (selectedTab in 0..2 || selectedTab == 4) {
-            // Stopwatch is running in background
-            if (stopwatchSnapshot.isRunning || stopwatchSnapshot.isPaused) {
-                OtherTimerRunningStrip(
-                    title = "Stopwatch ${stopwatchSnapshot.formattedDisplay()} ${if (stopwatchSnapshot.isRunning) "running" else "paused"}",
-                    isRunning = stopwatchSnapshot.isRunning,
-                    accentColor = CyanAccent,
-                    onTapText = { selectedTab = 3 },
-                    onPauseResume = {
-                        if (stopwatchSnapshot.isRunning) StopwatchEngine.pause() else StopwatchEngine.resume()
-                    },
-                    onStop = { StopwatchEngine.stop() }
-                )
-                Spacer(modifier = Modifier.height(6.dp))
-            }
+        // 5. Dual Running Timer Strip (T1, T8: slim strip between button and round timer)
+        val isCurrentTabTimerActive = when (selectedTab) {
+            0 -> snapshot.state.isActive && snapshot.timerType == TimerType.STUDY_SESSION
+            1 -> snapshot.state.isActive && snapshot.timerType == TimerType.POMODORO
+            2 -> snapshot.state.isActive && snapshot.timerType == TimerType.COUNTDOWN
+            else -> false
         }
-        if (selectedTab == 3 || selectedTab == 4) {
-            // Main Timer is active in background
-            if (snapshot.state.isActive) {
-                OtherTimerRunningStrip(
-                    title = "${snapshot.timerType.displayName} ${snapshot.formattedActiveDisplay()} ${if (snapshot.state == TimerState.STUDYING) "running" else "paused"}",
-                    isRunning = (snapshot.state == TimerState.STUDYING),
-                    accentColor = AmberAccent,
-                    onTapText = {
-                        selectedTab = when (snapshot.timerType) {
-                            TimerType.POMODORO -> 1
-                            TimerType.COUNTDOWN -> 2
-                            else -> 0
-                        }
-                    },
-                    onPauseResume = {
-                        if (snapshot.state == TimerState.STUDYING) TimerEngine.pause() else TimerEngine.resume()
-                    },
-                    onStop = { TimerEngine.stop() }
-                )
-                Spacer(modifier = Modifier.height(6.dp))
+        val showOtherStopwatch = (stopwatchSnapshot.isRunning || stopwatchSnapshot.isPaused) && selectedTab != 3
+        val showOtherTimer = snapshot.state.isActive && !isCurrentTabTimerActive
+
+        if (showOtherStopwatch) {
+            val swSecs = stopwatchSnapshot.elapsedMillis / 1000
+            val swFormatted = if (swSecs >= 3600) {
+                String.format(Locale.getDefault(), "%02d:%02d:%02d", swSecs / 3600, (swSecs % 3600) / 60, swSecs % 60)
+            } else {
+                String.format(Locale.getDefault(), "%02d:%02d", (swSecs % 3600) / 60, swSecs % 60)
             }
+            OtherTimerRunningStrip(
+                title = "Stopwatch $swFormatted ${if (stopwatchSnapshot.isRunning) "running" else "paused"}",
+                isRunning = stopwatchSnapshot.isRunning,
+                accentColor = CyanAccent,
+                onTapText = { selectedTab = 3 },
+                onPauseResume = {
+                    if (stopwatchSnapshot.isRunning) StopwatchEngine.pause() else StopwatchEngine.resume()
+                },
+                onStop = { StopwatchEngine.stop() }
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+        }
+        if (showOtherTimer) {
+            val timerSecs = (snapshot.currentSegmentRemainingMillis / 1000).coerceAtLeast(0)
+            val timerFormatted = if (timerSecs >= 3600) {
+                String.format(Locale.getDefault(), "%02d:%02d:%02d", timerSecs / 3600, (timerSecs % 3600) / 60, timerSecs % 60)
+            } else {
+                String.format(Locale.getDefault(), "%02d:%02d", (timerSecs % 3600) / 60, timerSecs % 60)
+            }
+            OtherTimerRunningStrip(
+                title = "${snapshot.timerType.displayName} $timerFormatted ${if (snapshot.state == TimerState.STUDYING) "running" else "paused"}",
+                isRunning = (snapshot.state == TimerState.STUDYING),
+                accentColor = AmberAccent,
+                onTapText = {
+                    selectedTab = when (snapshot.timerType) {
+                        TimerType.POMODORO -> 1
+                        TimerType.COUNTDOWN -> 2
+                        else -> 0
+                    }
+                },
+                onPauseResume = {
+                    if (snapshot.state == TimerState.STUDYING) TimerEngine.pause() else TimerEngine.resume()
+                },
+                onStop = { TimerEngine.stop() }
+            )
+            Spacer(modifier = Modifier.height(6.dp))
         }
 
         // 6. Main Tab Content (Round timer + actions; fixed layout that fits 800dp screen)
@@ -829,6 +845,10 @@ fun TabRoundTimer(
     onPlayPause: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = isExistingTheme(activeTheme)
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
@@ -836,15 +856,15 @@ fun TabRoundTimer(
             .aspectRatio(1f)
             .testTag("tab_round_timer")
     ) {
-        // Circular Progress Ring (transparent card, no fill, border progress)
+        // Circular Progress Ring (T3, T7: matching size, thickness 8dp, position)
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokeWidth = if (hasProgress) 8.dp.toPx() else 2.dp.toPx()
+            val strokeWidth = 8.dp.toPx()
             val diameter = size.minDimension - strokeWidth - 8.dp.toPx()
             val topLeft = Offset((size.width - diameter) / 2f, (size.height - diameter) / 2f)
             val arcSize = Size(diameter, diameter)
 
-            // Background track
-            val trackColor = if (hasProgress) Color(0xFF1E1E1E) else Color(0xFF282828)
+            // Background track (S3: chip-fill role)
+            val trackColor = if (isClassic) Color(0xFF1E1E1E) else tokens.track
             drawArc(
                 color = trackColor,
                 startAngle = 0f,
@@ -896,7 +916,7 @@ fun TabRoundTimer(
                 seconds = ss,
                 isStopwatch = isStopwatch,
                 fontSize = 38.sp,
-                textColor = Color.White
+                textColor = if (isClassic) Color.White else tokens.text
             )
 
             Spacer(modifier = Modifier.height(2.dp))
@@ -904,7 +924,7 @@ fun TabRoundTimer(
             Text(
                 text = statusLine,
                 fontSize = 11.sp,
-                color = TextSecondary,
+                color = if (isClassic) TextSecondary else tokens.secondaryText,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -916,8 +936,8 @@ fun TabRoundTimer(
                 Surface(
                     onClick = onPlayPause,
                     shape = CircleShape,
-                    color = if (isActive && !isPaused) CharcoalCard else accentColor,
-                    contentColor = if (isActive && !isPaused) accentColor else Color.Black,
+                    color = if (isActive && !isPaused) (if (isClassic) CharcoalCard else tokens.cardFill) else accentColor,
+                    contentColor = if (isActive && !isPaused) accentColor else (if (isClassic) Color.Black else tokens.textOnAccent),
                     border = if (isActive && !isPaused) BorderStroke(1.5.dp, accentColor) else null,
                     modifier = Modifier
                         .size(52.dp)
@@ -1020,10 +1040,14 @@ fun OtherTimerRunningStrip(
     onPauseResume: () -> Unit,
     onStop: () -> Unit
 ) {
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = isExistingTheme(activeTheme)
+
     Card(
         shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = CharcoalElevated),
-        border = BorderStroke(1.dp, accentColor),
+        colors = CardDefaults.cardColors(containerColor = if (isClassic) CharcoalElevated else tokens.cardFill),
+        border = BorderStroke(1.dp, if (isClassic) accentColor else tokens.chipFill),
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
@@ -1041,14 +1065,14 @@ fun OtherTimerRunningStrip(
                     modifier = Modifier
                         .size(8.dp)
                         .clip(CircleShape)
-                        .background(if (isRunning) accentColor else TextMuted)
+                        .background(if (isRunning) accentColor else (if (isClassic) TextMuted else tokens.secondaryText))
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = title,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
+                    color = if (isClassic) TextPrimary else tokens.text,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1620,15 +1644,23 @@ fun SetSessionTimerDialog(
     onDismiss: () -> Unit,
     onApply: (Int) -> Unit
 ) {
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = isExistingTheme(activeTheme)
+    val dialogBg = if (isClassic) CharcoalCard else tokens.cardFill
+    val titleColor = if (isClassic) TextPrimary else tokens.text
+    val bodyColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val accentCol = if (isClassic) AmberAccent else tokens.accent
+
     val presetChips = listOf(15, 25, 30, 45, 50, 60, 90)
     var customText by remember { mutableStateOf(currentMinutes.toString()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Set Session Duration", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        title = { Text("Set Session Duration", color = titleColor, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Select minutes:", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                Text("Select minutes:", style = MaterialTheme.typography.bodyMedium, color = bodyColor)
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -1639,8 +1671,8 @@ fun SetSessionTimerDialog(
                             onClick = { customText = chip.toString() },
                             label = { Text("${chip}m", fontSize = 11.sp) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = AmberAccent,
-                                selectedLabelColor = Color.Black
+                                selectedContainerColor = accentCol,
+                                selectedLabelColor = if (isClassic) Color.Black else tokens.textOnAccent
                             )
                         )
                     }
@@ -1655,8 +1687,8 @@ fun SetSessionTimerDialog(
                             onClick = { customText = chip.toString() },
                             label = { Text("${chip}m", fontSize = 11.sp) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = AmberAccent,
-                                selectedLabelColor = Color.Black
+                                selectedContainerColor = accentCol,
+                                selectedLabelColor = if (isClassic) Color.Black else tokens.textOnAccent
                             )
                         )
                     }
@@ -1667,7 +1699,7 @@ fun SetSessionTimerDialog(
                     label = { Text("Custom Minutes") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = titleColor, unfocusedTextColor = titleColor)
                 )
             }
         },
@@ -1677,17 +1709,17 @@ fun SetSessionTimerDialog(
                     val mins = customText.toIntOrNull() ?: 50
                     onApply(mins.coerceIn(1, 1440))
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                colors = ButtonDefaults.buttonColors(containerColor = accentCol, contentColor = if (isClassic) Color.Black else tokens.textOnAccent)
             ) {
                 Text("APPLY", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("CANCEL", color = TextSecondary)
+                Text("CANCEL", color = bodyColor)
             }
         },
-        containerColor = CharcoalCard
+        containerColor = dialogBg
     )
 }
 
@@ -1702,16 +1734,24 @@ fun SetPomodoroTimerDialog(
     onDismiss: () -> Unit,
     onApply: (study: Int, brk: Int, cycles: Int) -> Unit
 ) {
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = isExistingTheme(activeTheme)
+    val dialogBg = if (isClassic) CharcoalCard else tokens.cardFill
+    val titleColor = if (isClassic) TextPrimary else tokens.text
+    val bodyColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val accentCol = if (isClassic) AmberAccent else tokens.accent
+
     val presets = listOf(Pair(25, 5), Pair(50, 10), Pair(90, 15))
     var selectedPreset by remember { mutableStateOf(Pair(currentStudy, currentBreak)) }
     var selectedCycles by remember { mutableIntStateOf(currentCycles) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Set Pomodoro Intervals", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        title = { Text("Set Pomodoro Intervals", color = titleColor, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Study / Rest Duration:", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                Text("Study / Rest Duration:", style = MaterialTheme.typography.bodyMedium, color = bodyColor)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     presets.forEach { pair ->
                         val isSel = (selectedPreset == pair)
@@ -1720,13 +1760,13 @@ fun SetPomodoroTimerDialog(
                             onClick = { selectedPreset = pair },
                             label = { Text("${pair.first}/${pair.second}m", fontSize = 11.sp) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = AmberAccent,
-                                selectedLabelColor = Color.Black
+                                selectedContainerColor = accentCol,
+                                selectedLabelColor = if (isClassic) Color.Black else tokens.textOnAccent
                             )
                         )
                     }
                 }
-                Text("Number of Cycles:", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                Text("Number of Cycles:", style = MaterialTheme.typography.bodyMedium, color = bodyColor)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(2, 4, 6, 8).forEach { c ->
                         FilterChip(
@@ -1734,8 +1774,8 @@ fun SetPomodoroTimerDialog(
                             onClick = { selectedCycles = c },
                             label = { Text("$c", fontSize = 11.sp) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = AmberAccent,
-                                selectedLabelColor = Color.Black
+                                selectedContainerColor = accentCol,
+                                selectedLabelColor = if (isClassic) Color.Black else tokens.textOnAccent
                             )
                         )
                     }
@@ -1747,17 +1787,17 @@ fun SetPomodoroTimerDialog(
                 onClick = {
                     onApply(selectedPreset.first, selectedPreset.second, selectedCycles)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                colors = ButtonDefaults.buttonColors(containerColor = accentCol, contentColor = if (isClassic) Color.Black else tokens.textOnAccent)
             ) {
                 Text("APPLY", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("CANCEL", color = TextSecondary)
+                Text("CANCEL", color = bodyColor)
             }
         },
-        containerColor = CharcoalCard
+        containerColor = dialogBg
     )
 }
 
@@ -1772,13 +1812,21 @@ fun SetCountdownTimerDialog(
     onDismiss: () -> Unit,
     onApply: (h: Int, m: Int, s: Int) -> Unit
 ) {
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = isExistingTheme(activeTheme)
+    val dialogBg = if (isClassic) CharcoalCard else tokens.cardFill
+    val titleColor = if (isClassic) TextPrimary else tokens.text
+    val bodyColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val accentCol = if (isClassic) AmberAccent else tokens.accent
+
     var hoursText by remember { mutableStateOf(currentH.toString()) }
     var minutesText by remember { mutableStateOf(currentM.toString()) }
     var secondsText by remember { mutableStateOf(currentS.toString()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Set Countdown Time", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        title = { Text("Set Countdown Time", color = titleColor, fontWeight = FontWeight.Bold) },
         text = {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1791,25 +1839,25 @@ fun SetCountdownTimerDialog(
                     label = { Text("HH") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = titleColor, unfocusedTextColor = titleColor)
                 )
-                Text(":", fontWeight = FontWeight.Bold, color = TextPrimary)
+                Text(":", fontWeight = FontWeight.Bold, color = titleColor)
                 OutlinedTextField(
                     value = minutesText,
                     onValueChange = { minutesText = it.filter { c -> c.isDigit() } },
                     label = { Text("MM") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = titleColor, unfocusedTextColor = titleColor)
                 )
-                Text(":", fontWeight = FontWeight.Bold, color = TextPrimary)
+                Text(":", fontWeight = FontWeight.Bold, color = titleColor)
                 OutlinedTextField(
                     value = secondsText,
                     onValueChange = { secondsText = it.filter { c -> c.isDigit() } },
                     label = { Text("SS") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = titleColor, unfocusedTextColor = titleColor)
                 )
             }
         },
@@ -1821,17 +1869,17 @@ fun SetCountdownTimerDialog(
                     val s = (secondsText.toIntOrNull() ?: 0).coerceIn(0, 59)
                     onApply(h, m, s)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                colors = ButtonDefaults.buttonColors(containerColor = accentCol, contentColor = if (isClassic) Color.Black else tokens.textOnAccent)
             ) {
                 Text("APPLY", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("CANCEL", color = TextSecondary)
+                Text("CANCEL", color = bodyColor)
             }
         },
-        containerColor = CharcoalCard
+        containerColor = dialogBg
     )
 }
 
@@ -1886,7 +1934,7 @@ fun LandscapeTimerScreen(
     val totalCdSecs = (countdownHours * 3600) + (countdownMinutes * 60) + countdownSeconds
 
     // Tab labels and metadata
-    val tabTitles = listOf("Session", "Pomodoro", "Countdown", "Stopwatch", "Break")
+    val tabTitles = listOf("Session", "Pomo", "Count", "Watch", "Break")
     val descriptionText = when (selectedTab) {
         0 -> "Focus on one subject for a fixed time."
         1 -> "Study in cycles with short rests."
@@ -2251,41 +2299,59 @@ fun LandscapeTimerScreen(
                 }
             }
 
-            // 4. Slim strip for OTHER running timer (shown only when another timer runs)
-            if (selectedTab in 0..2 || selectedTab == 4) {
-                if (stopwatchSnapshot.isRunning || stopwatchSnapshot.isPaused) {
-                    OtherTimerRunningStrip(
-                        title = "Stopwatch ${stopwatchSnapshot.formattedDisplay()} ${if (stopwatchSnapshot.isRunning) "running" else "paused"}",
-                        isRunning = stopwatchSnapshot.isRunning,
-                        accentColor = CyanAccent,
-                        onTapText = { onSelectTab(3) },
-                        onPauseResume = {
-                            if (stopwatchSnapshot.isRunning) StopwatchEngine.pause() else StopwatchEngine.resume()
-                        },
-                        onStop = { StopwatchEngine.stop() }
-                    )
+            // 4. Slim strip for OTHER running timer (T1, T8: shown when another timer or stopwatch runs)
+            val isCurrentTabTimerActive = when (selectedTab) {
+                0 -> snapshot.state.isActive && snapshot.timerType == TimerType.STUDY_SESSION
+                1 -> snapshot.state.isActive && snapshot.timerType == TimerType.POMODORO
+                2 -> snapshot.state.isActive && snapshot.timerType == TimerType.COUNTDOWN
+                else -> false
+            }
+            val showOtherStopwatch = (stopwatchSnapshot.isRunning || stopwatchSnapshot.isPaused) && selectedTab != 3
+            val showOtherTimer = snapshot.state.isActive && !isCurrentTabTimerActive
+
+            if (showOtherStopwatch) {
+                val swSecs = stopwatchSnapshot.elapsedMillis / 1000
+                val swFormatted = if (swSecs >= 3600) {
+                    String.format(Locale.getDefault(), "%02d:%02d:%02d", swSecs / 3600, (swSecs % 3600) / 60, swSecs % 60)
+                } else {
+                    String.format(Locale.getDefault(), "%02d:%02d", (swSecs % 3600) / 60, swSecs % 60)
                 }
-            } else if (selectedTab == 3) {
-                if (snapshot.state.isActive) {
-                    OtherTimerRunningStrip(
-                        title = "${snapshot.timerType.displayName} ${snapshot.formattedActiveDisplay()} ${if (snapshot.state == TimerState.STUDYING) "running" else "paused"}",
-                        isRunning = (snapshot.state == TimerState.STUDYING),
-                        accentColor = AmberAccent,
-                        onTapText = {
-                            onSelectTab(
-                                when (snapshot.timerType) {
-                                    TimerType.POMODORO -> 1
-                                    TimerType.COUNTDOWN -> 2
-                                    else -> 0
-                                }
-                            )
-                        },
-                        onPauseResume = {
-                            if (snapshot.state == TimerState.STUDYING) TimerEngine.pause() else TimerEngine.resume()
-                        },
-                        onStop = { TimerEngine.stop() }
-                    )
+                OtherTimerRunningStrip(
+                    title = "Stopwatch $swFormatted ${if (stopwatchSnapshot.isRunning) "running" else "paused"}",
+                    isRunning = stopwatchSnapshot.isRunning,
+                    accentColor = CyanAccent,
+                    onTapText = { onSelectTab(3) },
+                    onPauseResume = {
+                        if (stopwatchSnapshot.isRunning) StopwatchEngine.pause() else StopwatchEngine.resume()
+                    },
+                    onStop = { StopwatchEngine.stop() }
+                )
+            }
+            if (showOtherTimer) {
+                val timerSecs = (snapshot.currentSegmentRemainingMillis / 1000).coerceAtLeast(0)
+                val timerFormatted = if (timerSecs >= 3600) {
+                    String.format(Locale.getDefault(), "%02d:%02d:%02d", timerSecs / 3600, (timerSecs % 3600) / 60, timerSecs % 60)
+                } else {
+                    String.format(Locale.getDefault(), "%02d:%02d", (timerSecs % 3600) / 60, timerSecs % 60)
                 }
+                OtherTimerRunningStrip(
+                    title = "${snapshot.timerType.displayName} $timerFormatted ${if (snapshot.state == TimerState.STUDYING) "running" else "paused"}",
+                    isRunning = (snapshot.state == TimerState.STUDYING),
+                    accentColor = AmberAccent,
+                    onTapText = {
+                        onSelectTab(
+                            when (snapshot.timerType) {
+                                TimerType.POMODORO -> 1
+                                TimerType.COUNTDOWN -> 2
+                                else -> 0
+                            }
+                        )
+                    },
+                    onPauseResume = {
+                        if (snapshot.state == TimerState.STUDYING) TimerEngine.pause() else TimerEngine.resume()
+                    },
+                    onStop = { TimerEngine.stop() }
+                )
             }
 
             // 5. Tab specific content area

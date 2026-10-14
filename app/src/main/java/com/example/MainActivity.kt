@@ -56,7 +56,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = androidx.activity.SystemBarStyle.auto(
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT
+            ),
+            navigationBarStyle = androidx.activity.SystemBarStyle.auto(
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT
+            )
+        )
 
         setContent {
             StudyWatchRootApp()
@@ -124,10 +133,7 @@ fun StudyWatchRootApp() {
     val classicAccent = if (settings.appTheme.equals("Blue", ignoreCase = true)) WaterAccent else StudyAccent
 
     StudyWatchTheme(
-        activeTheme = activeTheme,
-        isAmoled = settings.appTheme != "Light",
-        themeName = settings.appTheme,
-        backgroundStyle = settings.backgroundStyle
+        activeTheme = activeTheme
     ) {
         val themeTokens = LocalAppThemeTokens.current
         AppBackground {
@@ -138,8 +144,8 @@ fun StudyWatchRootApp() {
                 bottomBar = {
                     // Secondary navigation bar only in portrait mode when user is navigating secondary feature tabs
                     if (!isLandscape && !isViewingLogBook && currentTab != NavigationTab.WATCH && snapshot.state != TimerState.EYE_REST && snapshot.state != TimerState.WATER_BREAK) {
-                        if (activeTheme == "Classic") {
-                            // Classic: unchanged exactly as today
+                        if (isExistingTheme(activeTheme)) {
+                            // Existing themes (M3): keep current shape and selected box. Selected color follows accent role.
                             NavigationBar(
                                 containerColor = DarkCard,
                                 contentColor = TextPrimary,
@@ -152,9 +158,9 @@ fun StudyWatchRootApp() {
                                         icon = { Icon(tab.icon, contentDescription = tab.label) },
                                         label = { Text(tab.label, fontSize = 11.sp) },
                                         colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = classicAccent,
-                                            selectedTextColor = classicAccent,
-                                            indicatorColor = Color(0x33FFA640),
+                                            selectedIconColor = themeTokens.accent,
+                                            selectedTextColor = themeTokens.accent,
+                                            indicatorColor = themeTokens.accent.copy(alpha = 0.2f),
                                             unselectedIconColor = TextMuted,
                                             unselectedTextColor = TextMuted
                                         ),
@@ -162,61 +168,8 @@ fun StudyWatchRootApp() {
                                     )
                                 }
                             }
-                        } else if (activeTheme == "Ultra Premium") {
-                            // TH-29, TH-30: No fill/border/shadow. Amber accent with 56dp radial glow fading with 200ms
-                            NavigationBar(
-                                containerColor = Color.Transparent,
-                                contentColor = Color(0xFFFFFFFF),
-                                modifier = Modifier.testTag("main_bottom_nav")
-                            ) {
-                                NavigationTab.entries.forEach { tab ->
-                                    val selected = currentTab == tab
-                                    val glowAlpha by androidx.compose.animation.core.animateFloatAsState(
-                                        targetValue = if (selected) 1f else 0f,
-                                        animationSpec = androidx.compose.animation.core.tween(200),
-                                        label = "nav_glow_${tab.name}"
-                                    )
-                                    NavigationBarItem(
-                                        selected = selected,
-                                        onClick = { currentTab = tab },
-                                        icon = {
-                                            Box(
-                                                modifier = Modifier.drawBehind {
-                                                    if (glowAlpha > 0f) {
-                                                        drawCircle(
-                                                            brush = Brush.radialGradient(
-                                                                colors = listOf(
-                                                                    Color(0x70FF8A24).copy(alpha = 0.50f * glowAlpha),
-                                                                    Color(0x40FF8A24).copy(alpha = 0.25f * glowAlpha),
-                                                                    Color.Transparent
-                                                                ),
-                                                                center = this.center,
-                                                                radius = 56.dp.toPx()
-                                                            ),
-                                                            radius = 56.dp.toPx(),
-                                                            center = this.center
-                                                        )
-                                                    }
-                                                },
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Icon(tab.icon, contentDescription = tab.label)
-                                            }
-                                        },
-                                        label = { Text(tab.label, fontSize = 11.sp) },
-                                        colors = NavigationBarItemDefaults.colors(
-                                            selectedIconColor = Color(0xFFFFB52E),
-                                            selectedTextColor = Color(0xFFFFB52E),
-                                            indicatorColor = Color.Transparent,
-                                            unselectedIconColor = Color(0xFFAAB8D6),
-                                            unselectedTextColor = Color(0xFFAAB8D6)
-                                        ),
-                                        modifier = Modifier.testTag("nav_tab_${tab.name.lowercase()}")
-                                    )
-                                }
-                            }
                         } else {
-                            // Dark & Light (TH-24, TH-25): Floating rounded pill, inset 12dp from left, right, bottom. No border, no shadow.
+                            // Dark, Light & Ultra Premium (M1, M2, M4): Floating rounded pill, radius 28dp, inset 12dp. Fill = card role. No border, no shadow, no indicator box.
                             Box(
                                 modifier = Modifier
                                     .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
@@ -262,7 +215,7 @@ fun StudyWatchRootApp() {
                     ) {
                         // Left Navigation Rail in Landscape mode (64-72dp wide)
                         if (isLandscape && !isViewingLogBook && !isManagingSubjects && snapshot.state != TimerState.EYE_REST && snapshot.state != TimerState.WATER_BREAK) {
-                            if (activeTheme == "Classic") {
+                            if (isExistingTheme(activeTheme)) {
                                 NavigationRail(
                                     containerColor = DarkCard,
                                     contentColor = TextPrimary,
@@ -279,9 +232,9 @@ fun StudyWatchRootApp() {
                                             icon = { Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(20.dp)) },
                                             label = { Text(tab.label, fontSize = 10.sp, maxLines = 1) },
                                             colors = NavigationRailItemDefaults.colors(
-                                                selectedIconColor = classicAccent,
-                                                selectedTextColor = classicAccent,
-                                                indicatorColor = Color(0x33FFA640),
+                                                selectedIconColor = themeTokens.accent,
+                                                selectedTextColor = themeTokens.accent,
+                                                indicatorColor = themeTokens.accent.copy(alpha = 0.2f),
                                                 unselectedIconColor = TextMuted,
                                                 unselectedTextColor = TextMuted
                                             ),
@@ -289,7 +242,7 @@ fun StudyWatchRootApp() {
                                         )
                                     }
                                 }
-                            } else if (activeTheme == "Ultra Premium") {
+                            } else if (false) {
                                 NavigationRail(
                                     containerColor = Color.Transparent,
                                     contentColor = Color(0xFFFFFFFF),

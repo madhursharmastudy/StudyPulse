@@ -114,53 +114,63 @@ fun SettingsScreen(
         var showClearAllDialog by remember { mutableStateOf(false) }
         val context = LocalContext.current
 
+        val isCurrentClassic = isExistingTheme(activeTheme)
+        val dialogShape = if (isCurrentClassic) RoundedCornerShape(16.dp) else RoundedCornerShape(24.dp)
+
         if (showResetStatsDialog) {
             AlertDialog(
                 onDismissRequest = { showResetStatsDialog = false },
                 title = { Text("Reset today's stats", fontWeight = FontWeight.Bold, color = textColor) },
                 text = { Text("Are you sure you want to reset today's study time and break counts? All past days will stay intact.", color = subTextColor) },
                 confirmButton = {
-                    TextButton(
+                    ThemedActionPill(
+                        text = "Confirm",
+                        isFilled = true,
                         onClick = {
                             onResetTodayStats()
                             showResetStatsDialog = false
                             Toast.makeText(context, "Today's stats have been reset", Toast.LENGTH_SHORT).show()
                         }
-                    ) {
-                        Text("Confirm", color = accentColor, fontWeight = FontWeight.Bold)
-                    }
+                    )
                 },
                 dismissButton = {
-                    TextButton(onClick = { showResetStatsDialog = false }) {
-                        Text("Cancel", color = subTextColor)
-                    }
+                    ThemedActionPill(
+                        text = "Cancel",
+                        isFilled = false,
+                        onClick = { showResetStatsDialog = false }
+                    )
                 },
+                shape = dialogShape,
                 containerColor = dialogBg
             )
         }
 
         if (showClearAllDialog) {
-            val dangerColor = if (activeTheme == "Classic") Color(0xFFFF5252) else themeTokens.danger
+            val dangerColor = themeTokens.danger
             AlertDialog(
                 onDismissRequest = { showClearAllDialog = false },
                 title = { Text("Clear all data", fontWeight = FontWeight.Bold, color = textColor) },
                 text = { Text("Are you sure you want to delete all saved study sessions and stats history? Your settings will remain unchanged.", color = subTextColor) },
                 confirmButton = {
-                    TextButton(
+                    ThemedActionPill(
+                        text = "Confirm",
+                        isFilled = true,
+                        textColor = dangerColor,
                         onClick = {
                             onClearAllData()
                             showClearAllDialog = false
                             Toast.makeText(context, "All study data cleared", Toast.LENGTH_SHORT).show()
                         }
-                    ) {
-                        Text("Confirm", color = dangerColor, fontWeight = FontWeight.Bold)
-                    }
+                    )
                 },
                 dismissButton = {
-                    TextButton(onClick = { showClearAllDialog = false }) {
-                        Text("Cancel", color = subTextColor)
-                    }
+                    ThemedActionPill(
+                        text = "Cancel",
+                        isFilled = false,
+                        onClick = { showClearAllDialog = false }
+                    )
                 },
+                shape = dialogShape,
                 containerColor = dialogBg
             )
         }
@@ -178,7 +188,7 @@ fun SettingsScreen(
                     title = "STUDY",
                     subtitle = "Your daily study goal"
                 ) {
-                    Text("Daily target (hours)", fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text("Daily target (hours)", fontWeight = FontWeight.Bold, color = textColor)
                     val targets = listOf(2, 4, 6, 8, 10)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -186,21 +196,12 @@ fun SettingsScreen(
                     ) {
                         targets.forEach { target ->
                             val isSelected = settings.dailyTargetHours == target
-                            Surface(
+                            ThemedOptionChip(
+                                text = "${target}h",
+                                isSelected = isSelected,
                                 onClick = { onUpdateDailyTarget(target) },
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (isSelected) StudyAccent else Color(0xFF1E1E1E),
                                 modifier = Modifier.weight(1f)
-                            ) {
-                                Text(
-                                    text = "${target}h",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isSelected) Color.Black else TextPrimary,
-                                    modifier = Modifier.padding(vertical = 8.dp),
-                                    textAlign = TextAlign.Center
-                                )
-                            }
+                            )
                         }
                     }
                 }
@@ -222,7 +223,7 @@ fun SettingsScreen(
                         checked = settings.eyeCareEnabled,
                         onCheckedChange = onUpdateEyeCareEnabled
                     )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
                     SettingSwitchRow(
                         title = "Water Reminder",
                         subtitle = "Periodic reminders to drink water and take a short walk",
@@ -230,7 +231,7 @@ fun SettingsScreen(
                         checked = settings.waterReminderEnabled,
                         onCheckedChange = onUpdateWaterEnabled
                     )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
                     SettingSwitchRow(
                         title = "Stretch Break",
                         subtitle = "Gentle ergonomic exercises for neck, shoulders, back & legs",
@@ -238,19 +239,19 @@ fun SettingsScreen(
                         checked = settings.stretchBreakEnabled,
                         onCheckedChange = onUpdateStretchBreakEnabled
                     )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
 
                     // Break interval (dimmed & disabled if both off)
                     Column(modifier = Modifier.padding(vertical = 2.dp)) {
                         Text(
                             "Break interval",
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary.copy(alpha = dependentAlpha)
+                            color = textColor.copy(alpha = dependentAlpha)
                         )
                         Text(
                             "Shared by Water Reminder and Stretch Break",
                             fontSize = 12.sp,
-                            color = TextSecondary.copy(alpha = dependentAlpha)
+                            color = subTextColor.copy(alpha = dependentAlpha)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         val intervals = listOf(30, 45, 60)
@@ -260,26 +261,16 @@ fun SettingsScreen(
                         ) {
                             intervals.forEach { interval ->
                                 val isSelected = settings.breakIntervalMinutes == interval
-                                Surface(
+                                ThemedOptionChip(
+                                    text = "$interval min",
+                                    isSelected = isSelected,
                                     onClick = {
                                         if (!bothRemindersOff) {
                                             onUpdateBreakInterval(interval)
                                         }
                                     },
-                                    enabled = !bothRemindersOff,
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (isSelected) WaterAccent.copy(alpha = dependentAlpha) else Color(0xFF1E1E1E).copy(alpha = dependentAlpha),
                                     modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = "$interval min",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) Color.Black.copy(alpha = dependentAlpha) else TextPrimary.copy(alpha = dependentAlpha),
-                                        modifier = Modifier.padding(vertical = 8.dp),
-                                        textAlign = TextAlign.Center
-                                    )
-                                }
+                                )
                             }
                         }
                     }
@@ -397,105 +388,15 @@ fun SettingsScreen(
                 }
             }
 
-            // SECTION 5: THEME (TH-6)
+            // SECTION 5: THEME (F10, F11, F12)
             item {
                 SettingsCard(
                     title = "THEME",
                     subtitle = "Choose how StudyPulse looks"
                 ) {
-                    val isClassic = settings.theme == "Classic"
-                    val classicAccentColor = if (settings.appTheme.equals("Blue", ignoreCase = true)) WaterAccent else StudyAccent
+                    val isCurrentClassic = isExistingTheme(activeTheme)
 
-                    // 1. Classic Row (TH-7, TH-9, TH-10)
-                    ThemeRow(
-                        title = "Classic",
-                        description = "Your current look",
-                        pillText = "Current",
-                        checked = isClassic,
-                        onCheckedChange = { onUpdateTheme("Classic") },
-                        pillAccent = classicAccentColor,
-                        tokens = themeTokens,
-                        isClassicTheme = activeTheme == "Classic",
-                        bottomContent = if (isClassic) {
-                            {
-                                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-                                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 4.dp))
-                                    Text("Background", fontWeight = FontWeight.Bold, color = if (activeTheme == "Classic") TextPrimary else themeTokens.text)
-                                    Text(
-                                        text = "Pure black saves battery on AMOLED screens",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (activeTheme == "Classic") TextSecondary else themeTokens.secondaryText
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        listOf("Glow", "Pure black").forEach { style ->
-                                            val isSelected = (settings.backgroundStyle == style) || (style == "Glow" && settings.backgroundStyle != "Pure black")
-                                            Surface(
-                                                onClick = { onUpdateBackgroundStyle(style) },
-                                                shape = RoundedCornerShape(8.dp),
-                                                color = if (isSelected) StudyAccent else Color(0xFF1E1E1E),
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .testTag("bg_style_${style.lowercase().replace(" ", "_")}")
-                                            ) {
-                                                Text(
-                                                    text = style,
-                                                    fontSize = 12.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = if (isSelected) Color.Black else TextPrimary,
-                                                    modifier = Modifier.padding(vertical = 10.dp),
-                                                    textAlign = TextAlign.Center
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 4.dp))
-                                    Text("Theme Accent", fontWeight = FontWeight.Bold, color = if (activeTheme == "Classic") TextPrimary else themeTokens.text)
-                                    Text(
-                                        text = "Orange (ember glow) or Blue (deep navy glow)",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = if (activeTheme == "Classic") TextSecondary else themeTokens.secondaryText
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        listOf("Orange", "Blue").forEach { themeName ->
-                                            val isSelected = settings.appTheme.equals(themeName, ignoreCase = true) ||
-                                                (themeName == "Orange" && !settings.appTheme.equals("Blue", ignoreCase = true))
-                                            val accent = if (themeName == "Blue") WaterAccent else StudyAccent
-                                            Surface(
-                                                onClick = { onUpdateAppTheme(themeName) },
-                                                shape = RoundedCornerShape(8.dp),
-                                                color = if (isSelected) accent else Color(0xFF1E1E1E),
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .testTag("theme_accent_${themeName.lowercase()}")
-                                            ) {
-                                                Text(
-                                                    text = themeName,
-                                                    fontSize = 12.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = if (isSelected) Color.Black else TextPrimary,
-                                                    modifier = Modifier.padding(vertical = 10.dp),
-                                                    textAlign = TextAlign.Center
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        } else null
-                    )
-
-                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
-
-                    // 2. Dark Row (TH-7, TH-9)
+                    // 1. Dark (Default)
                     ThemeRow(
                         title = "Dark",
                         description = "Calm dark theme for long study",
@@ -504,12 +405,12 @@ fun SettingsScreen(
                         onCheckedChange = { onUpdateTheme("Dark") },
                         pillAccent = Color(0xFF8F86FF),
                         tokens = themeTokens,
-                        isClassicTheme = activeTheme == "Classic"
+                        isClassicTheme = isCurrentClassic
                     )
 
                     HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
 
-                    // 3. Light Row (TH-7, TH-9)
+                    // 2. Light
                     ThemeRow(
                         title = "Light",
                         description = "Bright theme for daytime",
@@ -518,12 +419,12 @@ fun SettingsScreen(
                         onCheckedChange = { onUpdateTheme("Light") },
                         pillAccent = Color(0xFF5B50E6),
                         tokens = themeTokens,
-                        isClassicTheme = activeTheme == "Classic"
+                        isClassicTheme = isCurrentClassic
                     )
 
                     HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
 
-                    // 4. Ultra Premium Row (TH-7, TH-9)
+                    // 3. Ultra Premium
                     ThemeRow(
                         title = "Ultra Premium",
                         description = "Cinematic dark theme with soft glow",
@@ -532,7 +433,49 @@ fun SettingsScreen(
                         onCheckedChange = { onUpdateTheme("Ultra Premium") },
                         pillAccent = Color(0xFFFFB52E),
                         tokens = themeTokens,
-                        isClassicTheme = activeTheme == "Classic"
+                        isClassicTheme = isCurrentClassic
+                    )
+
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
+
+                    // 4. Dark Black
+                    ThemeRow(
+                        title = "Dark Black",
+                        description = "Pure black for AMOLED displays",
+                        pillText = "AMOLED",
+                        checked = settings.theme == "Dark Black" || settings.theme == "Classic",
+                        onCheckedChange = { onUpdateTheme("Dark Black") },
+                        pillAccent = StudyAccent,
+                        tokens = themeTokens,
+                        isClassicTheme = isCurrentClassic
+                    )
+
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
+
+                    // 5. Glowing Blue
+                    ThemeRow(
+                        title = "Glowing Blue",
+                        description = "Deep navy glow theme",
+                        pillText = "Navy",
+                        checked = settings.theme == "Glowing Blue",
+                        onCheckedChange = { onUpdateTheme("Glowing Blue") },
+                        pillAccent = WaterAccent,
+                        tokens = themeTokens,
+                        isClassicTheme = isCurrentClassic
+                    )
+
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
+
+                    // 6. Glowing Gold
+                    ThemeRow(
+                        title = "Glowing Gold",
+                        description = "Warm ember glow theme",
+                        pillText = "Gold",
+                        checked = settings.theme == "Glowing Gold",
+                        onCheckedChange = { onUpdateTheme("Glowing Gold") },
+                        pillAccent = Color(0xFFFFA640),
+                        tokens = themeTokens,
+                        isClassicTheme = isCurrentClassic
                     )
                 }
             }
@@ -611,7 +554,7 @@ fun SettingsScreen(
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 1.sp
                             ),
-                            color = CreamWhite
+                            color = textColor
                         )
                         Text(
                             text = "FOCUS. REST. HYDRATE. REPEAT.",
@@ -619,19 +562,19 @@ fun SettingsScreen(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 2.sp
                             ),
-                            color = StudyAccent
+                            color = if (activeTheme == "Light") textColor else themeTokens.accent
                         )
                         Text(
                             text = "A minimalist AMOLED desk watch and productivity companion designed for deep focus, healthy 20-20-20 eye care, and regular hydration.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary,
+                            color = subTextColor,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                         Text(
                             text = "Version 1.0.0",
                             style = MaterialTheme.typography.labelSmall,
-                            color = TextMuted,
+                            color = subTextColor,
                             modifier = Modifier
                                 .clip(RoundedCornerShape(4.dp))
                                 .clickable { showDevTools = !showDevTools }
@@ -640,18 +583,14 @@ fun SettingsScreen(
 
                         if (showDevTools) {
                             Spacer(modifier = Modifier.height(4.dp))
-                            Button(
+                            ThemedActionPill(
+                                text = "Open Diagnostic Log Book",
                                 onClick = onOpenLogBook,
+                                isFilled = false,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .testTag("open_log_book_button"),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF222222), contentColor = TextPrimary),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Icon(Icons.Default.Terminal, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Open Diagnostic Log Book")
-                            }
+                                    .testTag("open_log_book_button")
+                            )
                         }
                     }
                 }
@@ -669,8 +608,9 @@ private fun SettingsCard(
 ) {
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val titleColor = if (activeTheme == "Classic") StudyAccent else tokens.accent
-    val subtitleColor = if (activeTheme == "Classic") TextSecondary else tokens.secondaryText
+    val isClassic = isExistingTheme(activeTheme)
+    val titleColor = tokens.accent
+    val subtitleColor = if (isClassic) TextSecondary else tokens.secondaryText
 
     Column {
         Text(
@@ -688,13 +628,12 @@ private fun SettingsCard(
             color = subtitleColor,
             modifier = Modifier.padding(bottom = 8.dp)
         )
-        if (activeTheme == "Classic") {
-            // Classic: 12dp, DarkCard fill, DarkBorder 1.dp, 14dp padding, exactly as today
+        if (isClassic) {
             Card(
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkCard),
+                colors = CardDefaults.cardColors(containerColor = tokens.cardFill),
                 border = CardDefaults.outlinedCardBorder().copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)
+                    brush = androidx.compose.ui.graphics.SolidColor(tokens.divider)
                 ),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -706,10 +645,9 @@ private fun SettingsCard(
                 }
             }
         } else if (activeTheme == "Ultra Premium") {
-            // TH-29: Content sits directly on background. NO fill, border or shadow. 16dp inner padding.
             Card(
-                shape = RoundedCornerShape(0.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = UltraPremiumGlass),
                 border = null,
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -722,7 +660,6 @@ private fun SettingsCard(
                 }
             }
         } else {
-            // TH-18: Dark and Light: no border, flat fill (card fill color), corner radius 20dp, inner padding 16dp, no shadow.
             Card(
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = tokens.cardFill),
@@ -788,32 +725,18 @@ fun SettingSwitchRow(
                 bottomContent()
             }
         }
-        if (activeTheme == "Classic") {
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                enabled = enabled,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = StudyAccent.copy(alpha = alpha),
-                    checkedTrackColor = Color(0x66FFA640).copy(alpha = alpha),
-                    uncheckedThumbColor = TextMuted.copy(alpha = alpha),
-                    uncheckedTrackColor = Color(0xFF222222).copy(alpha = alpha)
-                )
+        // C4: Toggles in ALL 6 themes: visible round thumb in both ON and OFF. ON = accent track, OFF = chip-fill track.
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = tokens.textOnAccent.copy(alpha = alpha),
+                checkedTrackColor = tokens.accent.copy(alpha = alpha),
+                uncheckedThumbColor = tokens.secondaryText.copy(alpha = alpha),
+                uncheckedTrackColor = tokens.chipFill.copy(alpha = alpha)
             )
-        } else {
-            // TH-21: visible round thumb in both states. ON = accent track, OFF = chip fill track.
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                enabled = enabled,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = tokens.textOnAccent.copy(alpha = alpha),
-                    checkedTrackColor = tokens.accent.copy(alpha = alpha),
-                    uncheckedThumbColor = tokens.secondaryText.copy(alpha = alpha),
-                    uncheckedTrackColor = tokens.chipFill.copy(alpha = alpha)
-                )
-            )
-        }
+        )
     }
 }
 
@@ -870,21 +793,12 @@ private fun ThemeRow(
                 checked = checked,
                 // TH-8: Active one cannot be turned OFF
                 onCheckedChange = { if (it && !checked) onCheckedChange() },
-                colors = if (isClassicTheme) {
-                    SwitchDefaults.colors(
-                        checkedThumbColor = StudyAccent,
-                        checkedTrackColor = Color(0x66FFA640),
-                        uncheckedThumbColor = TextMuted,
-                        uncheckedTrackColor = Color(0xFF222222)
-                    )
-                } else {
-                    SwitchDefaults.colors(
-                        checkedThumbColor = tokens.textOnAccent,
-                        checkedTrackColor = tokens.accent,
-                        uncheckedThumbColor = tokens.secondaryText,
-                        uncheckedTrackColor = tokens.chipFill
-                    )
-                }
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = tokens.textOnAccent,
+                    checkedTrackColor = tokens.accent,
+                    uncheckedThumbColor = tokens.secondaryText,
+                    uncheckedTrackColor = tokens.chipFill
+                )
             )
         }
         if (bottomContent != null) {

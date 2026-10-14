@@ -164,6 +164,16 @@ fun WatchScreen(
                 modifier = Modifier.fillMaxSize()
             )
         } else {
+            val activeTheme = LocalActiveTheme.current
+            val tokens = LocalAppThemeTokens.current
+            val isClassic = isExistingTheme(activeTheme)
+            val textColor = if (isClassic) TextPrimary else tokens.text
+            val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+            val taglineColor = if (isClassic) TextSecondary else if (activeTheme == "Light") tokens.text else tokens.accent
+            val settingsBtnBg = if (isClassic) Color(0xFF161616) else tokens.chipFill
+            val settingsBtnBorder = if (isClassic) Color(0xFF282828) else tokens.divider
+            val dividerCol = if (isClassic) Color(0xFF222222) else tokens.divider
+
             // Main minimal watch layout
             Column(
             modifier = Modifier
@@ -172,7 +182,7 @@ fun WatchScreen(
                 .padding(horizontal = 20.dp, vertical = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 1. Top Header Bar: Logo & Tagline + Settings Button
+            // 1. Top Header Bar: Logo & Tagline + Settings Button (S2, S4)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -188,7 +198,7 @@ fun WatchScreen(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 0.5.sp
                             ),
-                            color = TextPrimary
+                            color = textColor
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Icon(
@@ -201,7 +211,7 @@ fun WatchScreen(
                     Text(
                         text = "Focus. Rest. Hydrate. Repeat.",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TextSecondary
+                        color = taglineColor
                     )
                 }
 
@@ -210,8 +220,8 @@ fun WatchScreen(
                     modifier = Modifier
                         .size(42.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF161616))
-                        .border(1.dp, Color(0xFF282828), CircleShape)
+                        .background(settingsBtnBg)
+                        .border(1.dp, settingsBtnBorder, CircleShape)
                         .clickable { onOpenSettings() }
                         .testTag("watch_settings_button"),
                     contentAlignment = Alignment.Center
@@ -219,7 +229,7 @@ fun WatchScreen(
                     Icon(
                         imageVector = Icons.Default.Settings,
                         contentDescription = "Open Settings",
-                        tint = TextPrimary,
+                        tint = textColor,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -237,7 +247,7 @@ fun WatchScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 3. Study Session Divider
+            // 3. Study Session Divider (S3)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -246,7 +256,7 @@ fun WatchScreen(
             ) {
                 HorizontalDivider(
                     modifier = Modifier.weight(1f),
-                    color = Color(0xFF222222),
+                    color = dividerCol,
                     thickness = 1.dp
                 )
                 Text(
@@ -254,12 +264,12 @@ fun WatchScreen(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 3.sp,
-                    color = TextSecondary,
+                    color = subTextColor,
                     modifier = Modifier.padding(horizontal = 14.dp)
                 )
                 HorizontalDivider(
                     modifier = Modifier.weight(1f),
-                    color = Color(0xFF222222),
+                    color = dividerCol,
                     thickness = 1.dp
                 )
             }
@@ -461,6 +471,13 @@ fun CircularStudyTimer(
     modifier: Modifier = Modifier
 ) {
     val progress = snapshot.progressFraction
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = isExistingTheme(activeTheme)
+    val textColor = if (isClassic) TextPrimary else tokens.text
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val ringTrackColor = if (isClassic) Color(0xFF161616) else tokens.track
+    val ringActiveColor = if (isClassic) StudyAccent else tokens.accent
 
     Box(
         contentAlignment = Alignment.Center,
@@ -474,9 +491,9 @@ fun CircularStudyTimer(
             val topLeft = Offset((size.width - diameter) / 2f, (size.height - diameter) / 2f)
             val arcSize = Size(diameter, diameter)
 
-            // Background track
+            // Background track (S3)
             drawArc(
-                color = Color(0xFF161616),
+                color = ringTrackColor,
                 startAngle = 0f,
                 sweepAngle = 360f,
                 useCenter = false,
@@ -485,7 +502,7 @@ fun CircularStudyTimer(
                 style = Stroke(width = strokeWidth)
             )
 
-            // Active progress arc
+            // Active progress arc (S3)
             val sweep = if (snapshot.state == TimerState.IDLE) {
                 0f
             } else {
@@ -494,7 +511,7 @@ fun CircularStudyTimer(
 
             if (sweep > 0f) {
                 drawArc(
-                    color = StudyAccent,
+                    color = ringActiveColor,
                     startAngle = -90f,
                     sweepAngle = sweep,
                     useCenter = false,
@@ -515,7 +532,7 @@ fun CircularStudyTimer(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 2.sp,
-                color = TextSecondary
+                color = subTextColor
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -525,7 +542,7 @@ fun CircularStudyTimer(
                     text = "QUIET",
                     fontSize = 42.sp,
                     fontWeight = FontWeight.Black,
-                    color = AmberAccent
+                    color = ringActiveColor
                 )
             } else {
                 val displayStr = if (snapshot.state == TimerState.IDLE) {
@@ -538,7 +555,7 @@ fun CircularStudyTimer(
                     hoursMinutes = hhMm,
                     seconds = ss,
                     fontSize = 42.sp,
-                    textColor = Color.White
+                    textColor = textColor
                 )
             }
 
@@ -546,24 +563,34 @@ fun CircularStudyTimer(
                 text = if (snapshot.isQuietMode) "PAUSED IN QUIET MODE" else "/ ${snapshot.formatPlanned()}",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = if (snapshot.isQuietMode) AmberAccent else TextSecondary
+                color = if (snapshot.isQuietMode) ringActiveColor else subTextColor
             )
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Play / Pause circular button
+            // Play / Pause circular button (S3)
+            val playBtnBg = if (isClassic) {
+                if (snapshot.state == TimerState.STUDYING) Color(0x33FFA640) else Color(0xFF1E1E1E)
+            } else {
+                if (snapshot.state == TimerState.STUDYING) tokens.accent.copy(alpha = 0.25f) else tokens.chipFill
+            }
+            val playBtnBorder = if (isClassic) {
+                if (snapshot.state == TimerState.STUDYING) StudyAccent else Color(0xFF333333)
+            } else {
+                if (snapshot.state == TimerState.STUDYING) tokens.accent else tokens.chipFill
+            }
+            val playBtnTint = if (isClassic) {
+                if (snapshot.state == TimerState.STUDYING) StudyAccent else TextPrimary
+            } else {
+                if (snapshot.state == TimerState.STUDYING) tokens.accent else textColor
+            }
+
             Box(
                 modifier = Modifier
                     .size(50.dp)
                     .clip(CircleShape)
-                    .background(
-                        if (snapshot.state == TimerState.STUDYING) Color(0x33FFA640) else Color(0xFF1E1E1E)
-                    )
-                    .border(
-                        1.dp,
-                        if (snapshot.state == TimerState.STUDYING) StudyAccent else Color(0xFF333333),
-                        CircleShape
-                    )
+                    .background(playBtnBg)
+                    .border(1.dp, playBtnBorder, CircleShape)
                     .clickable {
                         if (snapshot.isQuietMode) {
                             TimerEngine.exitQuietMode()
@@ -598,7 +625,7 @@ fun CircularStudyTimer(
                 Icon(
                     imageVector = if (snapshot.state == TimerState.STUDYING) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = if (snapshot.state == TimerState.STUDYING) "Pause" else "Play",
-                    tint = if (snapshot.state == TimerState.STUDYING) StudyAccent else TextPrimary,
+                    tint = playBtnTint,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -1963,7 +1990,7 @@ fun LandscapeCurrentClockCard(
 
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val isClassic = activeTheme == "Classic"
+    val isClassic = isExistingTheme(activeTheme)
     val isUltra = activeTheme == "Ultra Premium"
 
     val baseModifier = when {
@@ -1988,6 +2015,8 @@ fun LandscapeCurrentClockCard(
                 )
             }
         isUltra -> modifier
+            .clip(RoundedCornerShape(24.dp))
+            .background(UltraPremiumGlass)
         else -> modifier
             .clip(RoundedCornerShape(20.dp))
             .background(tokens.cardFill)
@@ -2080,7 +2109,7 @@ fun LandscapeEyeRestCard(
 
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val isClassic = activeTheme == "Classic"
+    val isClassic = isExistingTheme(activeTheme)
     val isUltra = activeTheme == "Ultra Premium"
 
     val baseModifier = when {
@@ -2105,6 +2134,8 @@ fun LandscapeEyeRestCard(
                 )
             }
         isUltra -> modifier
+            .clip(RoundedCornerShape(24.dp))
+            .background(UltraPremiumGlass)
         else -> modifier
             .clip(RoundedCornerShape(20.dp))
             .background(tokens.cardFill)
@@ -2200,7 +2231,7 @@ fun LandscapeWaterStretchCard(
 
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val isClassic = activeTheme == "Classic"
+    val isClassic = isExistingTheme(activeTheme)
     val isUltra = activeTheme == "Ultra Premium"
 
     val baseModifier = when {
@@ -2225,6 +2256,8 @@ fun LandscapeWaterStretchCard(
                 )
             }
         isUltra -> modifier
+            .clip(RoundedCornerShape(24.dp))
+            .background(UltraPremiumGlass)
         else -> modifier
             .clip(RoundedCornerShape(20.dp))
             .background(tokens.cardFill)
@@ -2331,7 +2364,7 @@ fun LandscapeBottomStrip(
 
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val isClassic = activeTheme == "Classic"
+    val isClassic = isExistingTheme(activeTheme)
     val isUltra = activeTheme == "Ultra Premium"
 
     val baseModifier = when {
@@ -2356,6 +2389,8 @@ fun LandscapeBottomStrip(
                 )
             }
         isUltra -> modifier
+            .clip(RoundedCornerShape(24.dp))
+            .background(UltraPremiumGlass)
         else -> modifier
             .clip(RoundedCornerShape(20.dp))
             .background(tokens.cardFill)
@@ -2400,38 +2435,38 @@ fun LandscapeBottomStrip(
 
                 Spacer(modifier = Modifier.width(6.dp))
 
-                // Three stacked lines
+                // Three stacked lines (T5)
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
                         text = "Study",
-                        fontSize = 12.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
                         color = subTextColor,
                         maxLines = 1,
                         softWrap = false,
-                        lineHeight = 13.sp
+                        lineHeight = 12.sp
                     )
                     Text(
                         text = "${totalMins}m / ${targetMins}m",
-                        fontSize = 18.sp,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         color = textColor,
                         maxLines = 1,
                         softWrap = false,
                         letterSpacing = (-0.5).sp,
-                        lineHeight = 19.sp
+                        lineHeight = 14.sp
                     )
                     Text(
                         text = "Breaks $breaksToday • $subjectTopicPart",
-                        fontSize = 11.sp,
+                        fontSize = 9.5.sp,
                         fontWeight = FontWeight.Medium,
                         color = subTextColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        lineHeight = 12.sp
+                        lineHeight = 11.sp
                     )
                 }
             }
