@@ -41,6 +41,7 @@ fun SettingsScreen(
     onUpdate24Hour: (Boolean) -> Unit,
     onUpdateShowSeconds: (Boolean) -> Unit,
     onUpdateClockStyle: (String) -> Unit,
+    onUpdateTheme: (String) -> Unit = {},
     onUpdateBackgroundStyle: (String) -> Unit = {},
     onUpdateAppTheme: (String) -> Unit = {},
     onUpdateDefaultStudyDuration: (Int) -> Unit = {},
@@ -69,6 +70,14 @@ fun SettingsScreen(
     onClearAllData: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val activeTheme = LocalActiveTheme.current
+    val themeTokens = LocalAppThemeTokens.current
+    val textColor = if (activeTheme == "Classic") TextPrimary else themeTokens.text
+    val subTextColor = if (activeTheme == "Classic") TextSecondary else themeTokens.secondaryText
+    val accentColor = if (activeTheme == "Classic") (if (settings.appTheme.equals("Blue", ignoreCase = true)) WaterAccent else StudyAccent) else themeTokens.accent
+    val dialogBg = if (activeTheme == "Classic") DarkCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else themeTokens.cardFill
+    val dividerColor = if (activeTheme == "Classic") DarkBorder else themeTokens.chipFill
+
     AppBackground(modifier = modifier) {
         Scaffold(
             topBar = {
@@ -78,7 +87,7 @@ fun SettingsScreen(
                             text = "SETTINGS",
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
-                            color = TextPrimary
+                            color = textColor
                         )
                     },
                     navigationIcon = {
@@ -89,7 +98,7 @@ fun SettingsScreen(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back to Watch",
-                                tint = StudyAccent
+                                tint = accentColor
                             )
                         }
                     },
@@ -108,8 +117,8 @@ fun SettingsScreen(
         if (showResetStatsDialog) {
             AlertDialog(
                 onDismissRequest = { showResetStatsDialog = false },
-                title = { Text("Reset today's stats", fontWeight = FontWeight.Bold, color = TextPrimary) },
-                text = { Text("Are you sure you want to reset today's study time and break counts? All past days will stay intact.", color = TextSecondary) },
+                title = { Text("Reset today's stats", fontWeight = FontWeight.Bold, color = textColor) },
+                text = { Text("Are you sure you want to reset today's study time and break counts? All past days will stay intact.", color = subTextColor) },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -118,23 +127,24 @@ fun SettingsScreen(
                             Toast.makeText(context, "Today's stats have been reset", Toast.LENGTH_SHORT).show()
                         }
                     ) {
-                        Text("Confirm", color = StudyAccent, fontWeight = FontWeight.Bold)
+                        Text("Confirm", color = accentColor, fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showResetStatsDialog = false }) {
-                        Text("Cancel", color = TextMuted)
+                        Text("Cancel", color = subTextColor)
                     }
                 },
-                containerColor = DarkCard
+                containerColor = dialogBg
             )
         }
 
         if (showClearAllDialog) {
+            val dangerColor = if (activeTheme == "Classic") Color(0xFFFF5252) else themeTokens.danger
             AlertDialog(
                 onDismissRequest = { showClearAllDialog = false },
-                title = { Text("Clear all data", fontWeight = FontWeight.Bold, color = TextPrimary) },
-                text = { Text("Are you sure you want to delete all saved study sessions and stats history? Your settings will remain unchanged.", color = TextSecondary) },
+                title = { Text("Clear all data", fontWeight = FontWeight.Bold, color = textColor) },
+                text = { Text("Are you sure you want to delete all saved study sessions and stats history? Your settings will remain unchanged.", color = subTextColor) },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -143,15 +153,15 @@ fun SettingsScreen(
                             Toast.makeText(context, "All study data cleared", Toast.LENGTH_SHORT).show()
                         }
                     ) {
-                        Text("Confirm", color = Color(0xFFFF5252), fontWeight = FontWeight.Bold)
+                        Text("Confirm", color = dangerColor, fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showClearAllDialog = false }) {
-                        Text("Cancel", color = TextMuted)
+                        Text("Cancel", color = subTextColor)
                     }
                 },
-                containerColor = DarkCard
+                containerColor = dialogBg
             )
         }
 
@@ -377,82 +387,153 @@ fun SettingsScreen(
                         checked = settings.use24HourFormat,
                         onCheckedChange = onUpdate24Hour
                     )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
                     SettingSwitchRow(
                         title = "Keep Screen Awake",
                         subtitle = "Keep the screen on while a timer is running",
                         checked = settings.keepScreenOn,
                         onCheckedChange = onUpdateKeepScreenOn
                     )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 4.dp))
-                    Text("Background", fontWeight = FontWeight.Bold, color = TextPrimary)
-                    Text(
-                        text = "Pure black saves battery on AMOLED screens",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf("Glow", "Pure black").forEach { style ->
-                            val isSelected = (settings.backgroundStyle == style) || (style == "Glow" && settings.backgroundStyle != "Pure black")
-                            Surface(
-                                onClick = { onUpdateBackgroundStyle(style) },
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (isSelected) StudyAccent else Color(0xFF1E1E1E),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("bg_style_${style.lowercase().replace(" ", "_")}")
-                            ) {
-                                Text(
-                                    text = style,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isSelected) Color.Black else TextPrimary,
-                                    modifier = Modifier.padding(vertical = 10.dp),
-                                    textAlign = TextAlign.Center
-                                )
-                            }
-                        }
-                    }
+                }
+            }
 
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 4.dp))
-                    Text("Theme Accent", fontWeight = FontWeight.Bold, color = TextPrimary)
-                    Text(
-                        text = "Orange (ember glow) or Blue (deep navy glow)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf("Orange", "Blue").forEach { themeName ->
-                            val isSelected = settings.appTheme.equals(themeName, ignoreCase = true) ||
-                                (themeName == "Orange" && !settings.appTheme.equals("Blue", ignoreCase = true))
-                            val accentColor = if (themeName == "Blue") WaterAccent else StudyAccent
-                            Surface(
-                                onClick = { onUpdateAppTheme(themeName) },
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (isSelected) accentColor else Color(0xFF1E1E1E),
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("theme_accent_${themeName.lowercase()}")
-                            ) {
-                                Text(
-                                    text = themeName,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isSelected) Color.Black else TextPrimary,
-                                    modifier = Modifier.padding(vertical = 10.dp),
-                                    textAlign = TextAlign.Center
-                                )
+            // SECTION 5: THEME (TH-6)
+            item {
+                SettingsCard(
+                    title = "THEME",
+                    subtitle = "Choose how StudyPulse looks"
+                ) {
+                    val isClassic = settings.theme == "Classic"
+                    val classicAccentColor = if (settings.appTheme.equals("Blue", ignoreCase = true)) WaterAccent else StudyAccent
+
+                    // 1. Classic Row (TH-7, TH-9, TH-10)
+                    ThemeRow(
+                        title = "Classic",
+                        description = "Your current look",
+                        pillText = "Current",
+                        checked = isClassic,
+                        onCheckedChange = { onUpdateTheme("Classic") },
+                        pillAccent = classicAccentColor,
+                        tokens = themeTokens,
+                        isClassicTheme = activeTheme == "Classic",
+                        bottomContent = if (isClassic) {
+                            {
+                                Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 4.dp))
+                                    Text("Background", fontWeight = FontWeight.Bold, color = if (activeTheme == "Classic") TextPrimary else themeTokens.text)
+                                    Text(
+                                        text = "Pure black saves battery on AMOLED screens",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (activeTheme == "Classic") TextSecondary else themeTokens.secondaryText
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        listOf("Glow", "Pure black").forEach { style ->
+                                            val isSelected = (settings.backgroundStyle == style) || (style == "Glow" && settings.backgroundStyle != "Pure black")
+                                            Surface(
+                                                onClick = { onUpdateBackgroundStyle(style) },
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = if (isSelected) StudyAccent else Color(0xFF1E1E1E),
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .testTag("bg_style_${style.lowercase().replace(" ", "_")}")
+                                            ) {
+                                                Text(
+                                                    text = style,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isSelected) Color.Black else TextPrimary,
+                                                    modifier = Modifier.padding(vertical = 10.dp),
+                                                    textAlign = TextAlign.Center
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 4.dp))
+                                    Text("Theme Accent", fontWeight = FontWeight.Bold, color = if (activeTheme == "Classic") TextPrimary else themeTokens.text)
+                                    Text(
+                                        text = "Orange (ember glow) or Blue (deep navy glow)",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (activeTheme == "Classic") TextSecondary else themeTokens.secondaryText
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        listOf("Orange", "Blue").forEach { themeName ->
+                                            val isSelected = settings.appTheme.equals(themeName, ignoreCase = true) ||
+                                                (themeName == "Orange" && !settings.appTheme.equals("Blue", ignoreCase = true))
+                                            val accent = if (themeName == "Blue") WaterAccent else StudyAccent
+                                            Surface(
+                                                onClick = { onUpdateAppTheme(themeName) },
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = if (isSelected) accent else Color(0xFF1E1E1E),
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .testTag("theme_accent_${themeName.lowercase()}")
+                                            ) {
+                                                Text(
+                                                    text = themeName,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isSelected) Color.Black else TextPrimary,
+                                                    modifier = Modifier.padding(vertical = 10.dp),
+                                                    textAlign = TextAlign.Center
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
-                        }
-                    }
+                        } else null
+                    )
+
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
+
+                    // 2. Dark Row (TH-7, TH-9)
+                    ThemeRow(
+                        title = "Dark",
+                        description = "Calm dark theme for long study",
+                        pillText = "Default",
+                        checked = settings.theme == "Dark",
+                        onCheckedChange = { onUpdateTheme("Dark") },
+                        pillAccent = Color(0xFF8F86FF),
+                        tokens = themeTokens,
+                        isClassicTheme = activeTheme == "Classic"
+                    )
+
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
+
+                    // 3. Light Row (TH-7, TH-9)
+                    ThemeRow(
+                        title = "Light",
+                        description = "Bright theme for daytime",
+                        pillText = "Daylight",
+                        checked = settings.theme == "Light",
+                        onCheckedChange = { onUpdateTheme("Light") },
+                        pillAccent = Color(0xFF5B50E6),
+                        tokens = themeTokens,
+                        isClassicTheme = activeTheme == "Classic"
+                    )
+
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
+
+                    // 4. Ultra Premium Row (TH-7, TH-9)
+                    ThemeRow(
+                        title = "Ultra Premium",
+                        description = "Cinematic dark theme with soft glow",
+                        pillText = "Premium",
+                        checked = settings.theme == "Ultra Premium",
+                        onCheckedChange = { onUpdateTheme("Ultra Premium") },
+                        pillAccent = Color(0xFFFFB52E),
+                        tokens = themeTokens,
+                        isClassicTheme = activeTheme == "Classic"
+                    )
                 }
             }
 
@@ -586,6 +667,11 @@ private fun SettingsCard(
     subtitle: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val titleColor = if (activeTheme == "Classic") StudyAccent else tokens.accent
+    val subtitleColor = if (activeTheme == "Classic") TextSecondary else tokens.secondaryText
+
     Column {
         Text(
             text = title,
@@ -593,28 +679,63 @@ private fun SettingsCard(
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             ),
-            color = StudyAccent,
+            color = titleColor,
             modifier = Modifier.padding(bottom = 2.dp)
         )
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodySmall,
-            color = TextSecondary,
+            color = subtitleColor,
             modifier = Modifier.padding(bottom = 8.dp)
         )
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = DarkCard),
-            border = CardDefaults.outlinedCardBorder().copy(
-                brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)
-            ),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+        if (activeTheme == "Classic") {
+            // Classic: 12dp, DarkCard fill, DarkBorder 1.dp, 14dp padding, exactly as today
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkCard),
+                border = CardDefaults.outlinedCardBorder().copy(
+                    brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)
+                ),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                content()
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    content()
+                }
+            }
+        } else if (activeTheme == "Ultra Premium") {
+            // TH-29: Content sits directly on background. NO fill, border or shadow. 16dp inner padding.
+            Card(
+                shape = RoundedCornerShape(0.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                border = null,
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    content()
+                }
+            }
+        } else {
+            // TH-18: Dark and Light: no border, flat fill (card fill color), corner radius 20dp, inner padding 16dp, no shadow.
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = tokens.cardFill),
+                border = null,
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    content()
+                }
             }
         }
     }
@@ -631,6 +752,12 @@ fun SettingSwitchRow(
     alpha: Float = 1f,
     bottomContent: (@Composable () -> Unit)? = null
 ) {
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val titleColor = if (activeTheme == "Classic") TextPrimary.copy(alpha = alpha) else tokens.text.copy(alpha = alpha)
+    val subtitleColor = if (activeTheme == "Classic") TextSecondary.copy(alpha = alpha) else tokens.secondaryText.copy(alpha = alpha)
+    val noteColor = if (activeTheme == "Classic") TextMuted.copy(alpha = alpha) else tokens.secondaryText.copy(alpha = alpha * 0.85f)
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -640,19 +767,19 @@ fun SettingSwitchRow(
             Text(
                 title,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary.copy(alpha = alpha)
+                color = titleColor
             )
             Text(
                 subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary.copy(alpha = alpha)
+                color = subtitleColor
             )
             if (!extraNote.isNullOrEmpty()) {
                 Text(
                     text = extraNote,
                     fontSize = 12.sp,
                     lineHeight = 16.sp,
-                    color = TextMuted.copy(alpha = alpha),
+                    color = noteColor,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
@@ -661,16 +788,107 @@ fun SettingSwitchRow(
                 bottomContent()
             }
         }
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            enabled = enabled,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = StudyAccent.copy(alpha = alpha),
-                checkedTrackColor = Color(0x66FFA640).copy(alpha = alpha),
-                uncheckedThumbColor = TextMuted.copy(alpha = alpha),
-                uncheckedTrackColor = Color(0xFF222222).copy(alpha = alpha)
+        if (activeTheme == "Classic") {
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                enabled = enabled,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = StudyAccent.copy(alpha = alpha),
+                    checkedTrackColor = Color(0x66FFA640).copy(alpha = alpha),
+                    uncheckedThumbColor = TextMuted.copy(alpha = alpha),
+                    uncheckedTrackColor = Color(0xFF222222).copy(alpha = alpha)
+                )
             )
-        )
+        } else {
+            // TH-21: visible round thumb in both states. ON = accent track, OFF = chip fill track.
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                enabled = enabled,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = tokens.textOnAccent.copy(alpha = alpha),
+                    checkedTrackColor = tokens.accent.copy(alpha = alpha),
+                    uncheckedThumbColor = tokens.secondaryText.copy(alpha = alpha),
+                    uncheckedTrackColor = tokens.chipFill.copy(alpha = alpha)
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun ThemeRow(
+    title: String,
+    description: String,
+    pillText: String,
+    checked: Boolean,
+    onCheckedChange: () -> Unit,
+    pillAccent: Color,
+    tokens: AppThemeTokens,
+    isClassicTheme: Boolean,
+    bottomContent: (@Composable () -> Unit)? = null
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isClassicTheme) TextPrimary else tokens.text
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isClassicTheme) TextSecondary else tokens.secondaryText
+                    )
+                    // TH-9: status pill (12sp, rounded, filled with accent at 15% opacity, accent text)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = pillAccent.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = pillText,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = pillAccent,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+            Switch(
+                checked = checked,
+                // TH-8: Active one cannot be turned OFF
+                onCheckedChange = { if (it && !checked) onCheckedChange() },
+                colors = if (isClassicTheme) {
+                    SwitchDefaults.colors(
+                        checkedThumbColor = StudyAccent,
+                        checkedTrackColor = Color(0x66FFA640),
+                        uncheckedThumbColor = TextMuted,
+                        uncheckedTrackColor = Color(0xFF222222)
+                    )
+                } else {
+                    SwitchDefaults.colors(
+                        checkedThumbColor = tokens.textOnAccent,
+                        checkedTrackColor = tokens.accent,
+                        uncheckedThumbColor = tokens.secondaryText,
+                        uncheckedTrackColor = tokens.chipFill
+                    )
+                }
+            )
+        }
+        if (bottomContent != null) {
+            bottomContent()
+        }
     }
 }

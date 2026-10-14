@@ -281,45 +281,40 @@ fun WatchScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (snapshot.state != TimerState.IDLE) {
-                    TextButton(
+                    ThemedActionPill(
+                        text = "End Session",
                         onClick = { TimerEngine.stop() },
-                        colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
-                        modifier = Modifier.testTag("watch_end_session_button")
-                    ) {
-                        Text("End Session", fontSize = 12.sp)
-                    }
-                    TextButton(
+                        testTag = "watch_end_session_button"
+                    )
+                    ThemedActionPill(
+                        text = "Reset",
                         onClick = { TimerEngine.reset() },
-                        colors = ButtonDefaults.textButtonColors(contentColor = TextMuted),
-                        modifier = Modifier.testTag("watch_reset_button")
-                    ) {
-                        Text("Reset", fontSize = 12.sp)
-                    }
+                        testTag = "watch_reset_button"
+                    )
                 }
                 if (snapshot.state == TimerState.STUDYING) {
-                    TextButton(
+                    ThemedActionPill(
+                        text = "Quiet Mode",
                         onClick = { TimerEngine.enterQuietMode() },
-                        colors = ButtonDefaults.textButtonColors(contentColor = AmberAccent),
-                        modifier = Modifier.testTag("watch_quiet_mode_button")
-                    ) {
-                        Text("Quiet Mode", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
+                        textColor = AmberAccent,
+                        testTag = "watch_quiet_mode_button"
+                    )
                 } else if (snapshot.isQuietMode) {
-                    TextButton(
+                    ThemedActionPill(
+                        text = "Resume",
                         onClick = { TimerEngine.exitQuietMode() },
-                        colors = ButtonDefaults.textButtonColors(contentColor = EmeraldAccent),
-                        modifier = Modifier.testTag("watch_quiet_resume_button")
-                    ) {
-                        Text("Resume", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    }
+                        isFilled = true,
+                        testTag = "watch_quiet_resume_button"
+                    )
                 } else {
-                    TextButton(
+                    val activeTheme = LocalActiveTheme.current
+                    val tokens = LocalAppThemeTokens.current
+                    ThemedActionPill(
+                        text = "Set Timer",
                         onClick = { showSetTimerDialog = true },
-                        colors = ButtonDefaults.textButtonColors(contentColor = StudyAccent),
-                        modifier = Modifier.testTag("watch_set_timer_button")
-                    ) {
-                        Text("Set Timer", fontSize = 12.sp)
-                    }
+                        textColor = if (activeTheme == "Classic") StudyAccent else tokens.accent,
+                        testTag = "watch_set_timer_button"
+                    )
                 }
             }
 
@@ -620,74 +615,72 @@ fun EyeRestMiniCard(
     val remainingSecs = snapshot.nextEyeRestCountdownSeconds
     val eyeProgress = ((totalEyeIntervalSecs - remainingSecs).toFloat() / totalEyeIntervalSecs.toFloat()).coerceIn(0f, 1f)
 
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
-        border = CardDefaults.outlinedCardBorder().copy(
-            brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)
-        ),
-        modifier = modifier.testTag("eye_rest_mini_card")
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val subTextColor = if (activeTheme == "Classic") TextSecondary else tokens.secondaryText
+    val trackCol = if (activeTheme == "Classic") Color(0xFF222222) else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.10f) else tokens.chipFill
+
+    ThemedCard(
+        cornerRadius = 16.dp,
+        modifier = modifier,
+        testTag = "eye_rest_mini_card"
     ) {
-        Column(
-            modifier = Modifier.padding(14.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(Color(0x1A00D675)),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .background(Color(0x1A00D675)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Visibility,
-                        contentDescription = "Eye Rest",
-                        tint = EyeCareAccent,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Column {
-                    Text(
-                        text = "Eye Rest in",
-                        fontSize = 11.sp,
-                        color = TextSecondary
-                    )
-                    Text(
-                        text = snapshot.formattedEyeCountdown(),
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = EyeCareAccent
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Visibility,
+                    contentDescription = "Eye Rest",
+                    tint = EyeCareAccent,
+                    modifier = Modifier.size(18.dp)
+                )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
-            LinearProgressIndicator(
-                progress = { eyeProgress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp)),
-                color = EyeCareAccent,
-                trackColor = Color(0xFF222222)
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(
-                text = "20-20-20 Rule",
-                fontSize = 10.sp,
-                color = TextMuted,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
+            Column {
+                Text(
+                    text = "Eye Rest in",
+                    fontSize = 11.sp,
+                    color = subTextColor
+                )
+                Text(
+                    text = snapshot.formattedEyeCountdown(),
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = EyeCareAccent
+                )
+            }
         }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        LinearProgressIndicator(
+            progress = { eyeProgress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp)),
+            color = EyeCareAccent,
+            trackColor = trackCol
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = "20-20-20 Rule",
+            fontSize = 10.sp,
+            color = if (activeTheme == "Classic") TextMuted else tokens.secondaryText.copy(alpha = 0.7f),
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -701,82 +694,80 @@ fun WaterBreakMiniCard(
     val remainingSecs = snapshot.nextWaterCountdownSeconds
     val waterProgress = ((totalWaterIntervalSecs - remainingSecs).toFloat() / totalWaterIntervalSecs.toFloat()).coerceIn(0f, 1f)
 
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
-        border = CardDefaults.outlinedCardBorder().copy(
-            brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)
-        ),
-        modifier = modifier.testTag("water_break_mini_card")
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val subTextColor = if (activeTheme == "Classic") TextSecondary else tokens.secondaryText
+    val trackCol = if (activeTheme == "Classic") Color(0xFF222222) else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.10f) else tokens.chipFill
+
+    ThemedCard(
+        cornerRadius = 16.dp,
+        modifier = modifier,
+        testTag = "water_break_mini_card"
     ) {
-        Column(
-            modifier = Modifier.padding(14.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(Color(0x1A00B4FF)),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .background(Color(0x1A00B4FF)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.WaterDrop,
-                        contentDescription = "Water Break",
-                        tint = WaterAccent,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Column {
-                    var titleFontSize by remember(label) { mutableStateOf(10.5.sp) }
-                    Text(
-                        text = label,
-                        fontSize = titleFontSize,
-                        maxLines = 1,
-                        softWrap = false,
-                        color = TextSecondary,
-                        onTextLayout = { result ->
-                            if (result.hasVisualOverflow && titleFontSize > 8.sp) {
-                                titleFontSize = (titleFontSize.value - 0.5f).sp
-                            }
-                        }
-                    )
-                    Text(
-                        text = snapshot.formattedWaterCountdown(),
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = WaterAccent
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.WaterDrop,
+                    contentDescription = "Water Break",
+                    tint = WaterAccent,
+                    modifier = Modifier.size(18.dp)
+                )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.width(10.dp))
 
-            LinearProgressIndicator(
-                progress = { waterProgress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp)),
-                color = WaterAccent,
-                trackColor = Color(0xFF222222)
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(
-                text = "Stay Hydrated",
-                fontSize = 10.sp,
-                color = TextMuted,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center
-            )
+            Column {
+                var titleFontSize by remember(label) { mutableStateOf(10.5.sp) }
+                Text(
+                    text = label,
+                    fontSize = titleFontSize,
+                    maxLines = 1,
+                    softWrap = false,
+                    color = subTextColor,
+                    onTextLayout = { result ->
+                        if (result.hasVisualOverflow && titleFontSize > 8.sp) {
+                            titleFontSize = (titleFontSize.value - 0.5f).sp
+                        }
+                    }
+                )
+                Text(
+                    text = snapshot.formattedWaterCountdown(),
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = WaterAccent
+                )
+            }
         }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        LinearProgressIndicator(
+            progress = { waterProgress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp)),
+            color = WaterAccent,
+            trackColor = trackCol
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = "Stay Hydrated",
+            fontSize = 10.sp,
+            color = if (activeTheme == "Classic") TextMuted else tokens.secondaryText.copy(alpha = 0.7f),
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -787,34 +778,33 @@ fun SubjectTopicCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkCard),
-        border = CardDefaults.outlinedCardBorder().copy(
-            brush = androidx.compose.ui.graphics.SolidColor(DarkBorder)
-        ),
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .testTag("subject_topic_card")
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val textColor = if (activeTheme == "Classic") TextPrimary else tokens.text
+    val subTextColor = if (activeTheme == "Classic") TextSecondary else tokens.secondaryText
+    val iconBg = if (activeTheme == "Classic") Color(0xFF202020) else tokens.chipFill
+
+    ThemedCard(
+        cornerRadius = 16.dp,
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        testTag = "subject_topic_card"
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF202020)),
+                    .background(iconBg),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.MenuBook,
                     contentDescription = "Subject/Task",
-                    tint = TextPrimary,
+                    tint = textColor,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -829,14 +819,14 @@ fun SubjectTopicCard(
                     style = MaterialTheme.typography.bodyLarge.copy(
                         fontWeight = FontWeight.Bold
                     ),
-                    color = TextPrimary,
+                    color = textColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = topicName,
                     style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
+                    color = subTextColor,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -845,7 +835,7 @@ fun SubjectTopicCard(
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = "Select Subject/Task",
-                tint = TextMuted,
+                tint = if (activeTheme == "Classic") TextMuted else tokens.secondaryText,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -1971,8 +1961,13 @@ fun LandscapeCurrentClockCard(
     val hhMm = SimpleDateFormat(timeFormat, Locale.getDefault()).format(cal.time)
     val dateWeekday = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(cal.time)
 
-    Box(
-        modifier = modifier
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = activeTheme == "Classic"
+    val isUltra = activeTheme == "Ultra Premium"
+
+    val baseModifier = when {
+        isClassic -> modifier
             .clip(RoundedCornerShape(16.dp))
             .background(
                 brush = androidx.compose.ui.graphics.Brush.verticalGradient(
@@ -1992,7 +1987,17 @@ fun LandscapeCurrentClockCard(
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
                 )
             }
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+        isUltra -> modifier
+        else -> modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(tokens.cardFill)
+    }
+
+    val textColor = if (isClassic) Color.White else tokens.text
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+
+    Box(
+        modifier = baseModifier.padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
@@ -2003,13 +2008,13 @@ fun LandscapeCurrentClockCard(
                 modifier = Modifier
                     .size(34.dp)
                     .clip(CircleShape)
-                    .background(Color(0x33FFA640)),
+                    .background(if (isClassic) Color(0x33FFA640) else tokens.chipFill),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Schedule,
                     contentDescription = "Clock",
-                    tint = AmberAccent,
+                    tint = if (isClassic) AmberAccent else tokens.accent,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -2026,7 +2031,7 @@ fun LandscapeCurrentClockCard(
                     text = dateWeekday,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
-                    color = TextSecondary,
+                    color = subTextColor,
                     maxLines = 1,
                     softWrap = false
                 )
@@ -2039,7 +2044,7 @@ fun LandscapeCurrentClockCard(
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace,
-                        color = Color.White,
+                        color = textColor,
                         maxLines = 1,
                         softWrap = false
                     )
@@ -2049,7 +2054,7 @@ fun LandscapeCurrentClockCard(
                             text = amPm,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = AmberAccent,
+                            color = if (isClassic) AmberAccent else tokens.accent,
                             maxLines = 1,
                             softWrap = false,
                             modifier = Modifier.padding(bottom = 2.dp)
@@ -2073,8 +2078,13 @@ fun LandscapeEyeRestCard(
     val remainingSecs = snapshot.nextEyeRestCountdownSeconds
     val eyeProgress = ((totalEyeIntervalSecs - remainingSecs).toFloat() / totalEyeIntervalSecs.toFloat()).coerceIn(0f, 1f)
 
-    Box(
-        modifier = modifier
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = activeTheme == "Classic"
+    val isUltra = activeTheme == "Ultra Premium"
+
+    val baseModifier = when {
+        isClassic -> modifier
             .clip(RoundedCornerShape(16.dp))
             .background(
                 brush = androidx.compose.ui.graphics.Brush.verticalGradient(
@@ -2094,6 +2104,17 @@ fun LandscapeEyeRestCard(
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
                 )
             }
+        isUltra -> modifier
+        else -> modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(tokens.cardFill)
+    }
+
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val trackCol = if (isClassic) Color(0xFF14241B) else if (isUltra) Color.White.copy(alpha = 0.10f) else tokens.chipFill
+
+    Box(
+        modifier = baseModifier
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -2111,7 +2132,7 @@ fun LandscapeEyeRestCard(
                     modifier = Modifier
                         .size(34.dp)
                         .clip(CircleShape)
-                        .background(Color(0x3300D675)),
+                        .background(if (isClassic) Color(0x3300D675) else Color(0x1A00D675)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -2133,7 +2154,7 @@ fun LandscapeEyeRestCard(
                         text = "Eye Rest in",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextSecondary,
+                        color = subTextColor,
                         maxLines = 1,
                         softWrap = false
                     )
@@ -2158,7 +2179,7 @@ fun LandscapeEyeRestCard(
                     .height(3.dp)
                     .clip(RoundedCornerShape(2.dp)),
                 color = EyeCareAccent,
-                trackColor = Color(0xFF14241B)
+                trackColor = trackCol
             )
         }
     }
@@ -2177,8 +2198,13 @@ fun LandscapeWaterStretchCard(
     val remainingSecs = snapshot.nextWaterCountdownSeconds
     val waterProgress = ((totalWaterIntervalSecs - remainingSecs).toFloat() / totalWaterIntervalSecs.toFloat()).coerceIn(0f, 1f)
 
-    Box(
-        modifier = modifier
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = activeTheme == "Classic"
+    val isUltra = activeTheme == "Ultra Premium"
+
+    val baseModifier = when {
+        isClassic -> modifier
             .clip(RoundedCornerShape(16.dp))
             .background(
                 brush = androidx.compose.ui.graphics.Brush.verticalGradient(
@@ -2198,6 +2224,17 @@ fun LandscapeWaterStretchCard(
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
                 )
             }
+        isUltra -> modifier
+        else -> modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(tokens.cardFill)
+    }
+
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val trackCol = if (isClassic) Color(0xFF10202F) else if (isUltra) Color.White.copy(alpha = 0.10f) else tokens.chipFill
+
+    Box(
+        modifier = baseModifier
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -2215,7 +2252,7 @@ fun LandscapeWaterStretchCard(
                     modifier = Modifier
                         .size(34.dp)
                         .clip(CircleShape)
-                        .background(Color(0x3300B4FF)),
+                        .background(if (isClassic) Color(0x3300B4FF) else Color(0x1A00B4FF)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -2237,7 +2274,7 @@ fun LandscapeWaterStretchCard(
                         text = "Water & Stretch in",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextSecondary,
+                        color = subTextColor,
                         letterSpacing = (-0.3).sp,
                         maxLines = 1,
                         softWrap = false
@@ -2263,7 +2300,7 @@ fun LandscapeWaterStretchCard(
                     .height(3.dp)
                     .clip(RoundedCornerShape(2.dp)),
                 color = WaterAccent,
-                trackColor = Color(0xFF10202F)
+                trackColor = trackCol
             )
         }
     }
@@ -2292,8 +2329,13 @@ fun LandscapeBottomStrip(
         subjectName
     }
 
-    Box(
-        modifier = modifier
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = activeTheme == "Classic"
+    val isUltra = activeTheme == "Ultra Premium"
+
+    val baseModifier = when {
+        isClassic -> modifier
             .clip(RoundedCornerShape(16.dp))
             .background(
                 brush = androidx.compose.ui.graphics.Brush.verticalGradient(
@@ -2313,6 +2355,19 @@ fun LandscapeBottomStrip(
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
                 )
             }
+        isUltra -> modifier
+        else -> modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(tokens.cardFill)
+    }
+
+    val textColor = if (isClassic) TextPrimary else tokens.text
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val accentColor = if (isClassic) StudyAccent else tokens.accent
+    val trackCol = if (isClassic) Color(0xFF26190E) else if (isUltra) Color.White.copy(alpha = 0.10f) else tokens.chipFill
+
+    Box(
+        modifier = baseModifier
             .clickable(onClick = onSubjectClick)
             .testTag("landscape_bottom_strip")
     ) {
@@ -2332,20 +2387,20 @@ fun LandscapeBottomStrip(
                     modifier = Modifier
                         .size(34.dp)
                         .clip(CircleShape)
-                        .background(Color(0x33FFA640)),
+                        .background(if (isClassic) Color(0x33FFA640) else tokens.chipFill),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.MenuBook,
                         contentDescription = "Subject and Topic",
-                        tint = StudyAccent,
+                        tint = accentColor,
                         modifier = Modifier.size(18.dp)
                     )
                 }
 
                 Spacer(modifier = Modifier.width(6.dp))
 
-                // Three stacked lines (tight line spacing, proper sizes per requirement 11)
+                // Three stacked lines
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.Center
@@ -2354,7 +2409,7 @@ fun LandscapeBottomStrip(
                         text = "Study",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextSecondary,
+                        color = subTextColor,
                         maxLines = 1,
                         softWrap = false,
                         lineHeight = 13.sp
@@ -2363,7 +2418,7 @@ fun LandscapeBottomStrip(
                         text = "${totalMins}m / ${targetMins}m",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
+                        color = textColor,
                         maxLines = 1,
                         softWrap = false,
                         letterSpacing = (-0.5).sp,
@@ -2373,7 +2428,7 @@ fun LandscapeBottomStrip(
                         text = "Breaks $breaksToday • $subjectTopicPart",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
-                        color = TextSecondary,
+                        color = subTextColor,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         lineHeight = 12.sp
@@ -2381,10 +2436,10 @@ fun LandscapeBottomStrip(
                 }
             }
 
-            // 6dp gap between last text line and progress line (requirement 10)
+            // 6dp gap between last text line and progress line
             Spacer(modifier = Modifier.height(6.dp))
 
-            // Progress line at very bottom, in its own space (requirement 10)
+            // Progress line at very bottom
             LinearProgressIndicator(
                 progress = { summaryProgress },
                 modifier = Modifier
@@ -2392,16 +2447,16 @@ fun LandscapeBottomStrip(
                     .padding(start = 8.dp, end = 8.dp, bottom = 6.dp)
                     .height(3.dp)
                     .clip(RoundedCornerShape(2.dp)),
-                color = StudyAccent,
-                trackColor = Color(0xFF26190E)
+                color = if (isUltra) Color(0xFFFF9D24) else accentColor,
+                trackColor = trackCol
             )
         }
 
-        // ">" arrow on far right of card, vertically centered, aligned properly, never on top of text (requirement 9)
+        // ">" arrow on far right of card
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = "Select Subject",
-            tint = AmberAccent,
+            tint = accentColor,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(end = 4.dp)

@@ -19,6 +19,7 @@ data class AppSettings(
     val showSeconds: Boolean = false,
     val clockStyle: String = "Digital", // Digital, Flip, Minimal, Large
     val appTheme: String = "AMOLED Black", // AMOLED Black, Dark Charcoal, Light
+    val theme: String = "Dark", // Classic, Dark, Light, Ultra Premium
     val defaultStudyDurationMinutes: Int = 50,
     val selectedSubjectId: Long = 1L,
     val selectedTopicId: Long = 1L,
@@ -88,6 +89,7 @@ class SettingsRepository(private val context: Context) {
         val DAILY_TARGET_HOURS = intPreferencesKey("daily_target_hours")
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val BACKGROUND_STYLE = stringPreferencesKey("background_style")
+        val THEME = stringPreferencesKey("theme")
         val DEBUG_MODE = booleanPreferencesKey("debug_mode")
         val LAST_SESSION_MINUTES = intPreferencesKey("last_session_minutes")
         val LAST_POMODORO_STUDY_MINUTES = intPreferencesKey("last_pomodoro_study_minutes")
@@ -98,6 +100,9 @@ class SettingsRepository(private val context: Context) {
 
     val settingsFlow: Flow<AppSettings> = context.dataStore.data.map { prefs ->
         val debug = false // Force debug to false always
+        val hasExistingSettings = prefs[Keys.BACKGROUND_STYLE] != null || prefs[Keys.APP_THEME] != null || prefs[Keys.USE_24_HOUR] != null || prefs[Keys.EYE_CARE_ENABLED] != null
+        val defaultTheme = if (hasExistingSettings) "Classic" else "Dark"
+        val resolvedTheme = prefs[Keys.THEME] ?: defaultTheme
         val eyeEnabled = prefs[Keys.EYE_CARE_ENABLED] ?: true
         val eyeInterval = prefs[Keys.EYE_STUDY_INTERVAL_MINUTES] ?: 20
         val eyeRest = prefs[Keys.EYE_REST_DURATION_SECONDS] ?: 20
@@ -147,6 +152,7 @@ class SettingsRepository(private val context: Context) {
             showSeconds = prefs[Keys.SHOW_SECONDS] ?: false,
             clockStyle = prefs[Keys.CLOCK_STYLE] ?: "Digital",
             appTheme = prefs[Keys.APP_THEME] ?: "AMOLED Black",
+            theme = resolvedTheme,
             defaultStudyDurationMinutes = prefs[Keys.DEFAULT_STUDY_DURATION] ?: 50,
             selectedSubjectId = prefs[Keys.SELECTED_SUBJECT_ID] ?: 1L,
             selectedTopicId = prefs[Keys.SELECTED_TOPIC_ID] ?: 1L,
@@ -187,6 +193,7 @@ class SettingsRepository(private val context: Context) {
     suspend fun updateShowSeconds(value: Boolean) = edit { it[Keys.SHOW_SECONDS] = value }
     suspend fun updateClockStyle(value: String) = edit { it[Keys.CLOCK_STYLE] = value }
     suspend fun updateAppTheme(value: String) = edit { it[Keys.APP_THEME] = value }
+    suspend fun updateTheme(value: String) = edit { it[Keys.THEME] = value }
     suspend fun updateBackgroundStyle(value: String) = edit { it[Keys.BACKGROUND_STYLE] = value }
     suspend fun updateDefaultStudyDuration(minutes: Int) = edit { it[Keys.DEFAULT_STUDY_DURATION] = minutes }
     suspend fun updateSelectedSubject(id: Long, name: String) = edit {

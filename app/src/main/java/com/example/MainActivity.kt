@@ -18,11 +18,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
@@ -115,83 +120,261 @@ fun StudyWatchRootApp() {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
+    val activeTheme = settings.theme
+    val classicAccent = if (settings.appTheme.equals("Blue", ignoreCase = true)) WaterAccent else StudyAccent
+
     StudyWatchTheme(
+        activeTheme = activeTheme,
         isAmoled = settings.appTheme != "Light",
         themeName = settings.appTheme,
         backgroundStyle = settings.backgroundStyle
     ) {
+        val themeTokens = LocalAppThemeTokens.current
         AppBackground {
             Scaffold(
                 modifier = Modifier.fillMaxSize(),
                 containerColor = Color.Transparent,
-            contentWindowInsets = WindowInsets.systemBars,
-            bottomBar = {
-                // Secondary navigation bar only in portrait mode when user is navigating secondary feature tabs
-                if (!isLandscape && !isViewingLogBook && currentTab != NavigationTab.WATCH && snapshot.state != TimerState.EYE_REST && snapshot.state != TimerState.WATER_BREAK) {
-                    NavigationBar(
-                        containerColor = DarkCard,
-                        contentColor = TextPrimary,
-                        modifier = Modifier.testTag("main_bottom_nav")
-                    ) {
-                        NavigationTab.entries.forEach { tab ->
-                            NavigationBarItem(
-                                selected = currentTab == tab,
-                                onClick = { currentTab = tab },
-                                icon = { Icon(tab.icon, contentDescription = tab.label) },
-                                label = { Text(tab.label, fontSize = 11.sp) },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = StudyAccent,
-                                    selectedTextColor = StudyAccent,
-                                    indicatorColor = Color(0x33FFA640),
-                                    unselectedIconColor = TextMuted,
-                                    unselectedTextColor = TextMuted
-                                ),
-                                modifier = Modifier.testTag("nav_tab_${tab.name.lowercase()}")
-                            )
-                        }
-                    }
-                }
-            }
-        ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .consumeWindowInsets(innerPadding)
-                    .imePadding()
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    // Left Navigation Rail in Landscape mode (64-72dp wide)
-                    if (isLandscape && !isViewingLogBook && !isManagingSubjects && snapshot.state != TimerState.EYE_REST && snapshot.state != TimerState.WATER_BREAK) {
-                        NavigationRail(
-                            containerColor = DarkCard,
-                            contentColor = TextPrimary,
-                            modifier = Modifier
-                                .width(68.dp)
-                                .fillMaxHeight()
-                                .testTag("main_landscape_nav_rail")
-                        ) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            NavigationTab.entries.forEach { tab ->
-                                NavigationRailItem(
-                                    selected = currentTab == tab,
-                                    onClick = { currentTab = tab },
-                                    icon = { Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(20.dp)) },
-                                    label = { Text(tab.label, fontSize = 10.sp, maxLines = 1) },
-                                    colors = NavigationRailItemDefaults.colors(
-                                        selectedIconColor = StudyAccent,
-                                        selectedTextColor = StudyAccent,
-                                        indicatorColor = Color(0x33FFA640),
-                                        unselectedIconColor = TextMuted,
-                                        unselectedTextColor = TextMuted
-                                    ),
-                                    modifier = Modifier.testTag("nav_rail_${tab.name.lowercase()}")
-                                )
+                contentWindowInsets = WindowInsets.systemBars,
+                bottomBar = {
+                    // Secondary navigation bar only in portrait mode when user is navigating secondary feature tabs
+                    if (!isLandscape && !isViewingLogBook && currentTab != NavigationTab.WATCH && snapshot.state != TimerState.EYE_REST && snapshot.state != TimerState.WATER_BREAK) {
+                        if (activeTheme == "Classic") {
+                            // Classic: unchanged exactly as today
+                            NavigationBar(
+                                containerColor = DarkCard,
+                                contentColor = TextPrimary,
+                                modifier = Modifier.testTag("main_bottom_nav")
+                            ) {
+                                NavigationTab.entries.forEach { tab ->
+                                    NavigationBarItem(
+                                        selected = currentTab == tab,
+                                        onClick = { currentTab = tab },
+                                        icon = { Icon(tab.icon, contentDescription = tab.label) },
+                                        label = { Text(tab.label, fontSize = 11.sp) },
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = classicAccent,
+                                            selectedTextColor = classicAccent,
+                                            indicatorColor = Color(0x33FFA640),
+                                            unselectedIconColor = TextMuted,
+                                            unselectedTextColor = TextMuted
+                                        ),
+                                        modifier = Modifier.testTag("nav_tab_${tab.name.lowercase()}")
+                                    )
+                                }
+                            }
+                        } else if (activeTheme == "Ultra Premium") {
+                            // TH-29, TH-30: No fill/border/shadow. Amber accent with 56dp radial glow fading with 200ms
+                            NavigationBar(
+                                containerColor = Color.Transparent,
+                                contentColor = Color(0xFFFFFFFF),
+                                modifier = Modifier.testTag("main_bottom_nav")
+                            ) {
+                                NavigationTab.entries.forEach { tab ->
+                                    val selected = currentTab == tab
+                                    val glowAlpha by androidx.compose.animation.core.animateFloatAsState(
+                                        targetValue = if (selected) 1f else 0f,
+                                        animationSpec = androidx.compose.animation.core.tween(200),
+                                        label = "nav_glow_${tab.name}"
+                                    )
+                                    NavigationBarItem(
+                                        selected = selected,
+                                        onClick = { currentTab = tab },
+                                        icon = {
+                                            Box(
+                                                modifier = Modifier.drawBehind {
+                                                    if (glowAlpha > 0f) {
+                                                        drawCircle(
+                                                            brush = Brush.radialGradient(
+                                                                colors = listOf(
+                                                                    Color(0x70FF8A24).copy(alpha = 0.50f * glowAlpha),
+                                                                    Color(0x40FF8A24).copy(alpha = 0.25f * glowAlpha),
+                                                                    Color.Transparent
+                                                                ),
+                                                                center = this.center,
+                                                                radius = 56.dp.toPx()
+                                                            ),
+                                                            radius = 56.dp.toPx(),
+                                                            center = this.center
+                                                        )
+                                                    }
+                                                },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(tab.icon, contentDescription = tab.label)
+                                            }
+                                        },
+                                        label = { Text(tab.label, fontSize = 11.sp) },
+                                        colors = NavigationBarItemDefaults.colors(
+                                            selectedIconColor = Color(0xFFFFB52E),
+                                            selectedTextColor = Color(0xFFFFB52E),
+                                            indicatorColor = Color.Transparent,
+                                            unselectedIconColor = Color(0xFFAAB8D6),
+                                            unselectedTextColor = Color(0xFFAAB8D6)
+                                        ),
+                                        modifier = Modifier.testTag("nav_tab_${tab.name.lowercase()}")
+                                    )
+                                }
+                            }
+                        } else {
+                            // Dark & Light (TH-24, TH-25): Floating rounded pill, inset 12dp from left, right, bottom. No border, no shadow.
+                            Box(
+                                modifier = Modifier
+                                    .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+                                    .clip(RoundedCornerShape(28.dp))
+                                    .background(themeTokens.cardFill)
+                            ) {
+                                NavigationBar(
+                                    containerColor = Color.Transparent,
+                                    contentColor = themeTokens.text,
+                                    modifier = Modifier.testTag("main_bottom_nav")
+                                ) {
+                                    NavigationTab.entries.forEach { tab ->
+                                        NavigationBarItem(
+                                            selected = currentTab == tab,
+                                            onClick = { currentTab = tab },
+                                            icon = { Icon(tab.icon, contentDescription = tab.label) },
+                                            label = { Text(tab.label, fontSize = 11.sp) },
+                                            colors = NavigationBarItemDefaults.colors(
+                                                selectedIconColor = themeTokens.accent,
+                                                selectedTextColor = themeTokens.accent,
+                                                indicatorColor = Color.Transparent,
+                                                unselectedIconColor = themeTokens.secondaryText,
+                                                unselectedTextColor = themeTokens.secondaryText
+                                            ),
+                                            modifier = Modifier.testTag("nav_tab_${tab.name.lowercase()}")
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
+                }
+            ) { innerPadding ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .consumeWindowInsets(innerPadding)
+                        .imePadding()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        // Left Navigation Rail in Landscape mode (64-72dp wide)
+                        if (isLandscape && !isViewingLogBook && !isManagingSubjects && snapshot.state != TimerState.EYE_REST && snapshot.state != TimerState.WATER_BREAK) {
+                            if (activeTheme == "Classic") {
+                                NavigationRail(
+                                    containerColor = DarkCard,
+                                    contentColor = TextPrimary,
+                                    modifier = Modifier
+                                        .width(68.dp)
+                                        .fillMaxHeight()
+                                        .testTag("main_landscape_nav_rail")
+                                ) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    NavigationTab.entries.forEach { tab ->
+                                        NavigationRailItem(
+                                            selected = currentTab == tab,
+                                            onClick = { currentTab = tab },
+                                            icon = { Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(20.dp)) },
+                                            label = { Text(tab.label, fontSize = 10.sp, maxLines = 1) },
+                                            colors = NavigationRailItemDefaults.colors(
+                                                selectedIconColor = classicAccent,
+                                                selectedTextColor = classicAccent,
+                                                indicatorColor = Color(0x33FFA640),
+                                                unselectedIconColor = TextMuted,
+                                                unselectedTextColor = TextMuted
+                                            ),
+                                            modifier = Modifier.testTag("nav_rail_${tab.name.lowercase()}")
+                                        )
+                                    }
+                                }
+                            } else if (activeTheme == "Ultra Premium") {
+                                NavigationRail(
+                                    containerColor = Color.Transparent,
+                                    contentColor = Color(0xFFFFFFFF),
+                                    modifier = Modifier
+                                        .width(68.dp)
+                                        .fillMaxHeight()
+                                        .testTag("main_landscape_nav_rail")
+                                ) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    NavigationTab.entries.forEach { tab ->
+                                        val selected = currentTab == tab
+                                        val glowAlpha by androidx.compose.animation.core.animateFloatAsState(
+                                            targetValue = if (selected) 1f else 0f,
+                                            animationSpec = androidx.compose.animation.core.tween(200),
+                                            label = "rail_glow_${tab.name}"
+                                        )
+                                        NavigationRailItem(
+                                            selected = selected,
+                                            onClick = { currentTab = tab },
+                                            icon = {
+                                                Box(
+                                                    modifier = Modifier.drawBehind {
+                                                        if (glowAlpha > 0f) {
+                                                            drawCircle(
+                                                                brush = Brush.radialGradient(
+                                                                    colors = listOf(
+                                                                        Color(0x70FF8A24).copy(alpha = 0.50f * glowAlpha),
+                                                                        Color(0x40FF8A24).copy(alpha = 0.25f * glowAlpha),
+                                                                        Color.Transparent
+                                                                    ),
+                                                                    center = this.center,
+                                                                    radius = 56.dp.toPx()
+                                                                ),
+                                                                radius = 56.dp.toPx(),
+                                                                center = this.center
+                                                            )
+                                                        }
+                                                    },
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(20.dp))
+                                                }
+                                            },
+                                            label = { Text(tab.label, fontSize = 10.sp, maxLines = 1) },
+                                            colors = NavigationRailItemDefaults.colors(
+                                                selectedIconColor = Color(0xFFFFB52E),
+                                                selectedTextColor = Color(0xFFFFB52E),
+                                                indicatorColor = Color.Transparent,
+                                                unselectedIconColor = Color(0xFFAAB8D6),
+                                                unselectedTextColor = Color(0xFFAAB8D6)
+                                            ),
+                                            modifier = Modifier.testTag("nav_rail_${tab.name.lowercase()}")
+                                        )
+                                    }
+                                }
+                            } else {
+                                // Dark & Light (TH-26): same width, icon above label, no box
+                                NavigationRail(
+                                    containerColor = themeTokens.cardFill,
+                                    contentColor = themeTokens.text,
+                                    modifier = Modifier
+                                        .width(68.dp)
+                                        .fillMaxHeight()
+                                        .testTag("main_landscape_nav_rail")
+                                ) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    NavigationTab.entries.forEach { tab ->
+                                        NavigationRailItem(
+                                            selected = currentTab == tab,
+                                            onClick = { currentTab = tab },
+                                            icon = { Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(20.dp)) },
+                                            label = { Text(tab.label, fontSize = 10.sp, maxLines = 1) },
+                                            colors = NavigationRailItemDefaults.colors(
+                                                selectedIconColor = themeTokens.accent,
+                                                selectedTextColor = themeTokens.accent,
+                                                indicatorColor = Color.Transparent,
+                                                unselectedIconColor = themeTokens.secondaryText,
+                                                unselectedTextColor = themeTokens.secondaryText
+                                            ),
+                                            modifier = Modifier.testTag("nav_rail_${tab.name.lowercase()}")
+                                        )
+                                    }
+                                }
+                            }
+                        }
 
                     Box(
                         modifier = Modifier
@@ -392,6 +575,7 @@ fun StudyWatchRootApp() {
                                 onUpdate24Hour = { coroutineScope.launch { app.settingsRepository.update24Hour(it) } },
                                 onUpdateShowSeconds = { coroutineScope.launch { app.settingsRepository.updateShowSeconds(it) } },
                                 onUpdateClockStyle = { coroutineScope.launch { app.settingsRepository.updateClockStyle(it) } },
+                                onUpdateTheme = { coroutineScope.launch { app.settingsRepository.updateTheme(it) } },
                                 onUpdateBackgroundStyle = { coroutineScope.launch { app.settingsRepository.updateBackgroundStyle(it) } },
                                 onUpdateAppTheme = { coroutineScope.launch { app.settingsRepository.updateAppTheme(it) } },
                                 onUpdateDefaultStudyDuration = { coroutineScope.launch { app.settingsRepository.updateDefaultStudyDuration(it) } },

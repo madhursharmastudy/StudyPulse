@@ -209,103 +209,104 @@ fun LogBookScreen(
 
 @Composable
 fun LogEntryCard(entry: LogEntry) {
-    Card(
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = activeTheme == "Classic"
+
+    ThemedCard(
+        cornerRadius = 8.dp,
+        innerPadding = 10.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(10.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(
-                                when (entry.level) {
-                                    LogLevel.DEBUG -> CharcoalElevated
-                                    LogLevel.INFO -> CyanSoft
-                                    LogLevel.WARNING -> AmberSoft
-                                    LogLevel.ERROR, LogLevel.CRITICAL -> RoseSoft
-                                }
-                            )
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = entry.level.name,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                            color = when (entry.level) {
-                                LogLevel.DEBUG -> TextMuted
-                                LogLevel.INFO -> CyanAccent
-                                LogLevel.WARNING -> AmberAccent
-                                LogLevel.ERROR, LogLevel.CRITICAL -> RoseAccent
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(
+                            when (entry.level) {
+                                LogLevel.DEBUG -> if (isClassic) CharcoalElevated else tokens.chipFill
+                                LogLevel.INFO -> CyanSoft
+                                LogLevel.WARNING -> AmberSoft
+                                LogLevel.ERROR, LogLevel.CRITICAL -> RoseSoft
                             }
                         )
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
                     Text(
-                        text = entry.feature.name,
+                        text = entry.level.name,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        color = AmberAccent
+                        fontSize = 10.sp,
+                        color = when (entry.level) {
+                            LogLevel.DEBUG -> if (isClassic) TextMuted else tokens.secondaryText
+                            LogLevel.INFO -> CyanAccent
+                            LogLevel.WARNING -> AmberAccent
+                            LogLevel.ERROR, LogLevel.CRITICAL -> RoseAccent
+                        }
                     )
                 }
 
+                Spacer(modifier = Modifier.width(8.dp))
+
                 Text(
-                    text = entry.formattedTime(),
+                    text = entry.feature.name,
+                    fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
-                    fontFamily = FontFamily.Monospace,
-                    color = TextMuted
+                    color = if (isClassic) AmberAccent else tokens.accent
                 )
             }
-
-            Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = entry.event,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 13.sp,
-                color = TextPrimary
+                text = entry.formattedTime(),
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace,
+                color = if (isClassic) TextMuted else tokens.secondaryText.copy(alpha = 0.8f)
             )
+        }
 
-            if (!entry.details.isNullOrEmpty()) {
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = entry.details,
-                    fontSize = 12.sp,
-                    color = TextSecondary
-                )
-            }
+        Spacer(modifier = Modifier.height(6.dp))
 
-            // Correlation IDs
-            if (!entry.sessionUid.isNullOrEmpty() || !entry.timerId.isNullOrEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    entry.sessionUid?.let {
-                        Text("Session: $it", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = TextMuted)
-                    }
-                    entry.timerId?.let {
-                        Text("Timer: $it", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = TextMuted)
-                    }
+        Text(
+            text = entry.event,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 13.sp,
+            color = if (isClassic) TextPrimary else tokens.text
+        )
+
+        if (!entry.details.isNullOrEmpty()) {
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = entry.details,
+                fontSize = 12.sp,
+                color = if (isClassic) TextSecondary else tokens.secondaryText
+            )
+        }
+
+        // Correlation IDs
+        if (!entry.sessionUid.isNullOrEmpty() || !entry.timerId.isNullOrEmpty()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                entry.sessionUid?.let {
+                    Text("Session: $it", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = if (isClassic) TextMuted else tokens.secondaryText)
+                }
+                entry.timerId?.let {
+                    Text("Timer: $it", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = if (isClassic) TextMuted else tokens.secondaryText)
                 }
             }
+        }
 
-            if (!entry.exceptionMessage.isNullOrEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Exception: ${entry.exceptionMessage}",
-                    fontSize = 11.sp,
-                    fontFamily = FontFamily.Monospace,
-                    color = RoseAccent
-                )
-            }
+        if (!entry.exceptionMessage.isNullOrEmpty()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Exception: ${entry.exceptionMessage}",
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace,
+                color = RoseAccent
+            )
         }
     }
 }

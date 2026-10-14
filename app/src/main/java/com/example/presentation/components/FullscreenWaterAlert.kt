@@ -41,6 +41,11 @@ fun FullscreenWaterAlert(
         label = "WaterScale"
     )
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = activeTheme == "Classic"
+    val textColor = if (isClassic) TextPrimary else tokens.text
+
     AppBackground(modifier = modifier) {
         Box(
             modifier = Modifier
@@ -90,7 +95,7 @@ fun FullscreenWaterAlert(
                 style = MaterialTheme.typography.bodyLarge.copy(
                     fontWeight = FontWeight.Medium
                 ),
-                color = TextPrimary,
+                color = textColor,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
@@ -98,19 +103,29 @@ fun FullscreenWaterAlert(
             Spacer(modifier = Modifier.height(36.dp))
 
             // Main Primary Action: DRANK WATER
-            Button(
-                onClick = { TimerEngine.confirmDrankWater() },
-                colors = ButtonDefaults.buttonColors(containerColor = WaterAccent, contentColor = Color.Black),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .height(52.dp)
-                    .testTag("drank_water_button")
-            ) {
-                Text(
+            if (isClassic) {
+                Button(
+                    onClick = { TimerEngine.confirmDrankWater() },
+                    colors = ButtonDefaults.buttonColors(containerColor = WaterAccent, contentColor = Color.Black),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .height(52.dp)
+                        .testTag("drank_water_button")
+                ) {
+                    Text(
+                        text = "DRANK WATER",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+            } else {
+                ThemedActionPill(
                     text = "DRANK WATER",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
+                    onClick = { TimerEngine.confirmDrankWater() },
+                    isFilled = true,
+                    modifier = Modifier.fillMaxWidth(0.85f),
+                    testTag = "drank_water_button"
                 )
             }
 
@@ -121,28 +136,43 @@ fun FullscreenWaterAlert(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth(0.85f)
             ) {
-                OutlinedButton(
-                    onClick = { TimerEngine.remindWaterLater() },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp)
-                        .testTag("remind_water_later_button")
-                ) {
-                    Text("REMIND LATER")
-                }
+                if (isClassic) {
+                    OutlinedButton(
+                        onClick = { TimerEngine.remindWaterLater() },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .testTag("remind_water_later_button")
+                    ) {
+                        Text("REMIND LATER")
+                    }
 
-                OutlinedButton(
-                    onClick = { TimerEngine.skipWaterReminder() },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextMuted),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .weight(0.7f)
-                        .height(48.dp)
-                        .testTag("skip_water_button")
-                ) {
-                    Text("SKIP")
+                    OutlinedButton(
+                        onClick = { TimerEngine.skipWaterReminder() },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextMuted),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .weight(0.7f)
+                            .height(48.dp)
+                            .testTag("skip_water_button")
+                    ) {
+                        Text("SKIP")
+                    }
+                } else {
+                    ThemedActionPill(
+                        text = "Remind Later",
+                        onClick = { TimerEngine.remindWaterLater() },
+                        modifier = Modifier.weight(1f),
+                        testTag = "remind_water_later_button"
+                    )
+                    ThemedActionPill(
+                        text = "Skip",
+                        onClick = { TimerEngine.skipWaterReminder() },
+                        modifier = Modifier.weight(0.7f),
+                        testTag = "skip_water_button"
+                    )
                 }
             }
         }

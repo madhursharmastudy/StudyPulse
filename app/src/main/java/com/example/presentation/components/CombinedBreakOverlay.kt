@@ -181,6 +181,12 @@ private fun WaterBreakStep(
         label = "WaterScale"
     )
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = activeTheme == "Classic"
+    val textColor = if (isClassic) TextPrimary else tokens.text
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -221,7 +227,7 @@ private fun WaterBreakStep(
         Text(
             text = "Drink a glass of water and take a short walk to refresh.",
             style = MaterialTheme.typography.bodyMedium,
-            color = TextPrimary,
+            color = textColor,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
@@ -234,38 +240,64 @@ private fun WaterBreakStep(
             fontSize = 44.sp,
             fontWeight = FontWeight.Black,
             fontFamily = FontFamily.Monospace,
-            color = TextPrimary
+            color = textColor
         )
 
         Spacer(modifier = Modifier.height(30.dp))
 
-        Button(
-            onClick = onNext,
-            colors = ButtonDefaults.buttonColors(containerColor = WaterAccent, contentColor = Color.Black),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier
-                .fillMaxWidth(0.85f)
-                .height(48.dp)
-                .testTag("water_next_button")
-        ) {
-            Text(
-                text = if (hasStretchAfter) "Next: Stretches" else "Done",
-                fontWeight = FontWeight.Bold,
-                fontSize = 15.sp
-            )
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(onClick = onSkip) {
-                Text("Skip", color = TextSecondary, fontSize = 13.sp)
+        if (isClassic) {
+            Button(
+                onClick = onNext,
+                colors = ButtonDefaults.buttonColors(containerColor = WaterAccent, contentColor = Color.Black),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .height(48.dp)
+                    .testTag("water_next_button")
+            ) {
+                Text(
+                    text = if (hasStretchAfter) "Next: Stretches" else "Done",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
             }
-            TextButton(onClick = onSkipAll) {
-                Text("Skip all", color = TextMuted, fontSize = 13.sp)
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onSkip) {
+                    Text("Skip", color = TextSecondary, fontSize = 13.sp)
+                }
+                TextButton(onClick = onSkipAll) {
+                    Text("Skip all", color = TextMuted, fontSize = 13.sp)
+                }
+            }
+        } else {
+            ThemedActionPill(
+                text = if (hasStretchAfter) "Next: Stretches" else "Done",
+                onClick = onNext,
+                isFilled = true,
+                modifier = Modifier.fillMaxWidth(0.85f),
+                testTag = "water_next_button"
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ThemedActionPill(
+                    text = "Skip",
+                    onClick = onSkip
+                )
+                ThemedActionPill(
+                    text = "Skip all",
+                    onClick = onSkipAll
+                )
             }
         }
     }

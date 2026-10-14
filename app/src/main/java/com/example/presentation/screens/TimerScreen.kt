@@ -161,26 +161,34 @@ fun TimerScreen(
                 )
             }
             Spacer(modifier = Modifier.width(6.dp))
+            val activeTheme = LocalActiveTheme.current
+            val tokens = LocalAppThemeTokens.current
+            val headingColor = if (activeTheme == "Classic") StudyAccent else tokens.accent
             Text(
                 text = "STUDY TIMERS",
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
                 ),
-                color = StudyAccent
+                color = headingColor
             )
         }
 
         // 2. Tabs Row (equal width, single line, ~11sp, no cut-off)
+        val activeTheme = LocalActiveTheme.current
+        val tokens = LocalAppThemeTokens.current
+        val tabContainer = if (activeTheme == "Classic") DarkCard else if (activeTheme == "Ultra Premium") Color.Transparent else tokens.cardFill
+        val tabAccent = if (activeTheme == "Classic") StudyAccent else tokens.accent
+
         TabRow(
             selectedTabIndex = selectedTab,
-            containerColor = DarkCard,
-            contentColor = StudyAccent,
+            containerColor = tabContainer,
+            contentColor = tabAccent,
             indicator = { tabPositions ->
                 if (selectedTab < tabPositions.size) {
                     TabRowDefaults.SecondaryIndicator(
                         modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                        color = StudyAccent
+                        color = tabAccent
                     )
                 }
             },
@@ -196,7 +204,7 @@ fun TimerScreen(
                         Text(
                             text = title,
                             fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selectedTab == index) AmberAccent else TextSecondary,
+                            color = if (selectedTab == index) (if (activeTheme == "Classic") AmberAccent else tokens.accent) else (if (activeTheme == "Classic") TextSecondary else tokens.secondaryText),
                             fontSize = 11.sp,
                             maxLines = 1,
                             softWrap = false
@@ -575,34 +583,60 @@ fun TimerScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             if (isSwActive) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceEvenly,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    TextButton(
-                                        onClick = { StopwatchEngine.stop() },
-                                        modifier = Modifier.testTag("stopwatch_end_button")
+                                if (activeTheme == "Classic") {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceEvenly,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text("End Session", color = RoseAccent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        TextButton(
+                                            onClick = { StopwatchEngine.stop() },
+                                            modifier = Modifier.testTag("stopwatch_end_button")
+                                        ) {
+                                            Text("End Session", color = RoseAccent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        }
+                                        TextButton(
+                                            onClick = { StopwatchEngine.reset() },
+                                            modifier = Modifier.testTag("stopwatch_reset_button")
+                                        ) {
+                                            Text("Reset", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        }
+                                        TextButton(
+                                            onClick = { StopwatchEngine.recordLap() },
+                                            modifier = Modifier.testTag("stopwatch_lap_button")
+                                        ) {
+                                            Text("Lap", color = CyanAccent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        }
                                     }
-                                    TextButton(
-                                        onClick = { StopwatchEngine.reset() },
-                                        modifier = Modifier.testTag("stopwatch_reset_button")
+                                } else {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Text("Reset", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                    }
-                                    TextButton(
-                                        onClick = { StopwatchEngine.recordLap() },
-                                        modifier = Modifier.testTag("stopwatch_lap_button")
-                                    ) {
-                                        Text("Lap", color = CyanAccent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        ThemedActionPill(
+                                            text = "End Session",
+                                            onClick = { StopwatchEngine.stop() },
+                                            textColor = tokens.danger,
+                                            testTag = "stopwatch_end_button"
+                                        )
+                                        ThemedActionPill(
+                                            text = "Reset",
+                                            onClick = { StopwatchEngine.reset() },
+                                            testTag = "stopwatch_reset_button"
+                                        )
+                                        ThemedActionPill(
+                                            text = "Lap",
+                                            onClick = { StopwatchEngine.recordLap() },
+                                            textColor = CyanAccent,
+                                            testTag = "stopwatch_lap_button"
+                                        )
                                     }
                                 }
                             } else {
                                 Text(
                                     text = "Tap Play to Start",
-                                    color = TextMuted,
+                                    color = if (activeTheme == "Classic") TextMuted else tokens.secondaryText,
                                     fontSize = 13.sp
                                 )
                             }
@@ -916,25 +950,60 @@ fun TimerActionsRow(
     onReset: () -> Unit,
     onEndSession: () -> Unit
 ) {
-    if (isActive) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(onClick = onEndSession) {
-                Text("End Session", color = RoseAccent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = activeTheme == "Classic"
+
+    if (isClassic) {
+        if (isActive) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = onEndSession) {
+                    Text("End Session", color = RoseAccent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+                TextButton(onClick = onReset) {
+                    Text("Reset", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+                TextButton(onClick = onSetTimer) {
+                    Text("Set Timer", color = AmberAccent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
             }
-            TextButton(onClick = onReset) {
-                Text("Reset", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-            }
+        } else {
             TextButton(onClick = onSetTimer) {
-                Text("Set Timer", color = AmberAccent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text("Set Timer", color = AmberAccent, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
         }
     } else {
-        TextButton(onClick = onSetTimer) {
-            Text("Set Timer", color = AmberAccent, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        if (isActive) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ThemedActionPill(
+                    text = "End Session",
+                    onClick = onEndSession,
+                    textColor = tokens.danger
+                )
+                ThemedActionPill(
+                    text = "Reset",
+                    onClick = onReset
+                )
+                ThemedActionPill(
+                    text = "Set Timer",
+                    onClick = onSetTimer,
+                    textColor = tokens.accent
+                )
+            }
+        } else {
+            ThemedActionPill(
+                text = "Set Timer",
+                onClick = onSetTimer,
+                textColor = tokens.accent
+            )
         }
     }
 }
@@ -1495,32 +1564,46 @@ fun BreaksTab(
                             )
                         }
                         Spacer(modifier = Modifier.width(10.dp))
+                        val activeTheme = LocalActiveTheme.current
+                        val tokens = LocalAppThemeTokens.current
+                        val isClassic = activeTheme == "Classic"
+
                         Column {
                             Text(
                                 text = "$name Break",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = TextPrimary
+                                color = if (isClassic) TextPrimary else tokens.text
                             )
                             Text(
                                 text = "$mins min",
                                 fontSize = 11.sp,
-                                color = TextSecondary
+                                color = if (isClassic) TextSecondary else tokens.secondaryText
                             )
                         }
                     }
 
-                    Button(
-                        onClick = { onStartBreak(type, mins * 60L) },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = EmeraldAccent,
-                            contentColor = Color.Black
-                        ),
-                        shape = RoundedCornerShape(6.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        Text("START", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    val activeTheme = LocalActiveTheme.current
+                    if (activeTheme == "Classic") {
+                        Button(
+                            onClick = { onStartBreak(type, mins * 60L) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = EmeraldAccent,
+                                contentColor = Color.Black
+                            ),
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text("START", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        ThemedActionPill(
+                            text = "START",
+                            onClick = { onStartBreak(type, mins * 60L) },
+                            isFilled = true,
+                            testTag = "start_break_${name.lowercase()}"
+                        )
                     }
                 }
             }
@@ -2040,17 +2123,21 @@ fun LandscapeTimerScreen(
                 .fillMaxHeight(),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            // 1. Horizontally scrollable row of 5 tabs across the top: full names in landscape
+            val activeTheme = LocalActiveTheme.current
+            val tokens = LocalAppThemeTokens.current
+            val tabContainer = if (activeTheme == "Classic") CharcoalCard else if (activeTheme == "Ultra Premium") Color.Transparent else tokens.cardFill
+            val tabAccent = if (activeTheme == "Classic") AmberAccent else tokens.accent
+
             ScrollableTabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = CharcoalCard,
-                contentColor = AmberAccent,
+                containerColor = tabContainer,
+                contentColor = tabAccent,
                 edgePadding = 0.dp,
                 indicator = { tabPositions ->
                     if (selectedTab < tabPositions.size) {
                         TabRowDefaults.SecondaryIndicator(
                             modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                            color = AmberAccent,
+                            color = tabAccent,
                             height = 2.dp
                         )
                     }
@@ -2069,7 +2156,7 @@ fun LandscapeTimerScreen(
                                 text = title,
                                 fontSize = 11.sp,
                                 fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selectedTab == index) AmberAccent else TextSecondary,
+                                color = if (selectedTab == index) tabAccent else (if (activeTheme == "Classic") TextSecondary else tokens.secondaryText),
                                 maxLines = 1,
                                 softWrap = false,
                                 modifier = Modifier.padding(horizontal = 12.dp)
@@ -2295,19 +2382,33 @@ fun LandscapeTimerScreen(
                                             )
                                         }
                                         Spacer(modifier = Modifier.width(8.dp))
+                                        val activeTheme = LocalActiveTheme.current
+                                        val tokens = LocalAppThemeTokens.current
+                                        val isClassic = activeTheme == "Classic"
+
                                         Column {
-                                            Text("$name Break", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                                            Text("$mins min", fontSize = 10.sp, color = TextSecondary)
+                                            Text("$name Break", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isClassic) TextPrimary else tokens.text)
+                                            Text("$mins min", fontSize = 10.sp, color = if (isClassic) TextSecondary else tokens.secondaryText)
                                         }
                                     }
-                                    Button(
-                                        onClick = { TimerEngine.startBreak(type, mins) },
-                                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldAccent, contentColor = Color.Black),
-                                        shape = RoundedCornerShape(6.dp),
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-                                        modifier = Modifier.height(28.dp)
-                                    ) {
-                                        Text("START", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    val activeTheme = LocalActiveTheme.current
+                                    if (activeTheme == "Classic") {
+                                        Button(
+                                            onClick = { TimerEngine.startBreak(type, mins) },
+                                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldAccent, contentColor = Color.Black),
+                                            shape = RoundedCornerShape(6.dp),
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                                            modifier = Modifier.height(28.dp)
+                                        ) {
+                                            Text("START", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    } else {
+                                        ThemedActionPill(
+                                            text = "START",
+                                            onClick = { TimerEngine.startBreak(type, mins) },
+                                            isFilled = true,
+                                            testTag = "landscape_start_break_${name.lowercase()}"
+                                        )
                                     }
                                 }
                             }

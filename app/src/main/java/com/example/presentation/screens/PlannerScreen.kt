@@ -107,6 +107,13 @@ fun PlannerScreen(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
+        val activeTheme = LocalActiveTheme.current
+        val tokens = LocalAppThemeTokens.current
+        val isClassic = activeTheme == "Classic"
+        val accent = if (isClassic) AmberAccent else tokens.accent
+        val tabBg = if (isClassic) CharcoalCard else if (activeTheme == "Ultra Premium") Color.Transparent else tokens.cardFill
+        val subColor = if (isClassic) TextSecondary else tokens.secondaryText
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -118,7 +125,7 @@ fun PlannerScreen(
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
                 ),
-                color = AmberAccent
+                color = accent
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -129,7 +136,7 @@ fun PlannerScreen(
                     Icon(
                         imageVector = Icons.Default.Tune,
                         contentDescription = "Manage Subjects",
-                        tint = AmberAccent
+                        tint = accent
                     )
                 }
 
@@ -138,39 +145,39 @@ fun PlannerScreen(
                         onClick = { showAddChooser = true },
                         modifier = Modifier.testTag("planner_add_button")
                     ) {
-                        Icon(Icons.Default.AddCircle, contentDescription = "Add Item", tint = AmberAccent)
+                        Icon(Icons.Default.AddCircle, contentDescription = "Add Item", tint = accent)
                     }
 
                     DropdownMenu(
                         expanded = showAddChooser,
                         onDismissRequest = { showAddChooser = false },
                         modifier = Modifier
-                            .background(CharcoalCard)
-                            .border(1.dp, CharcoalBorder, RoundedCornerShape(8.dp))
+                            .background(if (isClassic) CharcoalCard else tokens.cardFill)
+                            .border(1.dp, if (isClassic) CharcoalBorder else tokens.chipFill, RoundedCornerShape(8.dp))
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Study Block", color = TextPrimary, fontWeight = FontWeight.Medium) },
+                            text = { Text("Study Block", color = if (isClassic) TextPrimary else tokens.text, fontWeight = FontWeight.Medium) },
                             onClick = {
                                 showAddChooser = false
                                 showAddPlanDialog = true
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Task", color = TextPrimary, fontWeight = FontWeight.Medium) },
+                            text = { Text("Task", color = if (isClassic) TextPrimary else tokens.text, fontWeight = FontWeight.Medium) },
                             onClick = {
                                 showAddChooser = false
                                 showAddAssignmentDialog = true
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Exam", color = TextPrimary, fontWeight = FontWeight.Medium) },
+                            text = { Text("Exam", color = if (isClassic) TextPrimary else tokens.text, fontWeight = FontWeight.Medium) },
                             onClick = {
                                 showAddChooser = false
                                 showAddExamDialog = true
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Revision", color = TextPrimary, fontWeight = FontWeight.Medium) },
+                            text = { Text("Revision", color = if (isClassic) TextPrimary else tokens.text, fontWeight = FontWeight.Medium) },
                             onClick = {
                                 showAddChooser = false
                                 showAddRevisionDialog = true
@@ -185,12 +192,12 @@ fun PlannerScreen(
 
         TabRow(
             selectedTabIndex = selectedTab,
-            containerColor = CharcoalCard,
-            contentColor = AmberAccent,
+            containerColor = tabBg,
+            contentColor = accent,
             indicator = { tabPositions ->
                 TabRowDefaults.SecondaryIndicator(
                     modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                    color = AmberAccent
+                    color = accent
                 )
             }
         ) {
@@ -202,7 +209,7 @@ fun PlannerScreen(
                         Text(
                             text = title,
                             fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selectedTab == index) AmberAccent else TextSecondary,
+                            color = if (selectedTab == index) accent else subColor,
                             fontSize = 12.sp
                         )
                     }
@@ -302,17 +309,24 @@ fun TodayTab(
     var revisionToEdit by remember { mutableStateOf<RevisionItemEntity?>(null) }
     var revisionToDelete by remember { mutableStateOf<RevisionItemEntity?>(null) }
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = activeTheme == "Classic"
+    val textColor = if (isClassic) TextPrimary else tokens.text
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val accent = if (isClassic) AmberAccent else tokens.accent
+
     if (items.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("No study blocks or revisions today", color = TextSecondary)
+                Text("No study blocks or revisions today", color = subTextColor)
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = onAddClick,
-                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.Black)
                 ) {
                     Text("+ Add Item")
                 }
@@ -327,14 +341,12 @@ fun TodayTab(
                 when (item) {
                     is TodayItem.StudyBlock -> {
                         val plan = item.plan
-                        Card(
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-                            border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+                        ThemedCard(
+                            cornerRadius = 12.dp,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
-                                modifier = Modifier.padding(14.dp),
+                                modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Checkbox(
@@ -351,14 +363,14 @@ fun TodayTab(
                                         text = "${plan.startTime} - ${plan.endTime}",
                                         fontWeight = FontWeight.Bold,
                                         fontFamily = FontFamily.Monospace,
-                                        color = AmberAccent,
+                                        color = accent,
                                         fontSize = 13.sp
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = plan.subjectName,
                                         fontWeight = FontWeight.Bold,
-                                        color = TextPrimary,
+                                        color = textColor,
                                         fontSize = 15.sp,
                                         maxLines = 1,
                                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -368,7 +380,7 @@ fun TodayTab(
                                     Text(
                                         text = "${plan.topicName}${if (plan.notes.isNotEmpty()) " • ${plan.notes}" else ""}",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = TextSecondary,
+                                        color = subTextColor,
                                         maxLines = 1,
                                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
@@ -389,20 +401,18 @@ fun TodayTab(
                     }
                     is TodayItem.Revision -> {
                         val rev = item.item
-                        Card(
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-                            border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+                        ThemedCard(
+                            cornerRadius = 12.dp,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
-                                modifier = Modifier.padding(14.dp),
+                                modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(6.dp))
-                                        .background(Color(0xFF222222))
+                                        .background(if (isClassic) Color(0xFF222222) else tokens.chipFill)
                                         .padding(8.dp)
                                 ) {
                                     Icon(
@@ -431,7 +441,7 @@ fun TodayTab(
                                     Text(
                                         text = rev.subjectName,
                                         fontWeight = FontWeight.Bold,
-                                        color = TextPrimary,
+                                        color = textColor,
                                         fontSize = 15.sp,
                                         maxLines = 1,
                                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -441,7 +451,7 @@ fun TodayTab(
                                     Text(
                                         text = rev.topicName,
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = TextSecondary,
+                                        color = subTextColor,
                                         maxLines = 1,
                                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                     )
@@ -522,9 +532,17 @@ fun ExamsTab(
     var examToEdit by remember { mutableStateOf<ExamEntity?>(null) }
     var examToDelete by remember { mutableStateOf<ExamEntity?>(null) }
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = activeTheme == "Classic"
+    val textColor = if (isClassic) TextPrimary else tokens.text
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val accent = if (isClassic) AmberAccent else tokens.accent
+    val trackCol = if (isClassic) CharcoalElevated else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.10f) else tokens.chipFill
+
     if (exams.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Button(onClick = onAddClick, colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)) {
+            Button(onClick = onAddClick, colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.Black)) {
                 Text("+ Add Target Exam")
             }
         }
@@ -538,13 +556,11 @@ fun ExamsTab(
                 val diffMillis = exam.examTimestamp - now
                 val daysLeft = (diffMillis / (1000 * 60 * 60 * 24)).coerceAtLeast(0)
 
-                Card(
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+                ThemedCard(
+                    cornerRadius = 14.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -553,7 +569,7 @@ fun ExamsTab(
                             Text(
                                 text = exam.title,
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = TextPrimary,
+                                color = textColor,
                                 modifier = Modifier.weight(1f)
                             )
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -581,15 +597,15 @@ fun ExamsTab(
                         }
 
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text("Subjects: ${exam.subjectNames}", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                        Text("Subjects: ${exam.subjectNames}", style = MaterialTheme.typography.bodySmall, color = subTextColor)
 
                         Spacer(modifier = Modifier.height(10.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Preparation Progress", style = MaterialTheme.typography.labelSmall, color = TextMuted)
-                            Text("${exam.preparationPercent}%", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = AmberAccent)
+                            Text("Preparation Progress", style = MaterialTheme.typography.labelSmall, color = subTextColor)
+                            Text("${exam.preparationPercent}%", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = accent)
                         }
 
                         Spacer(modifier = Modifier.height(6.dp))
@@ -599,8 +615,8 @@ fun ExamsTab(
                                 .fillMaxWidth()
                                 .height(6.dp)
                                 .clip(RoundedCornerShape(3.dp)),
-                            color = AmberAccent,
-                            trackColor = CharcoalElevated
+                            color = accent,
+                            trackColor = trackCol
                         )
                     }
                 }
@@ -642,17 +658,24 @@ fun AssignmentsTab(
     var taskToEdit by remember { mutableStateOf<AssignmentEntity?>(null) }
     var taskToDelete by remember { mutableStateOf<AssignmentEntity?>(null) }
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = activeTheme == "Classic"
+    val textColor = if (isClassic) TextPrimary else tokens.text
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val accent = if (isClassic) AmberAccent else tokens.accent
+
     if (assignments.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("No active assignments or tasks", color = TextSecondary)
+                Text("No active assignments or tasks", color = subTextColor)
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = onAddClick,
-                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.Black)
                 ) {
                     Text("+ Add Task")
                 }
@@ -674,20 +697,18 @@ fun AssignmentsTab(
                     dueColor = RoseAccent
                 } else if (dueDays == 0) {
                     dueText = "Due today"
-                    dueColor = AmberAccent
+                    dueColor = accent
                 } else {
                     dueText = "Due in $dueDays days"
-                    dueColor = TextSecondary
+                    dueColor = subTextColor
                 }
 
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+                ThemedCard(
+                    cornerRadius = 12.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
-                        modifier = Modifier.padding(14.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
@@ -707,13 +728,13 @@ fun AssignmentsTab(
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text(task.title, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                Text(task.title, fontWeight = FontWeight.Bold, color = textColor)
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "${task.subjectName} • ",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = TextSecondary
+                                color = subTextColor
                             )
                             Text(
                                 text = dueText,
@@ -723,7 +744,7 @@ fun AssignmentsTab(
                             Text(
                                 text = " • Est: ${task.estimatedMinutes}m • ${task.progressPercent}% Done",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = TextSecondary
+                                color = subTextColor
                             )
                         }
 

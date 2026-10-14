@@ -121,6 +121,15 @@ fun StatisticsScreen(
         ((completionRatio * 70) + 30 - interruptionPenalty).toInt().coerceIn(30, 100)
     }
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val accent = if (activeTheme == "Classic") AmberAccent else tokens.accent
+    val textColor = if (activeTheme == "Classic") TextPrimary else tokens.text
+    val subTextColor = if (activeTheme == "Classic") TextSecondary else tokens.secondaryText
+    val tabContainer = if (activeTheme == "Classic") CharcoalCard else if (activeTheme == "Ultra Premium") Color.Transparent else tokens.cardFill
+    val progressColor = if (activeTheme == "Ultra Premium") Color(0xFFFF9D24) else accent
+    val trackColor = if (activeTheme == "Classic") CharcoalElevated else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.10f) else tokens.chipFill
+
     AppBackground(modifier = modifier) {
         LazyColumn(
             modifier = Modifier
@@ -135,7 +144,7 @@ fun StatisticsScreen(
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
                 ),
-                color = AmberAccent
+                color = accent
             )
         }
 
@@ -143,12 +152,12 @@ fun StatisticsScreen(
         item {
             TabRow(
                 selectedTabIndex = selectedFilterTab,
-                containerColor = CharcoalCard,
-                contentColor = AmberAccent,
+                containerColor = tabContainer,
+                contentColor = accent,
                 indicator = { tabPositions ->
                     TabRowDefaults.SecondaryIndicator(
                         modifier = Modifier.tabIndicatorOffset(tabPositions[selectedFilterTab]),
-                        color = AmberAccent
+                        color = accent
                     )
                 }
             ) {
@@ -160,7 +169,7 @@ fun StatisticsScreen(
                             Text(
                                 text = title,
                                 fontWeight = if (selectedFilterTab == index) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selectedFilterTab == index) AmberAccent else TextSecondary,
+                                color = if (selectedFilterTab == index) accent else subTextColor,
                                 fontSize = 12.sp
                             )
                         }
@@ -183,57 +192,53 @@ fun StatisticsScreen(
                 val fraction = (totalProductiveSeconds.toFloat() / (dailyTargetHours * 3600f)).coerceAtMost(1f)
                 val percent = (fraction * 100).toInt()
 
-                Card(
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+                ThemedCard(
+                    cornerRadius = 14.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.TrackChanges,
-                                    contentDescription = null,
-                                    tint = AmberAccent,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Today's Target",
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary,
-                                    fontSize = 14.sp
-                                )
-                            }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.TrackChanges,
+                                contentDescription = null,
+                                tint = accent,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "$productiveDisplay / $targetDisplay",
-                                fontWeight = FontWeight.Black,
-                                color = AmberAccent,
+                                text = "Today's Target",
+                                fontWeight = FontWeight.Bold,
+                                color = textColor,
                                 fontSize = 14.sp
                             )
                         }
-                        Spacer(modifier = Modifier.height(10.dp))
-                        LinearProgressIndicator(
-                            progress = { fraction },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(8.dp)
-                                .clip(RoundedCornerShape(4.dp)),
-                            color = AmberAccent,
-                            trackColor = CharcoalElevated
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "$percent% of daily goal completed",
-                            fontSize = 11.sp,
-                            color = TextSecondary
+                            text = "$productiveDisplay / $targetDisplay",
+                            fontWeight = FontWeight.Black,
+                            color = progressColor,
+                            fontSize = 14.sp
                         )
                     }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    LinearProgressIndicator(
+                        progress = { fraction },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = progressColor,
+                        trackColor = trackColor
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "$percent% of daily goal completed",
+                        fontSize = 11.sp,
+                        color = subTextColor
+                    )
                 }
             }
         }
@@ -451,25 +456,25 @@ fun MetricCard(
     accentColor: Color,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val subColor = if (activeTheme == "Classic") TextSecondary else tokens.secondaryText
+
+    ThemedCard(
+        cornerRadius = 14.dp,
         modifier = modifier
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = TextMuted)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = value,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Black,
-                fontFamily = FontFamily.Monospace,
-                color = accentColor
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-        }
+        Text(title, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold), color = subColor)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = value,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Black,
+            fontFamily = FontFamily.Monospace,
+            color = accentColor
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = subColor)
     }
 }
 

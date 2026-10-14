@@ -46,6 +46,13 @@ fun FullscreenEyeAlert(
     val totalSeconds = snapshot.eyeRestDurationSeconds.coerceAtLeast(1)
     val progress = (secondsRemaining.toFloat() / totalSeconds.toFloat()).coerceIn(0f, 1f)
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = activeTheme == "Classic"
+    val textColor = if (isClassic) TextPrimary else tokens.text
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val trackCol = if (isClassic) Color(0xFF1C1C1E) else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.10f) else tokens.chipFill
+
     AppBackground(modifier = modifier) {
         Box(
             modifier = Modifier
@@ -95,7 +102,7 @@ fun FullscreenEyeAlert(
                 style = MaterialTheme.typography.bodyLarge.copy(
                     fontWeight = FontWeight.Medium
                 ),
-                color = TextPrimary,
+                color = textColor,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
@@ -112,7 +119,7 @@ fun FullscreenEyeAlert(
                     modifier = Modifier.fillMaxSize(),
                     color = EyeCareAccent,
                     strokeWidth = 6.dp,
-                    trackColor = Color(0xFF1C1C1E)
+                    trackColor = trackCol
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
@@ -120,7 +127,7 @@ fun FullscreenEyeAlert(
                         fontSize = 48.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace,
-                        color = TextPrimary
+                        color = textColor
                     )
                     Text(
                         text = "SECONDS",
@@ -137,28 +144,44 @@ fun FullscreenEyeAlert(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxWidth(0.85f)
             ) {
-                OutlinedButton(
-                    onClick = { TimerEngine.skipEyeRest() },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp)
-                        .testTag("skip_eye_rest_button")
-                ) {
-                    Text("SKIP")
-                }
+                if (isClassic) {
+                    OutlinedButton(
+                        onClick = { TimerEngine.skipEyeRest() },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .testTag("skip_eye_rest_button")
+                    ) {
+                        Text("SKIP")
+                    }
 
-                Button(
-                    onClick = { TimerEngine.completeEyeRest(autoResumed = false) },
-                    colors = ButtonDefaults.buttonColors(containerColor = EyeCareAccent, contentColor = Color.Black),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp)
-                        .testTag("resume_early_eye_button")
-                ) {
-                    Text("RESUME", fontWeight = FontWeight.Bold)
+                    Button(
+                        onClick = { TimerEngine.completeEyeRest(autoResumed = false) },
+                        colors = ButtonDefaults.buttonColors(containerColor = EyeCareAccent, contentColor = Color.Black),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .testTag("resume_early_eye_button")
+                    ) {
+                        Text("RESUME", fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    ThemedActionPill(
+                        text = "Skip",
+                        onClick = { TimerEngine.skipEyeRest() },
+                        modifier = Modifier.weight(1f),
+                        testTag = "skip_eye_rest_button"
+                    )
+                    ThemedActionPill(
+                        text = "Resume",
+                        onClick = { TimerEngine.completeEyeRest(autoResumed = false) },
+                        isFilled = true,
+                        modifier = Modifier.weight(1f),
+                        testTag = "resume_early_eye_button"
+                    )
                 }
             }
         }

@@ -182,35 +182,42 @@ fun LandscapeRectangleTimerCard(
     onLap: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val cornerRadius = if (useHomeStyle) 24.dp else 3.dp
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = activeTheme == "Classic"
+    val isUltra = activeTheme == "Ultra Premium"
+
+    val cornerRadius = if (isClassic) (if (useHomeStyle) 24.dp else 3.dp) else (if (isUltra) 0.dp else 20.dp)
     val strokeWidthDp = if (hasProgress) (if (useHomeStyle) 3.5.dp else 5.5.dp) else 1.5.dp
+
+    val cardBgModifier = when {
+        isClassic -> if (useHomeStyle) {
+            Modifier
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color(0xFF22140A), Color(0xFF130B05), Color(0xFF0C0703))
+                    )
+                )
+                .drawBehind {
+                    // Soft orange glow at the bottom of the card
+                    drawRoundRect(
+                        brush = Brush.verticalGradient(
+                            0.55f to Color.Transparent,
+                            1.0f to Color(0x35FFA640)
+                        ),
+                        size = size,
+                        cornerRadius = CornerRadius(24.dp.toPx())
+                    )
+                }
+        } else Modifier
+        isUltra -> Modifier // TH-29: Content sits directly on background
+        else -> if (useHomeStyle) Modifier.background(tokens.cardFill) else Modifier
+    }
 
     BoxWithConstraints(
         modifier = modifier
             .clip(RoundedCornerShape(cornerRadius))
-            .then(
-                if (useHomeStyle) {
-                    Modifier
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(Color(0xFF22140A), Color(0xFF130B05), Color(0xFF0C0703))
-                            )
-                        )
-                        .drawBehind {
-                            // Soft orange glow at the bottom of the card
-                            drawRoundRect(
-                                brush = Brush.verticalGradient(
-                                    0.55f to Color.Transparent,
-                                    1.0f to Color(0x35FFA640)
-                                ),
-                                size = size,
-                                cornerRadius = CornerRadius(24.dp.toPx())
-                            )
-                        }
-                } else {
-                    Modifier
-                }
-            )
+            .then(cardBgModifier)
             .drawBehind {
                 val strokePx = strokeWidthDp.toPx()
                 val halfStroke = strokePx / 2f
@@ -239,7 +246,11 @@ fun LandscapeRectangleTimerCard(
                 }
 
                 // 1. Border track along card border
-                val trackColor = if (useHomeStyle) Color(0x44FFA640) else Color(0xFF262626)
+                val trackColor = when {
+                    isClassic -> if (useHomeStyle) Color(0x44FFA640) else Color(0xFF262626)
+                    isUltra -> Color(0x1AFFFFFF)
+                    else -> tokens.chipFill
+                }
                 drawPath(
                     path = basePath,
                     color = trackColor,
@@ -372,85 +383,122 @@ fun LandscapeRectangleTimerCard(
                     }
 
                     if (!isActive) {
-                        OutlinedButton(
-                            onClick = onSetTimer,
-                            border = BorderStroke(1.2.dp, StudyAccent.copy(alpha = 0.85f)),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = Color.Transparent,
-                                contentColor = StudyAccent
-                            ),
-                            modifier = Modifier
-                                .height(38.dp)
-                                .testTag("landscape_set_timer")
-                        ) {
-                            Text("Set Timer", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        if (isClassic) {
+                            OutlinedButton(
+                                onClick = onSetTimer,
+                                border = BorderStroke(1.2.dp, StudyAccent.copy(alpha = 0.85f)),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = Color.Transparent,
+                                    contentColor = StudyAccent
+                                ),
+                                modifier = Modifier
+                                    .height(38.dp)
+                                    .testTag("landscape_set_timer")
+                            ) {
+                                Text("Set Timer", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        } else {
+                            ThemedActionPill(
+                                text = "Set Timer",
+                                onClick = onSetTimer,
+                                textColor = tokens.accent,
+                                testTag = "landscape_set_timer"
+                            )
                         }
                     } else {
-                        OutlinedButton(
-                            onClick = onEndSession,
-                            border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.55f)),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = Color(0x18FFFFFF),
-                                contentColor = TextSecondary
-                            ),
-                            modifier = Modifier
-                                .height(38.dp)
-                                .testTag("landscape_end_session")
-                        ) {
-                            Text("End Session", fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                        }
-
-                        OutlinedButton(
-                            onClick = onReset,
-                            border = BorderStroke(1.dp, TextMuted.copy(alpha = 0.5f)),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                containerColor = Color(0x12FFFFFF),
-                                contentColor = TextMuted
-                            ),
-                            modifier = Modifier
-                                .height(38.dp)
-                                .testTag("landscape_reset")
-                        ) {
-                            Text("Reset", fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                        }
-
-                        if (isRunning) {
+                        if (isClassic) {
                             OutlinedButton(
-                                onClick = onQuietModeToggle,
-                                border = BorderStroke(1.dp, AmberAccent.copy(alpha = 0.75f)),
+                                onClick = onEndSession,
+                                border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.55f)),
                                 shape = RoundedCornerShape(8.dp),
                                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = Color(0x22FFA640),
-                                    contentColor = AmberAccent
+                                    containerColor = Color(0x18FFFFFF),
+                                    contentColor = TextSecondary
                                 ),
                                 modifier = Modifier
+                                    .height(38.dp)
+                                    .testTag("landscape_end_session")
+                            ) {
+                                Text("End Session", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            }
+
+                            OutlinedButton(
+                                onClick = onReset,
+                                border = BorderStroke(1.dp, TextMuted.copy(alpha = 0.5f)),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    containerColor = Color(0x12FFFFFF),
+                                    contentColor = TextMuted
+                                ),
+                                modifier = Modifier
+                                    .height(38.dp)
+                                    .testTag("landscape_reset")
+                            ) {
+                                Text("Reset", fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            }
+
+                            if (isRunning) {
+                                OutlinedButton(
+                                    onClick = onQuietModeToggle,
+                                    border = BorderStroke(1.dp, AmberAccent.copy(alpha = 0.75f)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = Color(0x22FFA640),
+                                        contentColor = AmberAccent
+                                    ),
+                                    modifier = Modifier
                                     .height(38.dp)
                                     .testTag("landscape_quiet_mode")
-                            ) {
-                                Text("Quiet Mode", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                ) {
+                                    Text("Quiet Mode", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            } else if (isQuietMode) {
+                                OutlinedButton(
+                                    onClick = onQuietModeToggle,
+                                    border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.75f)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = Color(0x2200D675),
+                                        contentColor = EmeraldAccent
+                                    ),
+                                    modifier = Modifier
+                                        .height(38.dp)
+                                        .testTag("landscape_resume")
+                                ) {
+                                    Text("Resume", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
-                        } else if (isQuietMode) {
-                            OutlinedButton(
-                                onClick = onQuietModeToggle,
-                                border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.75f)),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = Color(0x2200D675),
-                                    contentColor = EmeraldAccent
-                                ),
-                                modifier = Modifier
-                                    .height(38.dp)
-                                    .testTag("landscape_resume")
-                            ) {
-                                Text("Resume", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        } else {
+                            ThemedActionPill(
+                                text = "End Session",
+                                onClick = onEndSession,
+                                testTag = "landscape_end_session"
+                            )
+                            ThemedActionPill(
+                                text = "Reset",
+                                onClick = onReset,
+                                testTag = "landscape_reset"
+                            )
+                            if (isRunning) {
+                                ThemedActionPill(
+                                    text = "Quiet Mode",
+                                    onClick = onQuietModeToggle,
+                                    textColor = AmberAccent,
+                                    testTag = "landscape_quiet_mode"
+                                )
+                            } else if (isQuietMode) {
+                                ThemedActionPill(
+                                    text = "Resume",
+                                    onClick = onQuietModeToggle,
+                                    isFilled = true,
+                                    testTag = "landscape_resume"
+                                )
                             }
                         }
                     }
@@ -485,147 +533,208 @@ fun LandscapeRectangleTimerCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // 4. Actions Row at the bottom: 1 row, centered, 12dp equal gap, height 32dp, fully inside card
+                // 4. Actions Row at the bottom: 1 row, centered, 12dp equal gap, height 32-40dp, fully inside card
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(32.dp),
+                        .wrapContentHeight(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (isStopwatch) {
                         if (isActive) {
-                            OutlinedButton(
-                                onClick = onEndSession,
-                                border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.55f)),
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = Color(0x18FFFFFF),
-                                    contentColor = TextSecondary
-                                ),
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .testTag("landscape_sw_end")
-                            ) {
-                                Text("End Session", fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                            }
-                            OutlinedButton(
-                                onClick = onReset,
-                                border = BorderStroke(1.dp, TextMuted.copy(alpha = 0.5f)),
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = Color(0x12FFFFFF),
-                                    contentColor = TextMuted
-                                ),
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .testTag("landscape_sw_reset")
-                            ) {
-                                Text("Reset", fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                            }
-                            if (isRunning) {
+                            if (isClassic) {
                                 OutlinedButton(
-                                    onClick = onLap,
-                                    border = BorderStroke(1.dp, CyanAccent.copy(alpha = 0.75f)),
+                                    onClick = onEndSession,
+                                    border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.55f)),
                                     shape = RoundedCornerShape(12.dp),
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                                     colors = ButtonDefaults.outlinedButtonColors(
-                                        containerColor = Color(0x2200E5FF),
-                                        contentColor = CyanAccent
+                                        containerColor = Color(0x18FFFFFF),
+                                        contentColor = TextSecondary
                                     ),
                                     modifier = Modifier
                                         .height(32.dp)
-                                        .testTag("landscape_sw_lap")
+                                        .testTag("landscape_sw_end")
                                 ) {
-                                    Text("Lap", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    Text("End Session", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                }
+                                OutlinedButton(
+                                    onClick = onReset,
+                                    border = BorderStroke(1.dp, TextMuted.copy(alpha = 0.5f)),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = Color(0x12FFFFFF),
+                                        contentColor = TextMuted
+                                    ),
+                                    modifier = Modifier
+                                        .height(32.dp)
+                                        .testTag("landscape_sw_reset")
+                                ) {
+                                    Text("Reset", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                }
+                                if (isRunning) {
+                                    OutlinedButton(
+                                        onClick = onLap,
+                                        border = BorderStroke(1.dp, CyanAccent.copy(alpha = 0.75f)),
+                                        shape = RoundedCornerShape(12.dp),
+                                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            containerColor = Color(0x2200E5FF),
+                                            contentColor = CyanAccent
+                                        ),
+                                        modifier = Modifier
+                                            .height(32.dp)
+                                            .testTag("landscape_sw_lap")
+                                    ) {
+                                        Text("Lap", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            } else {
+                                ThemedActionPill(
+                                    text = "End Session",
+                                    onClick = onEndSession,
+                                    testTag = "landscape_sw_end"
+                                )
+                                ThemedActionPill(
+                                    text = "Reset",
+                                    onClick = onReset,
+                                    testTag = "landscape_sw_reset"
+                                )
+                                if (isRunning) {
+                                    ThemedActionPill(
+                                        text = "Lap",
+                                        onClick = onLap,
+                                        textColor = CyanAccent,
+                                        testTag = "landscape_sw_lap"
+                                    )
                                 }
                             }
                         } else {
-                            Text("Tap Play to start", color = TextMuted, fontSize = 11.sp)
+                            Text("Tap Play to start", color = if (isClassic) TextMuted else tokens.secondaryText, fontSize = 11.sp)
                         }
                     } else {
                         if (isActive) {
-                            OutlinedButton(
-                                onClick = onEndSession,
-                                border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.55f)),
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = Color(0x18FFFFFF),
-                                    contentColor = TextSecondary
-                                ),
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .testTag("landscape_end_session")
-                            ) {
-                                Text(endSessionLabel, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                            }
-                            OutlinedButton(
-                                onClick = onReset,
-                                border = BorderStroke(1.dp, TextMuted.copy(alpha = 0.5f)),
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = Color(0x12FFFFFF),
-                                    contentColor = TextMuted
-                                ),
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .testTag("landscape_reset")
-                            ) {
-                                Text("Reset", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                            if (isClassic) {
+                                OutlinedButton(
+                                    onClick = onEndSession,
+                                    border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.55f)),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = Color(0x18FFFFFF),
+                                        contentColor = TextSecondary
+                                    ),
+                                    modifier = Modifier
+                                        .height(32.dp)
+                                        .testTag("landscape_end_session")
+                                ) {
+                                    Text(endSessionLabel, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                }
+                                OutlinedButton(
+                                    onClick = onReset,
+                                    border = BorderStroke(1.dp, TextMuted.copy(alpha = 0.5f)),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = Color(0x12FFFFFF),
+                                        contentColor = TextMuted
+                                    ),
+                                    modifier = Modifier
+                                        .height(32.dp)
+                                        .testTag("landscape_reset")
+                                ) {
+                                    Text("Reset", fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                }
+                            } else {
+                                ThemedActionPill(
+                                    text = endSessionLabel,
+                                    onClick = onEndSession,
+                                    testTag = "landscape_end_session"
+                                )
+                                ThemedActionPill(
+                                    text = "Reset",
+                                    onClick = onReset,
+                                    testTag = "landscape_reset"
+                                )
                             }
                         }
 
                         if (isRunning) {
-                            OutlinedButton(
-                                onClick = onQuietModeToggle,
-                                border = BorderStroke(1.dp, AmberAccent.copy(alpha = 0.75f)),
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = Color(0x22FFA640),
-                                    contentColor = AmberAccent
-                                ),
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .testTag("landscape_quiet_mode")
-                            ) {
-                                Text("Quiet Mode", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            if (isClassic) {
+                                OutlinedButton(
+                                    onClick = onQuietModeToggle,
+                                    border = BorderStroke(1.dp, AmberAccent.copy(alpha = 0.75f)),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = Color(0x22FFA640),
+                                        contentColor = AmberAccent
+                                    ),
+                                    modifier = Modifier
+                                        .height(32.dp)
+                                        .testTag("landscape_quiet_mode")
+                                ) {
+                                    Text("Quiet Mode", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            } else {
+                                ThemedActionPill(
+                                    text = "Quiet Mode",
+                                    onClick = onQuietModeToggle,
+                                    textColor = AmberAccent,
+                                    testTag = "landscape_quiet_mode"
+                                )
                             }
                         } else if (isQuietMode) {
-                            OutlinedButton(
-                                onClick = onQuietModeToggle,
-                                border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.75f)),
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = Color(0x2200D675),
-                                    contentColor = EmeraldAccent
-                                ),
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .testTag("landscape_resume")
-                            ) {
-                                Text("Resume", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            if (isClassic) {
+                                OutlinedButton(
+                                    onClick = onQuietModeToggle,
+                                    border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.75f)),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = Color(0x2200D675),
+                                        contentColor = EmeraldAccent
+                                    ),
+                                    modifier = Modifier
+                                        .height(32.dp)
+                                        .testTag("landscape_resume")
+                                ) {
+                                    Text("Resume", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            } else {
+                                ThemedActionPill(
+                                    text = "Resume",
+                                    onClick = onQuietModeToggle,
+                                    isFilled = true,
+                                    testTag = "landscape_resume"
+                                )
                             }
                         } else if (!isActive && showSetTimer) {
-                            OutlinedButton(
-                                onClick = onSetTimer,
-                                border = BorderStroke(1.dp, StudyAccent.copy(alpha = 0.8f)),
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    containerColor = Color.Transparent,
-                                    contentColor = StudyAccent
-                                ),
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .testTag("landscape_set_timer")
-                            ) {
-                                Text("Set Timer", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            if (isClassic) {
+                                OutlinedButton(
+                                    onClick = onSetTimer,
+                                    border = BorderStroke(1.dp, StudyAccent.copy(alpha = 0.8f)),
+                                    shape = RoundedCornerShape(12.dp),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        containerColor = Color.Transparent,
+                                        contentColor = StudyAccent
+                                    ),
+                                    modifier = Modifier
+                                        .height(32.dp)
+                                        .testTag("landscape_set_timer")
+                                ) {
+                                    Text("Set Timer", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                }
+                            } else {
+                                ThemedActionPill(
+                                    text = "Set Timer",
+                                    onClick = onSetTimer,
+                                    textColor = tokens.accent,
+                                    testTag = "landscape_set_timer"
+                                )
                             }
                         }
                     }
