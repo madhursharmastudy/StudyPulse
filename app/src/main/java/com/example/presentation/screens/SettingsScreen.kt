@@ -648,11 +648,12 @@ fun SettingSwitchRow(
                 color = TextSecondary.copy(alpha = alpha)
             )
             if (!extraNote.isNullOrEmpty()) {
-                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = extraNote,
                     fontSize = 12.sp,
-                    color = TextMuted.copy(alpha = alpha)
+                    lineHeight = 16.sp,
+                    color = TextMuted.copy(alpha = alpha),
+                    modifier = Modifier.padding(top = 4.dp)
                 )
             }
             if (bottomContent != null) {
