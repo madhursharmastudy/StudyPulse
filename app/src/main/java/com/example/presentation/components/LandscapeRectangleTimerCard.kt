@@ -575,7 +575,7 @@ fun LandscapeRectangleTimerCard(
                                 ) {
                                     Text("Reset", fontSize = 11.sp, fontWeight = FontWeight.Medium)
                                 }
-                                if (isRunning) {
+                                if (isActive) {
                                     OutlinedButton(
                                         onClick = onLap,
                                         border = BorderStroke(1.dp, CyanAccent.copy(alpha = 0.75f)),
@@ -603,7 +603,7 @@ fun LandscapeRectangleTimerCard(
                                     onClick = onReset,
                                     testTag = "landscape_sw_reset"
                                 )
-                                if (isRunning) {
+                                if (isActive) {
                                     ThemedActionPill(
                                         text = "Lap",
                                         onClick = onLap,

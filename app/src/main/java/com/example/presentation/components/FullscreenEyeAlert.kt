@@ -116,7 +116,7 @@ fun FullscreenEyeAlert(
             // Countdown circle & digits
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier.size(if (isLandscape) 72.dp else 140.dp)
+                modifier = Modifier.size(if (isLandscape) 78.dp else 140.dp)
             ) {
                 CircularProgressIndicator(
                     progress = { progress },
@@ -142,7 +142,7 @@ fun FullscreenEyeAlert(
                 }
             }
 
-            Spacer(modifier = Modifier.height(if (isLandscape) 10.dp else 36.dp))
+            Spacer(modifier = Modifier.height(if (isLandscape) 6.dp else 36.dp))
 
             // Action Buttons
             Row(

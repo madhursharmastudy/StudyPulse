@@ -168,17 +168,83 @@ fun StudyWatchRootApp() {
                                     )
                                 }
                             }
-                        } else {
-                            // Dark, Light & Ultra Premium (M1, M2, M4): Floating rounded pill, radius 28dp, inset 12dp. Fill = card role. No border, no shadow, no indicator box.
-                            Box(
+                        } else if (activeTheme == "Ultra Premium") {
+                            // Part F: Ultra Premium floating rounded plate (radius 28dp, fill = UltraPremiumGlass, windowInsets outside, 0.dp NavigationBar)
+                            Surface(
+                                shape = RoundedCornerShape(28.dp),
+                                color = UltraPremiumGlass,
                                 modifier = Modifier
+                                    .windowInsetsPadding(WindowInsets.navigationBars)
                                     .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
-                                    .clip(RoundedCornerShape(28.dp))
-                                    .background(themeTokens.cardFill)
+                                    .fillMaxWidth()
+                            ) {
+                                NavigationBar(
+                                    containerColor = Color.Transparent,
+                                    contentColor = Color.White,
+                                    windowInsets = WindowInsets(0.dp),
+                                    modifier = Modifier.testTag("main_bottom_nav")
+                                ) {
+                                    NavigationTab.entries.forEach { tab ->
+                                        val selected = currentTab == tab
+                                        val glowAlpha by androidx.compose.animation.core.animateFloatAsState(
+                                            targetValue = if (selected) 1f else 0f,
+                                            animationSpec = androidx.compose.animation.core.tween(200),
+                                            label = "nav_glow_${tab.name}"
+                                        )
+                                        NavigationBarItem(
+                                            selected = selected,
+                                            onClick = { currentTab = tab },
+                                            icon = {
+                                                Box(
+                                                    modifier = Modifier.drawBehind {
+                                                        if (glowAlpha > 0f) {
+                                                            drawCircle(
+                                                                brush = Brush.radialGradient(
+                                                                    colors = listOf(
+                                                                        Color(0x70FF8A24).copy(alpha = 0.50f * glowAlpha),
+                                                                        Color(0x40FF8A24).copy(alpha = 0.25f * glowAlpha),
+                                                                        Color.Transparent
+                                                                    ),
+                                                                    center = this.center,
+                                                                    radius = 36.dp.toPx()
+                                                                ),
+                                                                radius = 36.dp.toPx(),
+                                                                center = this.center
+                                                            )
+                                                        }
+                                                    },
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Icon(tab.icon, contentDescription = tab.label)
+                                                }
+                                            },
+                                            label = { Text(tab.label, fontSize = 11.sp) },
+                                            colors = NavigationBarItemDefaults.colors(
+                                                selectedIconColor = Color(0xFFFFB52E),
+                                                selectedTextColor = Color(0xFFFFB52E),
+                                                indicatorColor = Color.Transparent,
+                                                unselectedIconColor = Color(0xFFAAB8D6),
+                                                unselectedTextColor = Color(0xFFAAB8D6)
+                                            ),
+                                            modifier = Modifier.testTag("nav_tab_${tab.name.lowercase()}")
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            // Dark & Light (M1, M2): Floating rounded pill, radius 28dp, inset 12dp. Fill = card role. No border, no shadow, no indicator box.
+                            Surface(
+                                shape = RoundedCornerShape(28.dp),
+                                color = themeTokens.cardFill,
+                                modifier = Modifier
+                                    .windowInsetsPadding(WindowInsets.navigationBars)
+                                    .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+                                    .fillMaxWidth()
                             ) {
                                 NavigationBar(
                                     containerColor = Color.Transparent,
                                     contentColor = themeTokens.text,
+                                    windowInsets = WindowInsets(0.dp),
                                     modifier = Modifier.testTag("main_bottom_nav")
                                 ) {
                                     NavigationTab.entries.forEach { tab ->
@@ -242,88 +308,107 @@ fun StudyWatchRootApp() {
                                         )
                                     }
                                 }
-                            } else if (false) {
-                                NavigationRail(
-                                    containerColor = Color.Transparent,
-                                    contentColor = Color(0xFFFFFFFF),
+                            } else if (activeTheme == "Ultra Premium") {
+                                // Ultra Premium landscape rail: one single plate with glow!
+                                Surface(
+                                    shape = RoundedCornerShape(24.dp),
+                                    color = UltraPremiumGlass,
                                     modifier = Modifier
+                                        .padding(8.dp)
                                         .width(68.dp)
                                         .fillMaxHeight()
-                                        .testTag("main_landscape_nav_rail")
                                 ) {
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    NavigationTab.entries.forEach { tab ->
-                                        val selected = currentTab == tab
-                                        val glowAlpha by androidx.compose.animation.core.animateFloatAsState(
-                                            targetValue = if (selected) 1f else 0f,
-                                            animationSpec = androidx.compose.animation.core.tween(200),
-                                            label = "rail_glow_${tab.name}"
-                                        )
-                                        NavigationRailItem(
-                                            selected = selected,
-                                            onClick = { currentTab = tab },
-                                            icon = {
-                                                Box(
-                                                    modifier = Modifier.drawBehind {
-                                                        if (glowAlpha > 0f) {
-                                                            drawCircle(
-                                                                brush = Brush.radialGradient(
-                                                                    colors = listOf(
-                                                                        Color(0x70FF8A24).copy(alpha = 0.50f * glowAlpha),
-                                                                        Color(0x40FF8A24).copy(alpha = 0.25f * glowAlpha),
-                                                                        Color.Transparent
+                                    NavigationRail(
+                                        containerColor = Color.Transparent,
+                                        contentColor = Color.White,
+                                        windowInsets = WindowInsets(0.dp),
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .testTag("main_landscape_nav_rail")
+                                    ) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        NavigationTab.entries.forEach { tab ->
+                                            val selected = currentTab == tab
+                                            val glowAlpha by androidx.compose.animation.core.animateFloatAsState(
+                                                targetValue = if (selected) 1f else 0f,
+                                                animationSpec = androidx.compose.animation.core.tween(200),
+                                                label = "rail_glow_${tab.name}"
+                                            )
+                                            NavigationRailItem(
+                                                selected = selected,
+                                                onClick = { currentTab = tab },
+                                                icon = {
+                                                    Box(
+                                                        modifier = Modifier.drawBehind {
+                                                            if (glowAlpha > 0f) {
+                                                                drawCircle(
+                                                                    brush = Brush.radialGradient(
+                                                                        colors = listOf(
+                                                                            Color(0x70FF8A24).copy(alpha = 0.50f * glowAlpha),
+                                                                            Color(0x40FF8A24).copy(alpha = 0.25f * glowAlpha),
+                                                                            Color.Transparent
+                                                                        ),
+                                                                        center = this.center,
+                                                                        radius = 56.dp.toPx()
                                                                     ),
-                                                                    center = this.center,
-                                                                    radius = 56.dp.toPx()
-                                                                ),
-                                                                radius = 56.dp.toPx(),
-                                                                center = this.center
-                                                            )
-                                                        }
-                                                    },
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(20.dp))
-                                                }
-                                            },
-                                            label = { Text(tab.label, fontSize = 10.sp, maxLines = 1) },
-                                            colors = NavigationRailItemDefaults.colors(
-                                                selectedIconColor = Color(0xFFFFB52E),
-                                                selectedTextColor = Color(0xFFFFB52E),
-                                                indicatorColor = Color.Transparent,
-                                                unselectedIconColor = Color(0xFFAAB8D6),
-                                                unselectedTextColor = Color(0xFFAAB8D6)
-                                            ),
-                                            modifier = Modifier.testTag("nav_rail_${tab.name.lowercase()}")
-                                        )
+                                                                    radius = 56.dp.toPx(),
+                                                                    center = this.center
+                                                                )
+                                                            }
+                                                        },
+                                                        contentAlignment = Alignment.Center
+                                                    ) {
+                                                        Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(20.dp))
+                                                    }
+                                                },
+                                                label = { Text(tab.label, fontSize = 10.sp, maxLines = 1) },
+                                                colors = NavigationRailItemDefaults.colors(
+                                                    selectedIconColor = Color(0xFFFFB52E),
+                                                    selectedTextColor = Color(0xFFFFB52E),
+                                                    indicatorColor = Color.Transparent,
+                                                    unselectedIconColor = Color(0xFFAAB8D6),
+                                                    unselectedTextColor = Color(0xFFAAB8D6)
+                                                ),
+                                                modifier = Modifier.testTag("nav_rail_${tab.name.lowercase()}")
+                                            )
+                                        }
                                     }
                                 }
                             } else {
-                                // Dark & Light (TH-26): same width, icon above label, no box
-                                NavigationRail(
-                                    containerColor = themeTokens.cardFill,
-                                    contentColor = themeTokens.text,
+                                // Dark & Light: landscape rail as one single plate
+                                Surface(
+                                    shape = RoundedCornerShape(20.dp),
+                                    color = themeTokens.cardFill,
                                     modifier = Modifier
+                                        .padding(8.dp)
                                         .width(68.dp)
                                         .fillMaxHeight()
-                                        .testTag("main_landscape_nav_rail")
                                 ) {
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    NavigationTab.entries.forEach { tab ->
-                                        NavigationRailItem(
-                                            selected = currentTab == tab,
-                                            onClick = { currentTab = tab },
-                                            icon = { Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(20.dp)) },
-                                            label = { Text(tab.label, fontSize = 10.sp, maxLines = 1) },
-                                            colors = NavigationRailItemDefaults.colors(
-                                                selectedIconColor = themeTokens.accent,
-                                                selectedTextColor = themeTokens.accent,
-                                                indicatorColor = Color.Transparent,
-                                                unselectedIconColor = themeTokens.secondaryText,
-                                                unselectedTextColor = themeTokens.secondaryText
-                                            ),
-                                            modifier = Modifier.testTag("nav_rail_${tab.name.lowercase()}")
-                                        )
+                                    NavigationRail(
+                                        containerColor = Color.Transparent,
+                                        contentColor = themeTokens.text,
+                                        windowInsets = WindowInsets(0.dp),
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .testTag("main_landscape_nav_rail")
+                                    ) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        NavigationTab.entries.forEach { tab ->
+                                            NavigationRailItem(
+                                                selected = currentTab == tab,
+                                                onClick = { currentTab = tab },
+                                                icon = { Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(20.dp)) },
+                                                label = { Text(tab.label, fontSize = 10.sp, maxLines = 1) },
+                                                colors = NavigationRailItemDefaults.colors(
+                                                    selectedIconColor = themeTokens.accent,
+                                                    selectedTextColor = themeTokens.accent,
+                                                    indicatorColor = Color.Transparent,
+                                                    unselectedIconColor = themeTokens.secondaryText,
+                                                    unselectedTextColor = themeTokens.secondaryText
+                                                ),
+                                                modifier = Modifier.testTag("nav_rail_${tab.name.lowercase()}")
+                                            )
+                                        }
                                     }
                                 }
                             }

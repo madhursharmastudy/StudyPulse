@@ -109,10 +109,10 @@ fun PlannerScreen(
         ) {
         val activeTheme = LocalActiveTheme.current
         val tokens = LocalAppThemeTokens.current
-        val isClassic = activeTheme == "Classic"
-        val accent = if (isClassic) AmberAccent else tokens.accent
-        val tabBg = if (isClassic) CharcoalCard else if (activeTheme == "Ultra Premium") Color.Transparent else tokens.cardFill
-        val subColor = if (isClassic) TextSecondary else tokens.secondaryText
+        val isExisting = isExistingTheme(activeTheme)
+        val accent = if (isExisting) AmberAccent else tokens.accent
+        val tabBg = if (isExisting) CharcoalCard else if (activeTheme == "Ultra Premium") Color.Transparent else tokens.cardFill
+        val subColor = if (isExisting) TextSecondary else tokens.secondaryText
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -152,32 +152,35 @@ fun PlannerScreen(
                         expanded = showAddChooser,
                         onDismissRequest = { showAddChooser = false },
                         modifier = Modifier
-                            .background(if (isClassic) CharcoalCard else tokens.cardFill)
-                            .border(1.dp, if (isClassic) CharcoalBorder else tokens.chipFill, RoundedCornerShape(8.dp))
+                            .background(if (isExisting) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill)
+                            .then(
+                                if (isExisting) Modifier.border(1.dp, CharcoalBorder, RoundedCornerShape(8.dp))
+                                else Modifier
+                            )
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Study Block", color = if (isClassic) TextPrimary else tokens.text, fontWeight = FontWeight.Medium) },
+                            text = { Text("Study Block", color = if (isExisting) TextPrimary else tokens.text, fontWeight = FontWeight.Medium) },
                             onClick = {
                                 showAddChooser = false
                                 showAddPlanDialog = true
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Task", color = if (isClassic) TextPrimary else tokens.text, fontWeight = FontWeight.Medium) },
+                            text = { Text("Task", color = if (isExisting) TextPrimary else tokens.text, fontWeight = FontWeight.Medium) },
                             onClick = {
                                 showAddChooser = false
                                 showAddAssignmentDialog = true
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Exam", color = if (isClassic) TextPrimary else tokens.text, fontWeight = FontWeight.Medium) },
+                            text = { Text("Exam", color = if (isExisting) TextPrimary else tokens.text, fontWeight = FontWeight.Medium) },
                             onClick = {
                                 showAddChooser = false
                                 showAddExamDialog = true
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Revision", color = if (isClassic) TextPrimary else tokens.text, fontWeight = FontWeight.Medium) },
+                            text = { Text("Revision", color = if (isExisting) TextPrimary else tokens.text, fontWeight = FontWeight.Medium) },
                             onClick = {
                                 showAddChooser = false
                                 showAddRevisionDialog = true
@@ -311,10 +314,10 @@ fun TodayTab(
 
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val isClassic = activeTheme == "Classic"
-    val textColor = if (isClassic) TextPrimary else tokens.text
-    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
-    val accent = if (isClassic) AmberAccent else tokens.accent
+    val isExisting = isExistingTheme(activeTheme)
+    val textColor = if (isExisting) TextPrimary else tokens.text
+    val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
+    val accent = if (isExisting) AmberAccent else tokens.accent
 
     if (items.isEmpty()) {
         Box(
@@ -412,7 +415,7 @@ fun TodayTab(
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(6.dp))
-                                        .background(if (isClassic) Color(0xFF222222) else tokens.chipFill)
+                                        .background(if (isExisting) Color(0xFF222222) else tokens.chipFill)
                                         .padding(8.dp)
                                 ) {
                                     Icon(
@@ -534,11 +537,11 @@ fun ExamsTab(
 
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val isClassic = activeTheme == "Classic"
-    val textColor = if (isClassic) TextPrimary else tokens.text
-    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
-    val accent = if (isClassic) AmberAccent else tokens.accent
-    val trackCol = if (isClassic) CharcoalElevated else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.10f) else tokens.chipFill
+    val isExisting = isExistingTheme(activeTheme)
+    val textColor = if (isExisting) TextPrimary else tokens.text
+    val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
+    val accent = if (isExisting) AmberAccent else tokens.accent
+    val trackCol = if (isExisting) CharcoalElevated else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.10f) else tokens.chipFill
 
     if (exams.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -660,10 +663,10 @@ fun AssignmentsTab(
 
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val isClassic = activeTheme == "Classic"
-    val textColor = if (isClassic) TextPrimary else tokens.text
-    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
-    val accent = if (isClassic) AmberAccent else tokens.accent
+    val isExisting = isExistingTheme(activeTheme)
+    val textColor = if (isExisting) TextPrimary else tokens.text
+    val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
+    val accent = if (isExisting) AmberAccent else tokens.accent
 
     if (assignments.isEmpty()) {
         Box(
@@ -797,6 +800,15 @@ fun SubjectPickerDropdown(
     var showNewSubjectDialog by remember { mutableStateOf(false) }
     var newSubjectName by remember { mutableStateOf("") }
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isExisting = isExistingTheme(activeTheme)
+    val dialogBg = if (isExisting) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
+    val textColor = if (isExisting) TextPrimary else tokens.text
+    val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
+    val accent = if (isExisting) AmberAccent else tokens.accent
+    val borderColor = if (isExisting) CharcoalBorder else tokens.divider
+
     Box(modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = selectedSubjectName,
@@ -804,37 +816,42 @@ fun SubjectPickerDropdown(
             label = { Text("Subject/Task") },
             trailingIcon = {
                 IconButton(onClick = { expanded = true }) {
-                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Select Subject/Task")
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = "Select Subject/Task", tint = subTextColor)
                 }
             },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = textColor,
+                unfocusedTextColor = textColor,
+                focusedBorderColor = accent,
+                unfocusedBorderColor = borderColor
+            )
         )
 
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
             modifier = Modifier
-                .background(CharcoalCard)
-                .border(1.dp, CharcoalBorder, RoundedCornerShape(8.dp))
+                .background(dialogBg)
+                .border(1.dp, borderColor, RoundedCornerShape(8.dp))
         ) {
             subjects.forEach { s ->
                 DropdownMenuItem(
-                    text = { Text(s.name, color = TextPrimary) },
+                    text = { Text(s.name, color = textColor) },
                     onClick = {
                         onSubjectNameSelected(s.name)
                         expanded = false
                     }
                 )
             }
-            HorizontalDivider(color = CharcoalBorder)
+            HorizontalDivider(color = borderColor)
             DropdownMenuItem(
                 text = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = AmberAccent, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Add, contentDescription = null, tint = accent, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("+ Add new subject/task...", color = AmberAccent, fontWeight = FontWeight.Bold)
+                        Text("+ Add new subject/task...", color = accent, fontWeight = FontWeight.Bold)
                     }
                 },
                 onClick = {
@@ -849,14 +866,19 @@ fun SubjectPickerDropdown(
     if (showNewSubjectDialog) {
         AlertDialog(
             onDismissRequest = { showNewSubjectDialog = false },
-            title = { Text("New Subject/Task", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("New Subject/Task", color = textColor, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = newSubjectName,
                     onValueChange = { newSubjectName = it },
                     label = { Text("Subject/Task Name") },
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = borderColor
+                    )
                 )
             },
             confirmButton = {
@@ -868,17 +890,17 @@ fun SubjectPickerDropdown(
                             showNewSubjectDialog = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = if (isExisting) Color.Black else tokens.textOnAccent)
                 ) {
                     Text("ADD")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showNewSubjectDialog = false }) {
-                    Text("CANCEL", color = TextSecondary)
+                    Text("CANCEL", color = subTextColor)
                 }
             },
-            containerColor = CharcoalCard
+            containerColor = dialogBg
         )
     }
 }
@@ -895,10 +917,19 @@ fun AddStudyPlanDialog(
     var start by remember { mutableStateOf("14:00") }
     var end by remember { mutableStateOf("14:50") }
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isExisting = isExistingTheme(activeTheme)
+    val dialogBg = if (isExisting) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
+    val textColor = if (isExisting) TextPrimary else tokens.text
+    val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
+    val accent = if (isExisting) AmberAccent else tokens.accent
+    val borderColor = if (isExisting) CharcoalBorder else tokens.divider
+
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(decorFitsSystemWindows = false),
-        title = { Text("Add Study Block", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        title = { Text("Add Study Block", color = textColor, fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier
@@ -918,7 +949,12 @@ fun AddStudyPlanDialog(
                     label = { Text("Topic/Sub task") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = borderColor
+                    )
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -928,7 +964,12 @@ fun AddStudyPlanDialog(
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                         modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = textColor,
+                            unfocusedTextColor = textColor,
+                            focusedBorderColor = accent,
+                            unfocusedBorderColor = borderColor
+                        )
                     )
                     OutlinedTextField(
                         value = end,
@@ -937,7 +978,12 @@ fun AddStudyPlanDialog(
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = textColor,
+                            unfocusedTextColor = textColor,
+                            focusedBorderColor = accent,
+                            unfocusedBorderColor = borderColor
+                        )
                     )
                 }
             }
@@ -955,15 +1001,15 @@ fun AddStudyPlanDialog(
                         )
                     )
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = if (isExisting) Color.Black else tokens.textOnAccent)
             ) {
                 Text("ADD")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = subTextColor) }
         },
-        containerColor = CharcoalCard
+        containerColor = dialogBg
     )
 }
 
@@ -978,10 +1024,19 @@ fun AddExamDialog(
     var subjectsName by remember { mutableStateOf(subjects.firstOrNull()?.name ?: "General") }
     var daysAhead by remember { mutableIntStateOf(30) }
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isExisting = isExistingTheme(activeTheme)
+    val dialogBg = if (isExisting) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
+    val textColor = if (isExisting) TextPrimary else tokens.text
+    val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
+    val accent = if (isExisting) AmberAccent else tokens.accent
+    val borderColor = if (isExisting) CharcoalBorder else tokens.divider
+
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(decorFitsSystemWindows = false),
-        title = { Text("Add Target Exam", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        title = { Text("Add Target Exam", color = textColor, fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier
@@ -995,7 +1050,12 @@ fun AddExamDialog(
                     label = { Text("Exam Name") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = borderColor
+                    )
                 )
                 SubjectPickerDropdown(
                     subjects = subjects,
@@ -1012,7 +1072,12 @@ fun AddExamDialog(
                         keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Done
                     ),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = borderColor
+                    )
                 )
             }
         },
@@ -1028,15 +1093,15 @@ fun AddExamDialog(
                         )
                     )
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = if (isExisting) Color.Black else tokens.textOnAccent)
             ) {
                 Text("SAVE EXAM")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = subTextColor) }
         },
-        containerColor = CharcoalCard
+        containerColor = dialogBg
     )
 }
 
@@ -1051,10 +1116,19 @@ fun AddAssignmentDialog(
     var subject by remember { mutableStateOf(subjects.firstOrNull()?.name ?: "English Literature") }
     var daysUntil by remember { mutableIntStateOf(7) }
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isExisting = isExistingTheme(activeTheme)
+    val dialogBg = if (isExisting) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
+    val textColor = if (isExisting) TextPrimary else tokens.text
+    val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
+    val accent = if (isExisting) AmberAccent else tokens.accent
+    val borderColor = if (isExisting) CharcoalBorder else tokens.divider
+
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(decorFitsSystemWindows = false),
-        title = { Text("Add Assignment / Task", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        title = { Text("Add Assignment / Task", color = textColor, fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier
@@ -1068,7 +1142,12 @@ fun AddAssignmentDialog(
                     label = { Text("Title") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = borderColor
+                    )
                 )
                 SubjectPickerDropdown(
                     subjects = subjects,
@@ -1085,7 +1164,12 @@ fun AddAssignmentDialog(
                         keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Done
                     ),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = borderColor
+                    )
                 )
             }
         },
@@ -1102,15 +1186,15 @@ fun AddAssignmentDialog(
                         )
                     )
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = if (isExisting) Color.Black else tokens.textOnAccent)
             ) {
                 Text("ADD TASK")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = subTextColor) }
         },
-        containerColor = CharcoalCard
+        containerColor = dialogBg
     )
 }
 
@@ -1125,10 +1209,19 @@ fun AddRevisionDialog(
     var topic by remember { mutableStateOf("") }
     var daysUntil by remember { mutableStateOf(1) }
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isExisting = isExistingTheme(activeTheme)
+    val dialogBg = if (isExisting) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
+    val textColor = if (isExisting) TextPrimary else tokens.text
+    val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
+    val accent = if (isExisting) AmberAccent else tokens.accent
+    val borderColor = if (isExisting) CharcoalBorder else tokens.divider
+
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(decorFitsSystemWindows = false),
-        title = { Text("Add Spaced Revision", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        title = { Text("Add Spaced Revision", color = textColor, fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier
@@ -1148,7 +1241,12 @@ fun AddRevisionDialog(
                     label = { Text("Topic/Sub task") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = borderColor
+                    )
                 )
                 OutlinedTextField(
                     value = daysUntil.toString(),
@@ -1159,7 +1257,12 @@ fun AddRevisionDialog(
                         keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Done
                     ),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = borderColor
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -1178,15 +1281,15 @@ fun AddRevisionDialog(
                         )
                     )
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = if (isExisting) Color.Black else tokens.textOnAccent)
             ) {
                 Text("ADD")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = subTextColor) }
         },
-        containerColor = CharcoalCard
+        containerColor = dialogBg
     )
 }
 
@@ -1201,10 +1304,19 @@ fun EditStudyPlanDialog(
     var start by remember { mutableStateOf(plan.startTime) }
     var end by remember { mutableStateOf(plan.endTime) }
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isExisting = isExistingTheme(activeTheme)
+    val dialogBg = if (isExisting) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
+    val textColor = if (isExisting) TextPrimary else tokens.text
+    val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
+    val accent = if (isExisting) AmberAccent else tokens.accent
+    val borderColor = if (isExisting) CharcoalBorder else tokens.divider
+
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(decorFitsSystemWindows = false),
-        title = { Text("Edit Study Block", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        title = { Text("Edit Study Block", color = textColor, fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier
@@ -1218,7 +1330,12 @@ fun EditStudyPlanDialog(
                     label = { Text("Subject/Task") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = borderColor
+                    )
                 )
                 OutlinedTextField(
                     value = topic,
@@ -1226,7 +1343,12 @@ fun EditStudyPlanDialog(
                     label = { Text("Topic/Sub task") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = borderColor
+                    )
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -1236,7 +1358,12 @@ fun EditStudyPlanDialog(
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                         modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = textColor,
+                            unfocusedTextColor = textColor,
+                            focusedBorderColor = accent,
+                            unfocusedBorderColor = borderColor
+                        )
                     )
                     OutlinedTextField(
                         value = end,
@@ -1245,7 +1372,12 @@ fun EditStudyPlanDialog(
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = textColor,
+                            unfocusedTextColor = textColor,
+                            focusedBorderColor = accent,
+                            unfocusedBorderColor = borderColor
+                        )
                     )
                 }
             }
@@ -1262,15 +1394,15 @@ fun EditStudyPlanDialog(
                         )
                     )
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = if (isExisting) Color.Black else tokens.textOnAccent)
             ) {
                 Text("SAVE")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = subTextColor) }
         },
-        containerColor = CharcoalCard
+        containerColor = dialogBg
     )
 }
 
@@ -1289,10 +1421,19 @@ fun EditExamDialog(
     var daysAhead by remember { mutableIntStateOf(initialDays) }
     var prepPercent by remember { mutableIntStateOf(exam.preparationPercent) }
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isExisting = isExistingTheme(activeTheme)
+    val dialogBg = if (isExisting) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
+    val textColor = if (isExisting) TextPrimary else tokens.text
+    val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
+    val accent = if (isExisting) AmberAccent else tokens.accent
+    val borderColor = if (isExisting) CharcoalBorder else tokens.divider
+
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(decorFitsSystemWindows = false),
-        title = { Text("Edit Target Exam", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        title = { Text("Edit Target Exam", color = textColor, fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier
@@ -1306,7 +1447,12 @@ fun EditExamDialog(
                     label = { Text("Exam Name") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = borderColor
+                    )
                 )
                 OutlinedTextField(
                     value = subjects,
@@ -1314,7 +1460,12 @@ fun EditExamDialog(
                     label = { Text("Included Subjects/Tasks") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = borderColor
+                    )
                 )
                 OutlinedTextField(
                     value = daysAhead.toString(),
@@ -1325,18 +1476,23 @@ fun EditExamDialog(
                         keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Next
                     ),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = borderColor
+                    )
                 )
                 Spacer(Modifier.height(4.dp))
-                Text("Preparation: $prepPercent%", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Text("Preparation: $prepPercent%", color = subTextColor, style = MaterialTheme.typography.bodySmall)
                 Slider(
                     value = prepPercent.toFloat(),
                     onValueChange = { prepPercent = it.toInt() },
                     valueRange = 0f..100f,
                     colors = SliderDefaults.colors(
-                        thumbColor = AmberAccent,
-                        activeTrackColor = AmberAccent,
-                        inactiveTrackColor = CharcoalElevated
+                        thumbColor = accent,
+                        activeTrackColor = accent,
+                        inactiveTrackColor = tokens.chipFill
                     )
                 )
             }
@@ -1353,15 +1509,15 @@ fun EditExamDialog(
                         )
                     )
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = if (isExisting) Color.Black else tokens.textOnAccent)
             ) {
                 Text("SAVE")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = subTextColor) }
         },
-        containerColor = CharcoalCard
+        containerColor = dialogBg
     )
 }
 
@@ -1381,10 +1537,19 @@ fun EditAssignmentDialog(
     var priority by remember { mutableStateOf(assignment.priority) }
     var progressPercent by remember { mutableIntStateOf(assignment.progressPercent) }
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isExisting = isExistingTheme(activeTheme)
+    val dialogBg = if (isExisting) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
+    val textColor = if (isExisting) TextPrimary else tokens.text
+    val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
+    val accent = if (isExisting) AmberAccent else tokens.accent
+    val borderColor = if (isExisting) CharcoalBorder else tokens.divider
+
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(decorFitsSystemWindows = false),
-        title = { Text("Edit Assignment / Task", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        title = { Text("Edit Assignment / Task", color = textColor, fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier
@@ -1398,7 +1563,12 @@ fun EditAssignmentDialog(
                     label = { Text("Title") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = borderColor
+                    )
                 )
                 OutlinedTextField(
                     value = subject,
@@ -1406,7 +1576,12 @@ fun EditAssignmentDialog(
                     label = { Text("Subject/Task") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = borderColor
+                    )
                 )
                 OutlinedTextField(
                     value = daysUntil.toString(),
@@ -1417,10 +1592,15 @@ fun EditAssignmentDialog(
                         keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Next
                     ),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = borderColor
+                    )
                 )
 
-                Text("Priority", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Text("Priority", color = subTextColor, style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("Low", "Medium", "High").forEach { p ->
                         val isSelected = priority == p
@@ -1428,14 +1608,14 @@ fun EditAssignmentDialog(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSelected) AmberSoft else CharcoalElevated)
+                                .background(if (isSelected) (if (isExisting) AmberSoft else accent.copy(alpha = 0.15f)) else if (isExisting) CharcoalElevated else tokens.chipFill)
                                 .clickable { priority = p }
                                 .padding(vertical = 8.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = p,
-                                color = if (isSelected) AmberAccent else TextSecondary,
+                                color = if (isSelected) accent else subTextColor,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                 fontSize = 12.sp
                             )
@@ -1444,16 +1624,16 @@ fun EditAssignmentDialog(
                 }
 
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("Progress: $progressPercent%", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Text("Progress: $progressPercent%", color = subTextColor, style = MaterialTheme.typography.bodySmall)
                 Spacer(modifier = Modifier.height(2.dp))
                 Slider(
                     value = progressPercent.toFloat(),
                     onValueChange = { progressPercent = it.toInt() },
                     valueRange = 0f..100f,
                     colors = SliderDefaults.colors(
-                        thumbColor = AmberAccent,
-                        activeTrackColor = AmberAccent,
-                        inactiveTrackColor = CharcoalElevated
+                        thumbColor = accent,
+                        activeTrackColor = accent,
+                        inactiveTrackColor = if (isExisting) CharcoalElevated else tokens.chipFill
                     )
                 )
             }
@@ -1471,15 +1651,15 @@ fun EditAssignmentDialog(
                         )
                     )
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = if (isExisting) Color.Black else tokens.textOnAccent)
             ) {
                 Text("SAVE")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = subTextColor) }
         },
-        containerColor = CharcoalCard
+        containerColor = dialogBg
     )
 }
 
@@ -1496,10 +1676,19 @@ fun EditRevisionDialog(
     var daysUntil by remember { mutableStateOf(initialDays) }
     var isCompleted by remember { mutableStateOf(item.isCompleted) }
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isExisting = isExistingTheme(activeTheme)
+    val dialogBg = if (isExisting) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
+    val textColor = if (isExisting) TextPrimary else tokens.text
+    val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
+    val accent = if (isExisting) AmberAccent else tokens.accent
+    val borderColor = if (isExisting) CharcoalBorder else tokens.divider
+
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(decorFitsSystemWindows = false),
-        title = { Text("Edit Spaced Review", color = TextPrimary, fontWeight = FontWeight.Bold) },
+        title = { Text("Edit Spaced Review", color = textColor, fontWeight = FontWeight.Bold) },
         text = {
             Column(
                 modifier = Modifier
@@ -1507,8 +1696,8 @@ fun EditRevisionDialog(
                     .imePadding(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("Subject/Task: ${item.subjectName}", color = TextPrimary, fontWeight = FontWeight.Medium)
-                Text("Topic/Sub task: ${item.topicName}", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                Text("Subject/Task: ${item.subjectName}", color = textColor, fontWeight = FontWeight.Medium)
+                Text("Topic/Sub task: ${item.topicName}", color = subTextColor, style = MaterialTheme.typography.bodyMedium)
 
                 OutlinedTextField(
                     value = daysUntil.toString(),
@@ -1519,7 +1708,12 @@ fun EditRevisionDialog(
                         keyboardType = KeyboardType.Number,
                         imeAction = ImeAction.Done
                     ),
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor,
+                        focusedBorderColor = accent,
+                        unfocusedBorderColor = borderColor
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -1538,7 +1732,7 @@ fun EditRevisionDialog(
                         )
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Mark as completed", color = TextPrimary)
+                    Text("Mark as completed", color = textColor)
                 }
             }
         },
@@ -1552,15 +1746,15 @@ fun EditRevisionDialog(
                         )
                     )
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = if (isExisting) Color.Black else tokens.textOnAccent)
             ) {
                 Text("SAVE")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL", color = TextSecondary) }
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = subTextColor) }
         },
-        containerColor = CharcoalCard
+        containerColor = dialogBg
     )
 }
 
@@ -1571,10 +1765,17 @@ fun DeleteConfirmationDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isExisting = isExistingTheme(activeTheme)
+    val dialogBg = if (isExisting) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
+    val textColor = if (isExisting) TextPrimary else tokens.text
+    val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title, color = TextPrimary, fontWeight = FontWeight.Bold) },
-        text = { Text(message, color = TextSecondary) },
+        title = { Text(title, color = textColor, fontWeight = FontWeight.Bold) },
+        text = { Text(message, color = subTextColor) },
         confirmButton = {
             Button(
                 onClick = onConfirm,
@@ -1585,9 +1786,9 @@ fun DeleteConfirmationDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("CANCEL", color = TextSecondary)
+                Text("CANCEL", color = subTextColor)
             }
         },
-        containerColor = CharcoalCard
+        containerColor = dialogBg
     )
 }

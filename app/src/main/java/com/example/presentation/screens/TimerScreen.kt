@@ -160,13 +160,11 @@ fun TimerScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back to Watch",
-                    tint = StudyAccent
+                    tint = if (isExistingTheme(activeTheme)) StudyAccent else tokens.accent
                 )
             }
             Spacer(modifier = Modifier.width(6.dp))
-            val activeTheme = LocalActiveTheme.current
-            val tokens = LocalAppThemeTokens.current
-            val headingColor = if (activeTheme == "Classic") StudyAccent else tokens.accent
+            val headingColor = if (isExistingTheme(activeTheme)) StudyAccent else tokens.accent
             Text(
                 text = "STUDY TIMERS",
                 style = MaterialTheme.typography.titleLarge.copy(
@@ -177,11 +175,9 @@ fun TimerScreen(
             )
         }
 
-        // 2. Tabs Row (equal width, single line, ~11sp, no cut-off)
-        val activeTheme = LocalActiveTheme.current
-        val tokens = LocalAppThemeTokens.current
-        val tabContainer = if (activeTheme == "Classic") DarkCard else if (activeTheme == "Ultra Premium") Color.Transparent else tokens.cardFill
-        val tabAccent = if (activeTheme == "Classic") StudyAccent else tokens.accent
+        // 2. Tabs Row (equal width, single line, 11sp, no cut-off)
+        val tabContainer = if (isExistingTheme(activeTheme)) DarkCard else if (activeTheme == "Ultra Premium") Color.Transparent else tokens.cardFill
+        val tabAccent = if (isExistingTheme(activeTheme)) StudyAccent else tokens.accent
 
         TabRow(
             selectedTabIndex = selectedTab,
@@ -203,18 +199,22 @@ fun TimerScreen(
                 Tab(
                     selected = selectedTab == index,
                     onClick = { selectedTab = index },
-                    text = {
+                    modifier = Modifier.testTag("timer_tab_$index")
+                ) {
+                    Box(
+                        modifier = Modifier.padding(vertical = 12.dp, horizontal = 1.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
                             text = title,
                             fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selectedTab == index) (if (activeTheme == "Classic") AmberAccent else tokens.accent) else (if (activeTheme == "Classic") TextSecondary else tokens.secondaryText),
-                            fontSize = 8.5.sp,
+                            color = if (selectedTab == index) (if (isExistingTheme(activeTheme)) AmberAccent else tokens.accent) else (if (isExistingTheme(activeTheme)) TextSecondary else tokens.secondaryText),
+                            fontSize = 11.sp,
                             maxLines = 1,
                             softWrap = false
                         )
-                    },
-                    modifier = Modifier.testTag("timer_tab_$index")
-                )
+                    }
+                }
             }
         }
 
@@ -373,7 +373,7 @@ fun TimerScreen(
                             isActive = isSessionRunning,
                             isPaused = (snapshot.state == TimerState.PAUSED && snapshot.timerType == TimerType.STUDY_SESSION),
                             progressFraction = progressFraction,
-                            accentColor = AmberAccent,
+                            accentColor = if (isExistingTheme(activeTheme)) AmberAccent else tokens.accent,
                             onPlayPause = {
                                 if (!isSessionRunning) {
                                     TimerEngine.startStudySession(
@@ -571,9 +571,9 @@ fun TimerScreen(
                             timeDisplay = timeDisplay,
                             isActive = isSwActive,
                             isPaused = stopwatchSnapshot.isPaused,
-                            progressFraction = 0f,
+                            progressFraction = if (isSwActive) ((stopwatchSnapshot.elapsedMillis % 60000L).toFloat() / 60000f) else 0f,
                             accentColor = CyanAccent,
-                            hasProgress = false,
+                            hasProgress = true,
                             isStopwatch = true,
                             onPlayPause = {
                                 if (!stopwatchSnapshot.isRunning && !stopwatchSnapshot.isPaused) {
@@ -866,7 +866,7 @@ fun TabRoundTimer(
             val arcSize = Size(diameter, diameter)
 
             // Background track (S3: chip-fill role)
-            val trackColor = if (isClassic) Color(0xFF1E1E1E) else tokens.track
+            val trackColor = if (isClassic) Color(0xFF1E1E1E) else tokens.chipFill
             drawArc(
                 color = trackColor,
                 startAngle = 0f,
@@ -1046,13 +1046,18 @@ fun OtherTimerRunningStrip(
     val tokens = LocalAppThemeTokens.current
     val isClassic = isExistingTheme(activeTheme)
 
+    val cardShape = if (isClassic) RoundedCornerShape(8.dp) else if (activeTheme == "Ultra Premium") RoundedCornerShape(16.dp) else RoundedCornerShape(14.dp)
+    val cardBg = if (isClassic) CharcoalElevated else if (activeTheme == "Ultra Premium") UltraPremiumGlass else tokens.cardFill
+    val cardBorder = if (isClassic) BorderStroke(1.dp, accentColor) else null
+
     Card(
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = if (isClassic) CharcoalElevated else tokens.cardFill),
-        border = BorderStroke(1.dp, if (isClassic) accentColor else tokens.chipFill),
+        shape = cardShape,
+        colors = CardDefaults.cardColors(containerColor = cardBg),
+        border = cardBorder,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(cardShape)
             .clickable { onTapText() }
     ) {
         Row(
@@ -1943,6 +1948,8 @@ fun LandscapeTimerScreen(
     onOpenSetTimerDialog: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
     val totalCdSecs = (countdownHours * 3600) + (countdownMinutes * 60) + countdownSeconds
 
     // Tab labels and metadata
@@ -1978,7 +1985,7 @@ fun LandscapeTimerScreen(
                     isRunning = snapshot.state == TimerState.STUDYING && snapshot.timerType == TimerType.STUDY_SESSION,
                     isPaused = snapshot.state == TimerState.PAUSED && snapshot.timerType == TimerType.STUDY_SESSION,
                     isQuietMode = snapshot.isQuietMode,
-                    accentColor = AmberAccent,
+                    accentColor = if (isExistingTheme(activeTheme)) AmberAccent else tokens.accent,
                     onPlayPause = {
                         if (!isSessionRunning) {
                             TimerEngine.startStudySession(

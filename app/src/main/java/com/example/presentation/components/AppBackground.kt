@@ -123,7 +123,7 @@ fun AppBackground(
                             center = Offset(size.width * 0.75f, size.height * 0.85f)
                         )
 
-                        // 2 thin curved light lines: blue #087CFF at ~25% and amber #FF8A24 at ~25%
+                        // 2 thin curved light lines: blue #087CFF at ~10% and amber #FF8A24 at ~10%
                         val bluePath = Path().apply {
                             moveTo(0f, size.height * 0.35f)
                             cubicTo(
@@ -134,8 +134,8 @@ fun AppBackground(
                         }
                         drawPath(
                             path = bluePath,
-                            color = Color(0x40087CFF),
-                            style = Stroke(width = 1.5f)
+                            color = Color(0x1A087CFF),
+                            style = Stroke(width = 1.2f)
                         )
 
                         val amberPath = Path().apply {
@@ -148,12 +148,12 @@ fun AppBackground(
                         }
                         drawPath(
                             path = amberPath,
-                            color = Color(0x40FF8A24),
-                            style = Stroke(width = 1.5f)
+                            color = Color(0x1AFF8A24),
+                            style = Stroke(width = 1.2f)
                         )
 
-                        // Tiny particles at ~10% opacity
-                        val particleColor = Color(0x1AFFFFFF)
+                        // Tiny particles at ~8% opacity
+                        val particleColor = Color(0x14FFFFFF)
                         val particles = listOf(
                             Offset(size.width * 0.22f, size.height * 0.18f) to 2.5f,
                             Offset(size.width * 0.78f, size.height * 0.28f) to 1.8f,

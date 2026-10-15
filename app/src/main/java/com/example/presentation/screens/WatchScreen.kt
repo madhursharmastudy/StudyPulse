@@ -264,7 +264,7 @@ fun WatchScreen(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 3.sp,
-                    color = subTextColor,
+                    color = if (isClassic) subTextColor else tokens.accent,
                     modifier = Modifier.padding(horizontal = 14.dp)
                 )
                 HorizontalDivider(
@@ -317,12 +317,10 @@ fun WatchScreen(
                         testTag = "watch_quiet_resume_button"
                     )
                 } else {
-                    val activeTheme = LocalActiveTheme.current
-                    val tokens = LocalAppThemeTokens.current
                     ThemedActionPill(
                         text = "Set Timer",
                         onClick = { showSetTimerDialog = true },
-                        textColor = if (activeTheme == "Classic") StudyAccent else tokens.accent,
+                        textColor = if (isClassic) StudyAccent else tokens.accent,
                         testTag = "watch_set_timer_button"
                     )
                 }
@@ -366,7 +364,7 @@ fun WatchScreen(
                 onClick = { showSubjectPicker = true }
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // 7. Footer Motivation Tagline
             Column(
@@ -476,7 +474,7 @@ fun CircularStudyTimer(
     val isClassic = isExistingTheme(activeTheme)
     val textColor = if (isClassic) TextPrimary else tokens.text
     val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
-    val ringTrackColor = if (isClassic) Color(0xFF161616) else tokens.track
+    val ringTrackColor = if (isClassic) Color(0xFF161616) else tokens.chipFill
     val ringActiveColor = if (isClassic) StudyAccent else tokens.accent
 
     Box(
@@ -572,17 +570,17 @@ fun CircularStudyTimer(
             val playBtnBg = if (isClassic) {
                 if (snapshot.state == TimerState.STUDYING) Color(0x33FFA640) else Color(0xFF1E1E1E)
             } else {
-                if (snapshot.state == TimerState.STUDYING) tokens.accent.copy(alpha = 0.25f) else tokens.chipFill
+                if (snapshot.state == TimerState.STUDYING) tokens.cardFill else tokens.accent
             }
             val playBtnBorder = if (isClassic) {
                 if (snapshot.state == TimerState.STUDYING) StudyAccent else Color(0xFF333333)
             } else {
-                if (snapshot.state == TimerState.STUDYING) tokens.accent else tokens.chipFill
+                if (snapshot.state == TimerState.STUDYING) tokens.accent else Color.Transparent
             }
             val playBtnTint = if (isClassic) {
                 if (snapshot.state == TimerState.STUDYING) StudyAccent else TextPrimary
             } else {
-                if (snapshot.state == TimerState.STUDYING) tokens.accent else textColor
+                if (snapshot.state == TimerState.STUDYING) tokens.accent else tokens.textOnAccent
             }
 
             Box(
@@ -644,8 +642,9 @@ fun EyeRestMiniCard(
 
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val subTextColor = if (activeTheme == "Classic") TextSecondary else tokens.secondaryText
-    val trackCol = if (activeTheme == "Classic") Color(0xFF222222) else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.10f) else tokens.chipFill
+    val isClassic = isExistingTheme(activeTheme)
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val trackCol = if (isClassic) Color(0xFF222222) else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.10f) else tokens.chipFill
 
     ThemedCard(
         cornerRadius = 16.dp,
@@ -723,8 +722,9 @@ fun WaterBreakMiniCard(
 
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val subTextColor = if (activeTheme == "Classic") TextSecondary else tokens.secondaryText
-    val trackCol = if (activeTheme == "Classic") Color(0xFF222222) else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.10f) else tokens.chipFill
+    val isClassic = isExistingTheme(activeTheme)
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val trackCol = if (isClassic) Color(0xFF222222) else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.10f) else tokens.chipFill
 
     ThemedCard(
         cornerRadius = 16.dp,
@@ -807,9 +807,10 @@ fun SubjectTopicCard(
 ) {
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val textColor = if (activeTheme == "Classic") TextPrimary else tokens.text
-    val subTextColor = if (activeTheme == "Classic") TextSecondary else tokens.secondaryText
-    val iconBg = if (activeTheme == "Classic") Color(0xFF202020) else tokens.chipFill
+    val isClassic = isExistingTheme(activeTheme)
+    val textColor = if (isClassic) TextPrimary else tokens.text
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val iconBg = if (isClassic) Color(0xFF202020) else tokens.chipFill
 
     ThemedCard(
         cornerRadius = 16.dp,

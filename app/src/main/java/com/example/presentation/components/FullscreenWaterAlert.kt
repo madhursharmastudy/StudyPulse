@@ -104,7 +104,7 @@ fun FullscreenWaterAlert(
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
-            Spacer(modifier = Modifier.height(if (isLandscape) 10.dp else 36.dp))
+            Spacer(modifier = Modifier.height(if (isLandscape) 6.dp else 36.dp))
 
             // Main Primary Action: DRANK WATER
             if (isClassic) {
