@@ -129,7 +129,7 @@ fun StatisticsScreen(
     val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
     val tabContainer = if (isExisting) CharcoalCard else Color.Transparent
     val progressColor = if (isExisting) AmberAccent else tokens.accent
-    val trackColor = if (isExisting) CharcoalElevated else tokens.chipFill
+    val trackColor = if (isExisting) CharcoalElevated else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.10f) else tokens.chipFill
 
     AppBackground(modifier = modifier) {
         LazyColumn(

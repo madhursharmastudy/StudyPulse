@@ -184,8 +184,6 @@ fun StudyWatchTheme(
     backgroundStyle: String = "Glow",
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (isAmoled) StudyWatchDarkColorScheme else StudyWatchLightColorScheme
-
     val backgroundTokens = if (activeTheme == "Glowing Blue" || themeName.equals("Blue", ignoreCase = true)) {
         BackgroundThemeTokens(
             baseColor = Color(0xFF0B0C10),
@@ -206,6 +204,36 @@ fun StudyWatchTheme(
         "Glowing Gold" -> GlowingGoldThemeTokens
         "Classic" -> DarkBlackThemeTokens
         else -> DarkThemeTokens // Default to Dark
+    }
+
+    val colorScheme = if (isExistingTheme(activeTheme)) {
+        StudyWatchDarkColorScheme
+    } else if (activeTheme == "Light") {
+        lightColorScheme(
+            primary = themeTokens.accent,
+            onPrimary = themeTokens.textOnAccent,
+            background = themeTokens.background,
+            onBackground = themeTokens.text,
+            surface = themeTokens.cardFill,
+            onSurface = themeTokens.text,
+            surfaceVariant = themeTokens.chipFill,
+            onSurfaceVariant = themeTokens.secondaryText,
+            outline = themeTokens.divider,
+            error = themeTokens.danger
+        )
+    } else {
+        darkColorScheme(
+            primary = themeTokens.accent,
+            onPrimary = themeTokens.textOnAccent,
+            background = themeTokens.background,
+            onBackground = themeTokens.text,
+            surface = themeTokens.cardFill,
+            onSurface = themeTokens.text,
+            surfaceVariant = themeTokens.chipFill,
+            onSurfaceVariant = themeTokens.secondaryText,
+            outline = themeTokens.divider,
+            error = themeTokens.danger
+        )
     }
 
     // F9: System bar icons: light icons on every theme except Light, no scrim

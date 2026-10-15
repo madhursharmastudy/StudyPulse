@@ -441,7 +441,7 @@ fun SettingsScreen(
                     // 4. Dark Black
                     ThemeRow(
                         title = "Dark Black",
-                        description = "Pure black for AMOLED displays",
+                        description = "Pure black, saves battery on AMOLED",
                         pillText = "AMOLED",
                         checked = settings.theme == "Dark Black" || settings.theme == "Classic",
                         onCheckedChange = { onUpdateTheme("Dark Black") },
@@ -455,8 +455,8 @@ fun SettingsScreen(
                     // 5. Glowing Blue
                     ThemeRow(
                         title = "Glowing Blue",
-                        description = "Deep navy glow theme",
-                        pillText = "Navy",
+                        description = "Deep navy glow",
+                        pillText = "Blue",
                         checked = settings.theme == "Glowing Blue",
                         onCheckedChange = { onUpdateTheme("Glowing Blue") },
                         pillAccent = WaterAccent,
@@ -469,7 +469,7 @@ fun SettingsScreen(
                     // 6. Glowing Gold
                     ThemeRow(
                         title = "Glowing Gold",
-                        description = "Warm ember glow theme",
+                        description = "Ember gold glow",
                         pillText = "Gold",
                         checked = settings.theme == "Glowing Gold",
                         onCheckedChange = { onUpdateTheme("Glowing Gold") },
@@ -691,12 +691,15 @@ fun SettingSwitchRow(
 ) {
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val titleColor = if (activeTheme == "Classic") TextPrimary.copy(alpha = alpha) else tokens.text.copy(alpha = alpha)
-    val subtitleColor = if (activeTheme == "Classic") TextSecondary.copy(alpha = alpha) else tokens.secondaryText.copy(alpha = alpha)
-    val noteColor = if (activeTheme == "Classic") TextMuted.copy(alpha = alpha) else tokens.secondaryText.copy(alpha = alpha * 0.85f)
+    val isExisting = isExistingTheme(activeTheme)
+    val titleColor = if (isExisting) TextPrimary.copy(alpha = alpha) else tokens.text.copy(alpha = alpha)
+    val subtitleColor = if (isExisting) TextSecondary.copy(alpha = alpha) else tokens.secondaryText.copy(alpha = alpha)
+    val noteColor = if (isExisting) TextMuted.copy(alpha = alpha) else tokens.secondaryText.copy(alpha = alpha * 0.85f)
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -725,7 +728,7 @@ fun SettingSwitchRow(
                 bottomContent()
             }
         }
-        // C4: Toggles in ALL 6 themes: visible round thumb in both ON and OFF. ON = accent track, OFF = chip-fill track.
+        // B5: Switch: for Dark, Light and Ultra Premium set checkedBorderColor and uncheckedBorderColor to Color.Transparent
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
@@ -734,12 +737,15 @@ fun SettingSwitchRow(
                 checkedThumbColor = tokens.textOnAccent.copy(alpha = alpha),
                 checkedTrackColor = tokens.accent.copy(alpha = alpha),
                 uncheckedThumbColor = tokens.secondaryText.copy(alpha = alpha),
-                uncheckedTrackColor = tokens.chipFill.copy(alpha = alpha)
+                uncheckedTrackColor = tokens.chipFill.copy(alpha = alpha),
+                checkedBorderColor = if (isExisting) SwitchDefaults.colors().checkedBorderColor else Color.Transparent,
+                uncheckedBorderColor = if (isExisting) SwitchDefaults.colors().uncheckedBorderColor else Color.Transparent
             )
         )
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ThemeRow(
     title: String,
@@ -752,38 +758,49 @@ private fun ThemeRow(
     isClassicTheme: Boolean,
     bottomContent: (@Composable () -> Unit)? = null
 ) {
+    val activeTheme = LocalActiveTheme.current
+    val isExisting = isExistingTheme(activeTheme) || isClassicTheme
+    val effectivePillAccent = if (isExisting) pillAccent else tokens.accent
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 8.dp)
+            ) {
                 Text(
                     text = title,
                     fontWeight = FontWeight.Bold,
-                    color = if (isClassicTheme) TextPrimary else tokens.text
+                    color = if (isExisting) TextPrimary else tokens.text
                 )
                 Spacer(modifier = Modifier.height(2.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
                         text = description,
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (isClassicTheme) TextSecondary else tokens.secondaryText
+                        color = if (isExisting) TextSecondary else tokens.secondaryText
                     )
-                    // TH-9: status pill (12sp, rounded, filled with accent at 15% opacity, accent text)
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = pillAccent.copy(alpha = 0.15f)
+                        color = effectivePillAccent.copy(alpha = 0.15f)
                     ) {
                         Text(
                             text = pillText,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
-                            color = pillAccent,
+                            color = effectivePillAccent,
+                            softWrap = false,
+                            maxLines = 1,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                         )
                     }
@@ -791,13 +808,14 @@ private fun ThemeRow(
             }
             Switch(
                 checked = checked,
-                // TH-8: Active one cannot be turned OFF
                 onCheckedChange = { if (it && !checked) onCheckedChange() },
                 colors = SwitchDefaults.colors(
                     checkedThumbColor = tokens.textOnAccent,
                     checkedTrackColor = tokens.accent,
                     uncheckedThumbColor = tokens.secondaryText,
-                    uncheckedTrackColor = tokens.chipFill
+                    uncheckedTrackColor = tokens.chipFill,
+                    checkedBorderColor = if (isExisting) SwitchDefaults.colors().checkedBorderColor else Color.Transparent,
+                    uncheckedBorderColor = if (isExisting) SwitchDefaults.colors().uncheckedBorderColor else Color.Transparent
                 )
             )
         }
