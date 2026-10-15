@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalConfiguration
 import com.example.core.timer.TimerEngine
 import com.example.core.timer.TimerSnapshot
 import com.example.ui.theme.*
@@ -54,12 +56,13 @@ fun FullscreenEyeAlert(
     val textColor = if (isClassic) TextPrimary else tokens.text
     val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
     val trackCol = if (isClassic) Color(0xFF1C1C1E) else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.10f) else tokens.chipFill
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     AppBackground(modifier = modifier) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(if (isLandscape) 8.dp else 24.dp),
             contentAlignment = Alignment.Center
         ) {
         Column(
@@ -74,7 +77,7 @@ fun FullscreenEyeAlert(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .scale(pulseScale)
-                    .size(96.dp)
+                    .size(if (isLandscape) 44.dp else 96.dp)
                     .clip(CircleShape)
                     .background(Color(0x2600D675))
                     .border(2.dp, EyeCareAccent, CircleShape)
@@ -83,70 +86,68 @@ fun FullscreenEyeAlert(
                     imageVector = Icons.Default.Visibility,
                     contentDescription = "Eye Care Alert",
                     tint = EyeCareAccent,
-                    modifier = Modifier.size(52.dp)
+                    modifier = Modifier.size(if (isLandscape) 24.dp else 52.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(if (isLandscape) 4.dp else 24.dp))
 
             Text(
                 text = "EYE REST",
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 4.sp
-                ),
+                style = if (isLandscape) MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                    else MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, letterSpacing = 4.sp),
                 color = EyeCareAccent,
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(if (isLandscape) 2.dp else 8.dp))
 
             Text(
                 text = "Look away from the screen.",
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = FontWeight.Medium
-                ),
+                style = if (isLandscape) MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium)
+                    else MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                 color = textColor,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(if (isLandscape) 8.dp else 32.dp))
 
             // Countdown circle & digits
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier.size(140.dp)
+                modifier = Modifier.size(if (isLandscape) 72.dp else 140.dp)
             ) {
                 CircularProgressIndicator(
                     progress = { progress },
                     modifier = Modifier.fillMaxSize(),
                     color = EyeCareAccent,
-                    strokeWidth = 6.dp,
+                    strokeWidth = if (isLandscape) 4.dp else 6.dp,
                     trackColor = trackCol
                 )
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = "$secondsRemaining",
-                        fontSize = 48.sp,
+                        fontSize = if (isLandscape) 26.sp else 48.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace,
                         color = textColor
                     )
                     Text(
                         text = "SECONDS",
-                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 2.sp, fontWeight = FontWeight.Bold),
+                        style = if (isLandscape) MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                            else MaterialTheme.typography.labelSmall.copy(letterSpacing = 2.sp, fontWeight = FontWeight.Bold),
                         color = EyeCareAccent
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(36.dp))
+            Spacer(modifier = Modifier.height(if (isLandscape) 10.dp else 36.dp))
 
             // Action Buttons
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth(0.85f)
+                modifier = Modifier.fillMaxWidth(if (isLandscape) 0.65f else 0.85f)
             ) {
                 if (isClassic) {
                     OutlinedButton(
@@ -155,7 +156,7 @@ fun FullscreenEyeAlert(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .weight(1f)
-                            .height(48.dp)
+                            .height(if (isLandscape) 36.dp else 48.dp)
                             .testTag("skip_eye_rest_button")
                     ) {
                         Text("SKIP")
@@ -167,7 +168,7 @@ fun FullscreenEyeAlert(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .weight(1f)
-                            .height(48.dp)
+                            .height(if (isLandscape) 36.dp else 48.dp)
                             .testTag("resume_early_eye_button")
                     ) {
                         Text("RESUME", fontWeight = FontWeight.Bold)

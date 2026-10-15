@@ -905,14 +905,23 @@ fun SubjectPickerDialog(
 
     val durationPresets = listOf(15, 25, 30, 45, 50, 60, 90, 120)
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = isExistingTheme(activeTheme)
+    val textColor = if (isClassic) TextPrimary else tokens.text
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val accentColor = if (isClassic) StudyAccent else tokens.accent
+    val dialogBg = if (isClassic) DarkCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
+    val chipBg = if (isClassic) Color(0xFF1E1E1E) else if (activeTheme == "Ultra Premium") Color(0x1AFFFFFF) else tokens.chipFill
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = DarkCard,
+        containerColor = dialogBg,
         title = {
             Text(
                 text = "Select Subject/Task",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = TextPrimary
+                color = textColor
             )
         },
         text = {
@@ -930,15 +939,15 @@ fun SubjectPickerDialog(
                     Text(
                         text = "SUBJECT/TASK",
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = StudyAccent
+                        color = accentColor
                     )
                     TextButton(
                         onClick = { showAddSubjectDialog = true },
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = StudyAccent)
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = accentColor)
                         Spacer(Modifier.width(4.dp))
-                        Text("Add Subject/Task", fontSize = 12.sp, color = StudyAccent)
+                        Text("Add Subject/Task", fontSize = 12.sp, color = accentColor)
                     }
                 }
 
@@ -952,10 +961,10 @@ fun SubjectPickerDialog(
                     Surface(
                         onClick = { selectedSubject = subject },
                         shape = RoundedCornerShape(10.dp),
-                        color = if (isSelected) Color(0x33FFA640) else Color(0xFF1A1A1A),
+                        color = if (isSelected) (if (isClassic) Color(0x33FFA640) else tokens.accent.copy(alpha = 0.2f)) else (if (isClassic) Color(0xFF1A1A1A) else if (activeTheme == "Ultra Premium") Color(0x0DFFFFFF) else tokens.chipFill),
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp,
-                            if (isSelected) StudyAccent else Color(0xFF282828)
+                            if (isSelected) accentColor else (if (isClassic) Color(0xFF282828) else Color.Transparent)
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -968,7 +977,7 @@ fun SubjectPickerDialog(
                             Text(
                                 text = subject.name,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) StudyAccent else TextPrimary,
+                                color = if (isSelected) accentColor else textColor,
                                 modifier = Modifier.weight(1f)
                             )
                             Row(
@@ -978,7 +987,7 @@ fun SubjectPickerDialog(
                                     Text(
                                         text = "${hours}h ${minutes}m",
                                         fontSize = 11.sp,
-                                        color = TextSecondary,
+                                        color = subTextColor,
                                         modifier = Modifier.padding(end = 4.dp)
                                     )
                                 }
@@ -989,7 +998,7 @@ fun SubjectPickerDialog(
                                     Icon(
                                         imageVector = Icons.Default.Edit,
                                         contentDescription = "Edit Subject/Task",
-                                        tint = TextMuted,
+                                        tint = subTextColor,
                                         modifier = Modifier.size(14.dp)
                                     )
                                 }
@@ -1021,16 +1030,16 @@ fun SubjectPickerDialog(
                     Text(
                         text = "TOPIC",
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = StudyAccent
+                        color = accentColor
                     )
                     selectedSubject?.let { sub ->
                         TextButton(
                             onClick = { showAddTopicDialog = true },
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = StudyAccent)
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp), tint = accentColor)
                             Spacer(Modifier.width(4.dp))
-                            Text("Add Topic", fontSize = 12.sp, color = StudyAccent)
+                            Text("Add Topic", fontSize = 12.sp, color = accentColor)
                         }
                     }
                 }
@@ -1041,10 +1050,10 @@ fun SubjectPickerDialog(
                         Surface(
                             onClick = { selectedTopic = topic },
                             shape = RoundedCornerShape(8.dp),
-                            color = if (isSelected) Color(0x33FFA640) else Color(0xFF181818),
+                            color = if (isSelected) (if (isClassic) Color(0x33FFA640) else tokens.accent.copy(alpha = 0.2f)) else (if (isClassic) Color(0xFF181818) else if (activeTheme == "Ultra Premium") Color(0x0DFFFFFF) else tokens.chipFill),
                             border = androidx.compose.foundation.BorderStroke(
                                 1.dp,
-                                if (isSelected) StudyAccent else Color(0xFF242424)
+                                if (isSelected) accentColor else (if (isClassic) Color(0xFF242424) else Color.Transparent)
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1059,7 +1068,7 @@ fun SubjectPickerDialog(
                                 Text(
                                     text = topic.name,
                                     fontSize = 13.sp,
-                                    color = if (isSelected) StudyAccent else TextPrimary,
+                                    color = if (isSelected) accentColor else textColor,
                                     modifier = Modifier.weight(1f)
                                 )
                                 Row(
@@ -1072,7 +1081,7 @@ fun SubjectPickerDialog(
                                         Icon(
                                             imageVector = Icons.Default.Edit,
                                             contentDescription = "Edit Topic",
-                                            tint = TextMuted,
+                                            tint = subTextColor,
                                             modifier = Modifier.size(14.dp)
                                         )
                                     }
@@ -1096,7 +1105,7 @@ fun SubjectPickerDialog(
                     Text(
                         text = "No specific topics added yet.",
                         fontSize = 12.sp,
-                        color = TextMuted,
+                        color = subTextColor,
                         modifier = Modifier.padding(vertical = 4.dp)
                     )
                 }
@@ -1107,7 +1116,7 @@ fun SubjectPickerDialog(
                 Text(
                     text = "SESSION DURATION",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                    color = StudyAccent
+                    color = accentColor
                 )
                 Spacer(modifier = Modifier.height(6.dp))
 
@@ -1120,14 +1129,14 @@ fun SubjectPickerDialog(
                         Surface(
                             onClick = { selectedDuration = duration },
                             shape = RoundedCornerShape(8.dp),
-                            color = if (isSelected) StudyAccent else Color(0xFF1E1E1E),
+                            color = if (isSelected) accentColor else chipBg,
                             modifier = Modifier.weight(1f)
                         ) {
                             Text(
                                 text = "${duration}m",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isSelected) Color.Black else TextPrimary,
+                                color = if (isSelected) (if (isClassic) Color.Black else tokens.textOnAccent) else textColor,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
@@ -1146,14 +1155,14 @@ fun SubjectPickerDialog(
                         Surface(
                             onClick = { selectedDuration = duration },
                             shape = RoundedCornerShape(8.dp),
-                            color = if (isSelected) StudyAccent else Color(0xFF1E1E1E),
+                            color = if (isSelected) accentColor else chipBg,
                             modifier = Modifier.weight(1f)
                         ) {
                             Text(
                                 text = "${duration}m",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isSelected) Color.Black else TextPrimary,
+                                color = if (isSelected) (if (isClassic) Color.Black else tokens.textOnAccent) else textColor,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.padding(vertical = 8.dp)
                             )
@@ -1169,7 +1178,7 @@ fun SubjectPickerDialog(
                         onSelectSubjectAndTopic(sub, selectedTopic, selectedDuration)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = StudyAccent, contentColor = Color.Black),
+                colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent),
                 shape = RoundedCornerShape(8.dp),
                 enabled = selectedSubject != null
             ) {
@@ -1179,7 +1188,7 @@ fun SubjectPickerDialog(
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary)
+                colors = ButtonDefaults.textButtonColors(contentColor = subTextColor)
             ) {
                 Text("Cancel")
             }
@@ -1193,8 +1202,8 @@ fun SubjectPickerDialog(
 
         AlertDialog(
             onDismissRequest = { showAddSubjectDialog = false },
-            containerColor = DarkCard,
-            title = { Text("Add New Subject/Task", color = TextPrimary) },
+            containerColor = dialogBg,
+            title = { Text("Add New Subject/Task", color = textColor) },
             text = {
                 Column {
                     OutlinedTextField(
@@ -1203,10 +1212,10 @@ fun SubjectPickerDialog(
                         label = { Text("Subject/Task Name") },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = StudyAccent,
-                            unfocusedBorderColor = Color(0xFF444444),
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary
+                            focusedBorderColor = accentColor,
+                            unfocusedBorderColor = if (isClassic) Color(0xFF444444) else tokens.divider,
+                            focusedTextColor = textColor,
+                            unfocusedTextColor = textColor
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -1217,10 +1226,10 @@ fun SubjectPickerDialog(
                         label = { Text("Daily Goal (Minutes)") },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = StudyAccent,
-                            unfocusedBorderColor = Color(0xFF444444),
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary
+                            focusedBorderColor = accentColor,
+                            unfocusedBorderColor = if (isClassic) Color(0xFF444444) else tokens.divider,
+                            focusedTextColor = textColor,
+                            unfocusedTextColor = textColor
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -1239,7 +1248,7 @@ fun SubjectPickerDialog(
                             showAddSubjectDialog = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = StudyAccent, contentColor = Color.Black),
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("Add", fontWeight = FontWeight.Bold)
@@ -1247,7 +1256,7 @@ fun SubjectPickerDialog(
             },
             dismissButton = {
                 TextButton(onClick = { showAddSubjectDialog = false }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = subTextColor)
                 }
             }
         )
@@ -1259,8 +1268,8 @@ fun SubjectPickerDialog(
 
         AlertDialog(
             onDismissRequest = { showAddTopicDialog = false },
-            containerColor = DarkCard,
-            title = { Text("Add Topic/Sub task to ${selectedSubject?.name}", color = TextPrimary) },
+            containerColor = dialogBg,
+            title = { Text("Add Topic/Sub task to ${selectedSubject?.name}", color = textColor) },
             text = {
                 OutlinedTextField(
                     value = newTopicName,
@@ -1268,10 +1277,10 @@ fun SubjectPickerDialog(
                     label = { Text("Topic/Sub task Name") },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = StudyAccent,
-                        unfocusedBorderColor = Color(0xFF444444),
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        focusedBorderColor = accentColor,
+                        unfocusedBorderColor = if (isClassic) Color(0xFF444444) else tokens.divider,
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1284,7 +1293,7 @@ fun SubjectPickerDialog(
                             showAddTopicDialog = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = StudyAccent, contentColor = Color.Black),
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("Add Topic/Sub task", fontWeight = FontWeight.Bold)
@@ -1292,7 +1301,7 @@ fun SubjectPickerDialog(
             },
             dismissButton = {
                 TextButton(onClick = { showAddTopicDialog = false }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = subTextColor)
                 }
             }
         )
@@ -1305,8 +1314,8 @@ fun SubjectPickerDialog(
 
         AlertDialog(
             onDismissRequest = { subjectToEdit = null },
-            containerColor = DarkCard,
-            title = { Text("Edit Subject/Task", color = TextPrimary) },
+            containerColor = dialogBg,
+            title = { Text("Edit Subject/Task", color = textColor) },
             text = {
                 Column {
                     OutlinedTextField(
@@ -1315,10 +1324,10 @@ fun SubjectPickerDialog(
                         label = { Text("Subject/Task Name") },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = StudyAccent,
-                            unfocusedBorderColor = Color(0xFF444444),
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary
+                            focusedBorderColor = accentColor,
+                            unfocusedBorderColor = if (isClassic) Color(0xFF444444) else tokens.divider,
+                            focusedTextColor = textColor,
+                            unfocusedTextColor = textColor
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -1329,10 +1338,10 @@ fun SubjectPickerDialog(
                         label = { Text("Daily Goal (Minutes)") },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = StudyAccent,
-                            unfocusedBorderColor = Color(0xFF444444),
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary
+                            focusedBorderColor = accentColor,
+                            unfocusedBorderColor = if (isClassic) Color(0xFF444444) else tokens.divider,
+                            focusedTextColor = textColor,
+                            unfocusedTextColor = textColor
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -1353,7 +1362,7 @@ fun SubjectPickerDialog(
                             subjectToEdit = null
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = StudyAccent, contentColor = Color.Black),
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("Save", fontWeight = FontWeight.Bold)
@@ -1361,7 +1370,7 @@ fun SubjectPickerDialog(
             },
             dismissButton = {
                 TextButton(onClick = { subjectToEdit = null }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = subTextColor)
                 }
             }
         )
@@ -1371,12 +1380,12 @@ fun SubjectPickerDialog(
     if (subjectToDelete != null) {
         AlertDialog(
             onDismissRequest = { subjectToDelete = null },
-            containerColor = DarkCard,
-            title = { Text("Delete Subject/Task?", color = TextPrimary) },
+            containerColor = dialogBg,
+            title = { Text("Delete Subject/Task?", color = textColor) },
             text = {
                 Text(
                     "Are you sure you want to delete \"${subjectToDelete!!.name}\"? This will also delete all its associated topics/sub tasks and study history.",
-                    color = TextSecondary
+                    color = subTextColor
                 )
             },
             confirmButton = {
@@ -1399,7 +1408,7 @@ fun SubjectPickerDialog(
             },
             dismissButton = {
                 TextButton(onClick = { subjectToDelete = null }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = subTextColor)
                 }
             }
         )
@@ -1411,8 +1420,8 @@ fun SubjectPickerDialog(
 
         AlertDialog(
             onDismissRequest = { topicToEdit = null },
-            containerColor = DarkCard,
-            title = { Text("Edit Topic/Sub task", color = TextPrimary) },
+            containerColor = dialogBg,
+            title = { Text("Edit Topic/Sub task", color = textColor) },
             text = {
                 OutlinedTextField(
                     value = editTopicName,
@@ -1420,10 +1429,10 @@ fun SubjectPickerDialog(
                     label = { Text("Topic/Sub task Name") },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = StudyAccent,
-                        unfocusedBorderColor = Color(0xFF444444),
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        focusedBorderColor = accentColor,
+                        unfocusedBorderColor = if (isClassic) Color(0xFF444444) else tokens.divider,
+                        focusedTextColor = textColor,
+                        unfocusedTextColor = textColor
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1440,7 +1449,7 @@ fun SubjectPickerDialog(
                             topicToEdit = null
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = StudyAccent, contentColor = Color.Black),
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text("Save", fontWeight = FontWeight.Bold)
@@ -1448,7 +1457,7 @@ fun SubjectPickerDialog(
             },
             dismissButton = {
                 TextButton(onClick = { topicToEdit = null }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = subTextColor)
                 }
             }
         )
@@ -1458,12 +1467,12 @@ fun SubjectPickerDialog(
     if (topicToDelete != null) {
         AlertDialog(
             onDismissRequest = { topicToDelete = null },
-            containerColor = DarkCard,
-            title = { Text("Delete Topic/Sub task?", color = TextPrimary) },
+            containerColor = dialogBg,
+            title = { Text("Delete Topic/Sub task?", color = textColor) },
             text = {
                 Text(
                     "Are you sure you want to delete \"${topicToDelete!!.name}\"?",
-                    color = TextSecondary
+                    color = subTextColor
                 )
             },
             confirmButton = {
@@ -1486,7 +1495,7 @@ fun SubjectPickerDialog(
             },
             dismissButton = {
                 TextButton(onClick = { topicToDelete = null }) {
-                    Text("Cancel", color = TextSecondary)
+                    Text("Cancel", color = subTextColor)
                 }
             }
         )
@@ -1512,6 +1521,15 @@ fun SetTimerDialog(
     var waterIntervalStr by remember { mutableStateOf(settings.waterIntervalMinutes.toString()) }
     var waterBreakStr by remember { mutableStateOf((settings.waterBreakDurationSeconds / 60).toString()) }
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = isExistingTheme(activeTheme)
+    val textColor = if (isClassic) TextPrimary else tokens.text
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val accentColor = if (isClassic) StudyAccent else tokens.accent
+    val dialogBg = if (isClassic) DarkCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
+    val fieldBorder = if (isClassic) Color(0xFF333333) else tokens.divider
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -1519,7 +1537,7 @@ fun SetTimerDialog(
                 text = "Set Timer Settings",
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleLarge,
-                color = TextPrimary
+                color = textColor
             )
         },
         text = {
@@ -1532,7 +1550,7 @@ fun SetTimerDialog(
                     Text(
                         text = "STUDY SESSION DURATION",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = StudyAccent
+                        color = accentColor
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
@@ -1542,11 +1560,11 @@ fun SetTimerDialog(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = StudyAccent,
-                            focusedLabelColor = StudyAccent,
-                            unfocusedBorderColor = Color(0xFF333333),
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary
+                            focusedBorderColor = accentColor,
+                            focusedLabelColor = accentColor,
+                            unfocusedBorderColor = fieldBorder,
+                            focusedTextColor = textColor,
+                            unfocusedTextColor = textColor
                         ),
                         modifier = Modifier.fillMaxWidth().testTag("set_timer_study_input")
                     )
@@ -1572,9 +1590,9 @@ fun SetTimerDialog(
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = EyeCareAccent,
                                 focusedLabelColor = EyeCareAccent,
-                                unfocusedBorderColor = Color(0xFF333333),
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary
+                                unfocusedBorderColor = fieldBorder,
+                                focusedTextColor = textColor,
+                                unfocusedTextColor = textColor
                             ),
                             modifier = Modifier.weight(1f).testTag("set_timer_eye_interval_input")
                         )
@@ -1587,9 +1605,9 @@ fun SetTimerDialog(
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = EyeCareAccent,
                                 focusedLabelColor = EyeCareAccent,
-                                unfocusedBorderColor = Color(0xFF333333),
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary
+                                unfocusedBorderColor = fieldBorder,
+                                focusedTextColor = textColor,
+                                unfocusedTextColor = textColor
                             ),
                             modifier = Modifier.weight(1f).testTag("set_timer_eye_rest_input")
                         )
@@ -1616,9 +1634,9 @@ fun SetTimerDialog(
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = WaterAccent,
                                 focusedLabelColor = WaterAccent,
-                                unfocusedBorderColor = Color(0xFF333333),
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary
+                                unfocusedBorderColor = fieldBorder,
+                                focusedTextColor = textColor,
+                                unfocusedTextColor = textColor
                             ),
                             modifier = Modifier.weight(1f).testTag("set_timer_water_interval_input")
                         )
@@ -1631,9 +1649,9 @@ fun SetTimerDialog(
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = WaterAccent,
                                 focusedLabelColor = WaterAccent,
-                                unfocusedBorderColor = Color(0xFF333333),
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary
+                                unfocusedBorderColor = fieldBorder,
+                                focusedTextColor = textColor,
+                                unfocusedTextColor = textColor
                             ),
                             modifier = Modifier.weight(1f).testTag("set_timer_water_break_input")
                         )
@@ -1653,8 +1671,8 @@ fun SetTimerDialog(
                     onSave(studyMinVal, eyeIntVal, eyeRestVal, waterIntVal, waterBreakVal)
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = StudyAccent,
-                    contentColor = Color.Black
+                    containerColor = accentColor,
+                    contentColor = if (isClassic) Color.Black else tokens.textOnAccent
                 ),
                 modifier = Modifier.testTag("set_timer_dialog_save")
             ) {
@@ -1664,13 +1682,13 @@ fun SetTimerDialog(
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(contentColor = TextMuted),
+                colors = ButtonDefaults.textButtonColors(contentColor = subTextColor),
                 modifier = Modifier.testTag("set_timer_dialog_cancel")
             ) {
                 Text("Cancel")
             }
         },
-        containerColor = DarkCard
+        containerColor = dialogBg
     )
 }
 

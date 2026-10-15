@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalConfiguration
 import com.example.core.timer.TimerEngine
 import com.example.core.timer.TimerSnapshot
 import com.example.ui.theme.*
@@ -47,12 +49,13 @@ fun FullscreenWaterAlert(
     val tokens = LocalAppThemeTokens.current
     val isClassic = isExistingTheme(activeTheme)
     val textColor = if (isClassic) TextPrimary else tokens.text
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     AppBackground(modifier = modifier) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(if (isLandscape) 8.dp else 24.dp),
             contentAlignment = Alignment.Center
         ) {
         Column(
@@ -67,7 +70,7 @@ fun FullscreenWaterAlert(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .scale(pulseScale)
-                    .size(96.dp)
+                    .size(if (isLandscape) 44.dp else 96.dp)
                     .clip(CircleShape)
                     .background(Color(0x2600B4FF))
                     .border(2.dp, WaterAccent, CircleShape)
@@ -76,35 +79,32 @@ fun FullscreenWaterAlert(
                     imageVector = Icons.Default.WaterDrop,
                     contentDescription = "Hydration Reminder",
                     tint = WaterAccent,
-                    modifier = Modifier.size(52.dp)
+                    modifier = Modifier.size(if (isLandscape) 24.dp else 52.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(if (isLandscape) 4.dp else 24.dp))
 
             Text(
                 text = "TIME TO HYDRATE",
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 3.sp
-                ),
+                style = if (isLandscape) MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                    else MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, letterSpacing = 3.sp),
                 color = WaterAccent,
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(if (isLandscape) 2.dp else 8.dp))
 
             Text(
                 text = "Drink some water.",
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    fontWeight = FontWeight.Medium
-                ),
+                style = if (isLandscape) MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium)
+                    else MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
                 color = textColor,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 16.dp)
             )
 
-            Spacer(modifier = Modifier.height(36.dp))
+            Spacer(modifier = Modifier.height(if (isLandscape) 10.dp else 36.dp))
 
             // Main Primary Action: DRANK WATER
             if (isClassic) {
@@ -113,14 +113,14 @@ fun FullscreenWaterAlert(
                     colors = ButtonDefaults.buttonColors(containerColor = WaterAccent, contentColor = Color.Black),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier
-                        .fillMaxWidth(0.85f)
-                        .height(52.dp)
+                        .fillMaxWidth(if (isLandscape) 0.65f else 0.85f)
+                        .height(if (isLandscape) 38.dp else 52.dp)
                         .testTag("drank_water_button")
                 ) {
                     Text(
                         text = "DRANK WATER",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        fontSize = if (isLandscape) 14.sp else 16.sp
                     )
                 }
             } else {
@@ -128,17 +128,17 @@ fun FullscreenWaterAlert(
                     text = "DRANK WATER",
                     onClick = { TimerEngine.confirmDrankWater() },
                     isFilled = true,
-                    modifier = Modifier.fillMaxWidth(0.85f),
+                    modifier = Modifier.fillMaxWidth(if (isLandscape) 0.65f else 0.85f),
                     testTag = "drank_water_button"
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(if (isLandscape) 8.dp else 16.dp))
 
             // Secondary Actions: REMIND LATER & SKIP
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth(0.85f)
+                modifier = Modifier.fillMaxWidth(if (isLandscape) 0.65f else 0.85f)
             ) {
                 if (isClassic) {
                     OutlinedButton(
@@ -147,7 +147,7 @@ fun FullscreenWaterAlert(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .weight(1f)
-                            .height(48.dp)
+                            .height(if (isLandscape) 36.dp else 48.dp)
                             .testTag("remind_water_later_button")
                     ) {
                         Text("REMIND LATER")
@@ -159,7 +159,7 @@ fun FullscreenWaterAlert(
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .weight(0.7f)
-                            .height(48.dp)
+                            .height(if (isLandscape) 36.dp else 48.dp)
                             .testTag("skip_water_button")
                     ) {
                         Text("SKIP")

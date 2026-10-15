@@ -115,6 +115,8 @@ fun TimerScreen(
 
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
 
     AppBackground(modifier = modifier) {
         if (isLandscape) {
@@ -206,7 +208,7 @@ fun TimerScreen(
                             text = title,
                             fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
                             color = if (selectedTab == index) (if (activeTheme == "Classic") AmberAccent else tokens.accent) else (if (activeTheme == "Classic") TextSecondary else tokens.secondaryText),
-                            fontSize = 11.sp,
+                            fontSize = 8.5.sp,
                             maxLines = 1,
                             softWrap = false
                         )
@@ -753,8 +755,8 @@ fun TimerScreen(
     if (showSubjectSheet) {
         ModalBottomSheet(
             onDismissRequest = { showSubjectSheet = false },
-            containerColor = CharcoalElevated,
-            dragHandle = { BottomSheetDefaults.DragHandle(color = CharcoalBorder) }
+            containerColor = if (isExistingTheme(activeTheme)) CharcoalElevated else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = if (isExistingTheme(activeTheme)) CharcoalBorder else tokens.divider) }
         ) {
             SubjectTopicBottomSheetContent(
                 subjects = subjects,
@@ -1138,6 +1140,16 @@ fun SubjectTopicBottomSheetContent(
         selectedSubject?.let { sub -> topics.filter { it.subjectId == sub.id } } ?: emptyList()
     }
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = isExistingTheme(activeTheme)
+    val textColor = if (isClassic) TextPrimary else tokens.text
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val accentColor = if (isClassic) AmberAccent else tokens.accent
+    val cardBg = if (isClassic) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0x1AFFFFFF) else tokens.cardFill
+    val borderColor = if (isClassic) CharcoalBorder else tokens.divider
+    val dialogBg = if (isClassic) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1153,17 +1165,17 @@ fun SubjectTopicBottomSheetContent(
                 text = "Select Subject/Task",
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
-                color = TextPrimary
+                color = textColor
             )
             TextButton(onClick = onOpenManage) {
                 Icon(
                     imageVector = Icons.Default.Tune,
                     contentDescription = "Manage",
-                    tint = AmberAccent,
+                    tint = accentColor,
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Manage", color = AmberAccent, fontWeight = FontWeight.Bold)
+                Text("Manage", color = accentColor, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -1174,15 +1186,15 @@ fun SubjectTopicBottomSheetContent(
             text = "Subject/Task",
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = AmberAccent
+            color = accentColor
         )
         Spacer(modifier = Modifier.height(4.dp))
         Box(modifier = Modifier.fillMaxWidth()) {
             OutlinedCard(
                 onClick = { subjectExpanded = true },
                 shape = RoundedCornerShape(8.dp),
-                colors = CardDefaults.outlinedCardColors(containerColor = CharcoalCard),
-                border = BorderStroke(1.dp, CharcoalBorder),
+                colors = CardDefaults.outlinedCardColors(containerColor = cardBg),
+                border = BorderStroke(1.dp, borderColor),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -1194,10 +1206,10 @@ fun SubjectTopicBottomSheetContent(
                 ) {
                     Text(
                         text = selectedSubject?.name ?: "Select Subject/Task",
-                        color = TextPrimary,
+                        color = textColor,
                         fontWeight = FontWeight.Medium
                     )
-                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = TextMuted)
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = subTextColor)
                 }
             }
 
@@ -1205,8 +1217,8 @@ fun SubjectTopicBottomSheetContent(
                 expanded = subjectExpanded,
                 onDismissRequest = { subjectExpanded = false },
                 modifier = Modifier
-                    .background(CharcoalCard)
-                    .border(1.dp, CharcoalBorder, RoundedCornerShape(8.dp))
+                    .background(cardBg)
+                    .border(1.dp, borderColor, RoundedCornerShape(8.dp))
             ) {
                 subjects.forEach { subject ->
                     DropdownMenuItem(
@@ -1218,7 +1230,7 @@ fun SubjectTopicBottomSheetContent(
                             ) {
                                 Text(
                                     text = subject.name,
-                                    color = if (subject.id == selectedSubject?.id) AmberAccent else TextPrimary,
+                                    color = if (subject.id == selectedSubject?.id) accentColor else textColor,
                                     fontWeight = if (subject.id == selectedSubject?.id) FontWeight.Bold else FontWeight.Normal,
                                     modifier = Modifier.weight(1f)
                                 )
@@ -1230,7 +1242,7 @@ fun SubjectTopicBottomSheetContent(
                                         },
                                         modifier = Modifier.size(24.dp)
                                     ) {
-                                        Icon(Icons.Default.Edit, contentDescription = "Rename", tint = TextMuted, modifier = Modifier.size(14.dp))
+                                        Icon(Icons.Default.Edit, contentDescription = "Rename", tint = subTextColor, modifier = Modifier.size(14.dp))
                                     }
                                     IconButton(
                                         onClick = {
@@ -1249,13 +1261,13 @@ fun SubjectTopicBottomSheetContent(
                         }
                     )
                 }
-                HorizontalDivider(color = CharcoalBorder)
+                HorizontalDivider(color = borderColor)
                 DropdownMenuItem(
                     text = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Add, contentDescription = null, tint = AmberAccent, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Add, contentDescription = null, tint = accentColor, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("+ Add new Subject/Task...", color = AmberAccent, fontWeight = FontWeight.Bold)
+                            Text("+ Add new Subject/Task...", color = accentColor, fontWeight = FontWeight.Bold)
                         }
                     },
                     onClick = {
@@ -1273,15 +1285,15 @@ fun SubjectTopicBottomSheetContent(
             text = "Topic/Sub task",
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
-            color = AmberAccent
+            color = accentColor
         )
         Spacer(modifier = Modifier.height(4.dp))
         Box(modifier = Modifier.fillMaxWidth()) {
             OutlinedCard(
                 onClick = { topicExpanded = true },
                 shape = RoundedCornerShape(8.dp),
-                colors = CardDefaults.outlinedCardColors(containerColor = CharcoalCard),
-                border = BorderStroke(1.dp, CharcoalBorder),
+                colors = CardDefaults.outlinedCardColors(containerColor = cardBg),
+                border = BorderStroke(1.dp, borderColor),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -1293,10 +1305,10 @@ fun SubjectTopicBottomSheetContent(
                 ) {
                     Text(
                         text = selectedTopic?.name ?: "Select or Add Topic/Sub task",
-                        color = TextPrimary,
+                        color = textColor,
                         fontWeight = FontWeight.Medium
                     )
-                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = TextMuted)
+                    Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = subTextColor)
                 }
             }
 
@@ -1304,8 +1316,8 @@ fun SubjectTopicBottomSheetContent(
                 expanded = topicExpanded,
                 onDismissRequest = { topicExpanded = false },
                 modifier = Modifier
-                    .background(CharcoalCard)
-                    .border(1.dp, CharcoalBorder, RoundedCornerShape(8.dp))
+                    .background(cardBg)
+                    .border(1.dp, borderColor, RoundedCornerShape(8.dp))
             ) {
                 currentFilteredTopics.forEach { topic ->
                     DropdownMenuItem(
@@ -1317,7 +1329,7 @@ fun SubjectTopicBottomSheetContent(
                             ) {
                                 Text(
                                     text = topic.name,
-                                    color = if (topic.id == selectedTopic?.id) AmberAccent else TextPrimary,
+                                    color = if (topic.id == selectedTopic?.id) accentColor else textColor,
                                     fontWeight = if (topic.id == selectedTopic?.id) FontWeight.Bold else FontWeight.Normal,
                                     modifier = Modifier.weight(1f)
                                 )
@@ -1329,7 +1341,7 @@ fun SubjectTopicBottomSheetContent(
                                         },
                                         modifier = Modifier.size(24.dp)
                                     ) {
-                                        Icon(Icons.Default.Edit, contentDescription = "Rename", tint = TextMuted, modifier = Modifier.size(14.dp))
+                                        Icon(Icons.Default.Edit, contentDescription = "Rename", tint = subTextColor, modifier = Modifier.size(14.dp))
                                     }
                                     IconButton(
                                         onClick = {
@@ -1348,13 +1360,13 @@ fun SubjectTopicBottomSheetContent(
                         }
                     )
                 }
-                HorizontalDivider(color = CharcoalBorder)
+                HorizontalDivider(color = borderColor)
                 DropdownMenuItem(
                     text = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Add, contentDescription = null, tint = AmberAccent, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Add, contentDescription = null, tint = accentColor, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("+ Add new Topic/Sub task...", color = AmberAccent, fontWeight = FontWeight.Bold)
+                            Text("+ Add new Topic/Sub task...", color = accentColor, fontWeight = FontWeight.Bold)
                         }
                     },
                     onClick = {
@@ -1370,7 +1382,7 @@ fun SubjectTopicBottomSheetContent(
         // Done button
         Button(
             onClick = onDone,
-            colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black),
+            colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent),
             shape = RoundedCornerShape(10.dp),
             modifier = Modifier
                 .fillMaxWidth()
@@ -1385,14 +1397,14 @@ fun SubjectTopicBottomSheetContent(
         var newSubName by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showAddSubjectDialog = false },
-            title = { Text("Add Subject/Task", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("Add Subject/Task", color = textColor, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = newSubName,
                     onValueChange = { newSubName = it },
                     label = { Text("Subject/Task Name") },
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = textColor, unfocusedTextColor = textColor)
                 )
             },
             confirmButton = {
@@ -1403,17 +1415,17 @@ fun SubjectTopicBottomSheetContent(
                             showAddSubjectDialog = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent)
                 ) {
                     Text("ADD", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showAddSubjectDialog = false }) {
-                    Text("CANCEL", color = TextSecondary)
+                    Text("CANCEL", color = subTextColor)
                 }
             },
-            containerColor = CharcoalCard
+            containerColor = dialogBg
         )
     }
 
@@ -1422,14 +1434,14 @@ fun SubjectTopicBottomSheetContent(
         var editName by remember { mutableStateOf(sub.name) }
         AlertDialog(
             onDismissRequest = { subjectToEdit = null },
-            title = { Text("Rename Subject/Task", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("Rename Subject/Task", color = textColor, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = editName,
                     onValueChange = { editName = it },
                     label = { Text("Name") },
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = textColor, unfocusedTextColor = textColor)
                 )
             },
             confirmButton = {
@@ -1440,17 +1452,17 @@ fun SubjectTopicBottomSheetContent(
                             subjectToEdit = null
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent)
                 ) {
                     Text("SAVE", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { subjectToEdit = null }) {
-                    Text("CANCEL", color = TextSecondary)
+                    Text("CANCEL", color = subTextColor)
                 }
             },
-            containerColor = CharcoalCard
+            containerColor = dialogBg
         )
     }
 
@@ -1459,14 +1471,14 @@ fun SubjectTopicBottomSheetContent(
         var newTopName by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showAddTopicDialog = false },
-            title = { Text("Add Topic/Sub task to ${selectedSubject.name}", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("Add Topic/Sub task to ${selectedSubject.name}", color = textColor, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = newTopName,
                     onValueChange = { newTopName = it },
                     label = { Text("Topic/Sub task Name") },
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = textColor, unfocusedTextColor = textColor)
                 )
             },
             confirmButton = {
@@ -1477,17 +1489,17 @@ fun SubjectTopicBottomSheetContent(
                             showAddTopicDialog = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent)
                 ) {
                     Text("ADD", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showAddTopicDialog = false }) {
-                    Text("CANCEL", color = TextSecondary)
+                    Text("CANCEL", color = subTextColor)
                 }
             },
-            containerColor = CharcoalCard
+            containerColor = dialogBg
         )
     }
 
@@ -1496,14 +1508,14 @@ fun SubjectTopicBottomSheetContent(
         var editTopName by remember { mutableStateOf(top.name) }
         AlertDialog(
             onDismissRequest = { topicToEdit = null },
-            title = { Text("Rename Topic/Sub task", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("Rename Topic/Sub task", color = textColor, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = editTopName,
                     onValueChange = { editTopName = it },
                     label = { Text("Name") },
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = textColor, unfocusedTextColor = textColor)
                 )
             },
             confirmButton = {
@@ -1514,17 +1526,17 @@ fun SubjectTopicBottomSheetContent(
                             topicToEdit = null
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent)
                 ) {
                     Text("SAVE", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { topicToEdit = null }) {
-                    Text("CANCEL", color = TextSecondary)
+                    Text("CANCEL", color = subTextColor)
                 }
             },
-            containerColor = CharcoalCard
+            containerColor = dialogBg
         )
     }
 }
@@ -1647,7 +1659,7 @@ fun SetSessionTimerDialog(
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
     val isClassic = isExistingTheme(activeTheme)
-    val dialogBg = if (isClassic) CharcoalCard else tokens.cardFill
+    val dialogBg = if (isClassic) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
     val titleColor = if (isClassic) TextPrimary else tokens.text
     val bodyColor = if (isClassic) TextSecondary else tokens.secondaryText
     val accentCol = if (isClassic) AmberAccent else tokens.accent
@@ -1737,7 +1749,7 @@ fun SetPomodoroTimerDialog(
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
     val isClassic = isExistingTheme(activeTheme)
-    val dialogBg = if (isClassic) CharcoalCard else tokens.cardFill
+    val dialogBg = if (isClassic) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
     val titleColor = if (isClassic) TextPrimary else tokens.text
     val bodyColor = if (isClassic) TextSecondary else tokens.secondaryText
     val accentCol = if (isClassic) AmberAccent else tokens.accent
@@ -1815,7 +1827,7 @@ fun SetCountdownTimerDialog(
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
     val isClassic = isExistingTheme(activeTheme)
-    val dialogBg = if (isClassic) CharcoalCard else tokens.cardFill
+    val dialogBg = if (isClassic) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
     val titleColor = if (isClassic) TextPrimary else tokens.text
     val bodyColor = if (isClassic) TextSecondary else tokens.secondaryText
     val accentCol = if (isClassic) AmberAccent else tokens.accent

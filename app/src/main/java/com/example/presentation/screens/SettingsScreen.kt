@@ -72,11 +72,12 @@ fun SettingsScreen(
 ) {
     val activeTheme = LocalActiveTheme.current
     val themeTokens = LocalAppThemeTokens.current
-    val textColor = if (activeTheme == "Classic") TextPrimary else themeTokens.text
-    val subTextColor = if (activeTheme == "Classic") TextSecondary else themeTokens.secondaryText
-    val accentColor = if (activeTheme == "Classic") (if (settings.appTheme.equals("Blue", ignoreCase = true)) WaterAccent else StudyAccent) else themeTokens.accent
-    val dialogBg = if (activeTheme == "Classic") DarkCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else themeTokens.cardFill
-    val dividerColor = if (activeTheme == "Classic") DarkBorder else themeTokens.chipFill
+    val isExisting = isExistingTheme(activeTheme)
+    val textColor = if (isExisting) TextPrimary else themeTokens.text
+    val subTextColor = if (isExisting) TextSecondary else themeTokens.secondaryText
+    val accentColor = if (isExisting) (if (settings.appTheme.equals("Blue", ignoreCase = true)) WaterAccent else StudyAccent) else themeTokens.accent
+    val dialogBg = if (isExisting) DarkCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else themeTokens.cardFill
+    val dividerColor = if (isExisting) DarkBorder else themeTokens.divider
 
     AppBackground(modifier = modifier) {
         Scaffold(
@@ -275,7 +276,7 @@ fun SettingsScreen(
                         }
                     }
 
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
                     SettingSwitchRow(
                         title = "Short mode (3 min)",
                         subtitle = "1 min water + 3 exercises instead of 6 exercises",
@@ -284,7 +285,7 @@ fun SettingsScreen(
                         alpha = dependentAlpha,
                         onCheckedChange = onUpdateShortModeEnabled
                     )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
                     SettingSwitchRow(
                         title = "Only sitting exercises",
                         subtitle = "Filters out standing exercises (calf raises, back extension)",
@@ -293,7 +294,7 @@ fun SettingsScreen(
                         alpha = dependentAlpha,
                         onCheckedChange = { sittingOnly -> onUpdateIncludeStandingExercises(!sittingOnly) }
                     )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
                     SettingSwitchRow(
                         title = "Auto-Resume After Break",
                         subtitle = "Automatically resume study when break or eye rest finishes",
@@ -337,19 +338,19 @@ fun SettingsScreen(
                                 Text(
                                     text = "Open phone notification settings",
                                     fontSize = 12.sp,
-                                    color = StudyAccent
+                                    color = if (isExisting) StudyAccent else themeTokens.accent
                                 )
                             }
                         }
                     )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
                     SettingSwitchRow(
                         title = "Sound",
                         subtitle = "Play tones for session & break start/end",
                         checked = settings.soundEnabled,
                         onCheckedChange = onUpdateSound
                     )
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
                     SettingSwitchRow(
                         title = "Vibration",
                         subtitle = "Haptic feedback for timer alerts and transitions",
@@ -360,7 +361,7 @@ fun SettingsScreen(
                     Text(
                         text = "Phone Silent / Do Not Disturb can still mute tones.",
                         style = MaterialTheme.typography.labelSmall,
-                        color = TextMuted,
+                        color = if (isExisting) TextMuted else themeTokens.secondaryText,
                         modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                     )
                 }
@@ -495,17 +496,17 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Reset today's stats", fontWeight = FontWeight.Bold, color = TextPrimary)
-                            Text("Resets only today's study time and break counts", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            Text("Reset today's stats", fontWeight = FontWeight.Bold, color = textColor)
+                            Text("Resets only today's study time and break counts", style = MaterialTheme.typography.bodySmall, color = subTextColor)
                         }
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Reset today's stats",
-                            tint = StudyAccent
+                            tint = if (isExisting) StudyAccent else themeTokens.accent
                         )
                     }
 
-                    HorizontalDivider(color = DarkBorder, modifier = Modifier.padding(vertical = 2.dp))
+                    HorizontalDivider(color = dividerColor, modifier = Modifier.padding(vertical = 2.dp))
 
                     Row(
                         modifier = Modifier
@@ -517,7 +518,7 @@ fun SettingsScreen(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text("Clear all data", fontWeight = FontWeight.Bold, color = Color(0xFFFF5252))
-                            Text("Deletes all saved study sessions and stats history", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+                            Text("Deletes all saved study sessions and stats history", style = MaterialTheme.typography.bodySmall, color = subTextColor)
                         }
                         Icon(
                             imageVector = Icons.Default.DeleteOutline,
@@ -562,7 +563,7 @@ fun SettingsScreen(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 2.sp
                             ),
-                            color = if (activeTheme == "Light") textColor else themeTokens.accent
+                            color = if (isExisting) StudyAccent else themeTokens.accent
                         )
                         Text(
                             text = "A minimalist AMOLED desk watch and productivity companion designed for deep focus, healthy 20-20-20 eye care, and regular hydration.",

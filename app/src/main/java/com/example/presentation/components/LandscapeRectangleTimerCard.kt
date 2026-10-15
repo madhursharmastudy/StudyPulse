@@ -187,6 +187,7 @@ fun LandscapeRectangleTimerCard(
     val isClassic = isExistingTheme(activeTheme)
     val isUltra = activeTheme == "Ultra Premium"
 
+    val activeAccent = if (isClassic) accentColor else tokens.accent
     val cornerRadius = if (isClassic) (if (useHomeStyle) 24.dp else 3.dp) else (if (isUltra) 24.dp else 20.dp)
     val strokeWidthDp = if (hasProgress) (if (useHomeStyle) 3.5.dp else 5.5.dp) else 1.5.dp
 
@@ -249,7 +250,7 @@ fun LandscapeRectangleTimerCard(
                 val trackColor = when {
                     isClassic -> if (useHomeStyle) Color(0x44FFA640) else Color(0xFF262626)
                     isUltra -> Color(0x1AFFFFFF)
-                    else -> tokens.chipFill
+                    else -> tokens.track
                 }
                 drawPath(
                     path = basePath,
@@ -269,9 +270,9 @@ fun LandscapeRectangleTimerCard(
                         pathMeasure.getSegment(0f, progressLen, progressPath, true)
 
                         val drawColor = if (isPaused) {
-                            accentColor.copy(alpha = 0.5f)
+                            activeAccent.copy(alpha = 0.5f)
                         } else {
-                            accentColor
+                            activeAccent
                         }
 
                         drawPath(
@@ -319,7 +320,7 @@ fun LandscapeRectangleTimerCard(
                     fontSize = if (useHomeStyle) 12.sp else 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = if (useHomeStyle) 2.sp else 1.5.sp,
-                    color = if (isPaused) TextMuted else accentColor,
+                    color = if (isPaused) (if (isClassic) TextMuted else tokens.secondaryText) else activeAccent,
                     maxLines = 1
                 )
                 if (useHomeStyle) {
@@ -329,7 +330,7 @@ fun LandscapeRectangleTimerCard(
                             .width(28.dp)
                             .height(2.dp)
                             .clip(RoundedCornerShape(1.dp))
-                            .background(accentColor)
+                            .background(activeAccent)
                     )
                 }
             }

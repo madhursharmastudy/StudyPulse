@@ -36,6 +36,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import android.content.res.Configuration
+import androidx.compose.ui.platform.LocalConfiguration
 import com.example.core.stretch.BodyZone
 import com.example.core.stretch.ExerciseCatalog
 import com.example.core.stretch.StretchBreakManager
@@ -82,10 +84,11 @@ fun CombinedBreakOverlay(
     var anyStretchCompleted by remember { mutableStateOf(false) }
 
     AppBackground(modifier = modifier) {
+        val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(20.dp),
+                .padding(if (isLandscape) 4.dp else 20.dp),
             contentAlignment = Alignment.Center
         ) {
         when (currentStage) {
@@ -186,6 +189,7 @@ private fun WaterBreakStep(
     val isClassic = isExistingTheme(activeTheme)
     val textColor = if (isClassic) TextPrimary else tokens.text
     val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -198,7 +202,7 @@ private fun WaterBreakStep(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .scale(pulseScale)
-                .size(90.dp)
+                .size(if (isLandscape) 44.dp else 90.dp)
                 .clip(CircleShape)
                 .background(Color(0x2200B4FF))
                 .border(2.dp, WaterAccent, CircleShape)
@@ -207,43 +211,41 @@ private fun WaterBreakStep(
                 imageVector = Icons.Default.WaterDrop,
                 contentDescription = "Hydration Reminder",
                 tint = WaterAccent,
-                modifier = Modifier.size(46.dp)
+                modifier = Modifier.size(if (isLandscape) 24.dp else 46.dp)
             )
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(if (isLandscape) 4.dp else 20.dp))
 
         Text(
             text = "BREAK TIME",
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontWeight = FontWeight.Black,
-                letterSpacing = 2.sp
-            ),
+            style = if (isLandscape) MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                else MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black, letterSpacing = 2.sp),
             color = WaterAccent
         )
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(if (isLandscape) 2.dp else 6.dp))
 
         Text(
             text = "Drink a glass of water and take a short walk to refresh.",
-            style = MaterialTheme.typography.bodyMedium,
+            style = if (isLandscape) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
             color = textColor,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 16.dp)
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(if (isLandscape) 4.dp else 24.dp))
 
         // 60-second countdown timer
         Text(
             text = formatSeconds(secondsLeft),
-            fontSize = 44.sp,
+            fontSize = if (isLandscape) 20.sp else 44.sp,
             fontWeight = FontWeight.Black,
             fontFamily = FontFamily.Monospace,
             color = textColor
         )
 
-        Spacer(modifier = Modifier.height(30.dp))
+        Spacer(modifier = Modifier.height(if (isLandscape) 4.dp else 30.dp))
 
         if (isClassic) {
             Button(
@@ -251,18 +253,18 @@ private fun WaterBreakStep(
                 colors = ButtonDefaults.buttonColors(containerColor = WaterAccent, contentColor = Color.Black),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .height(48.dp)
+                    .fillMaxWidth(if (isLandscape) 0.65f else 0.85f)
+                    .height(if (isLandscape) 34.dp else 48.dp)
                     .testTag("water_next_button")
             ) {
                 Text(
                     text = if (hasStretchAfter) "Next: Stretches" else "Done",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
+                    fontSize = if (isLandscape) 13.sp else 15.sp
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(if (isLandscape) 2.dp else 10.dp))
 
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -280,11 +282,13 @@ private fun WaterBreakStep(
                 text = if (hasStretchAfter) "Next: Stretches" else "Done",
                 onClick = onNext,
                 isFilled = true,
-                modifier = Modifier.fillMaxWidth(0.85f),
+                modifier = Modifier
+                    .fillMaxWidth(if (isLandscape) 0.65f else 0.85f)
+                    .height(if (isLandscape) 34.dp else 48.dp),
                 testTag = "water_next_button"
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(if (isLandscape) 2.dp else 10.dp))
 
             Row(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -349,12 +353,14 @@ private fun ExerciseStep(
         onDone()
     }
 
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
             .fillMaxSize()
-            .padding(vertical = 12.dp)
+            .padding(vertical = if (isLandscape) 2.dp else 12.dp)
             .verticalScroll(rememberScrollState())
     ) {
         // Top row: Progress & Zone pill
@@ -365,7 +371,7 @@ private fun ExerciseStep(
         ) {
             Text(
                 text = "Exercise $exerciseNumber of $totalExercises",
-                fontSize = 13.sp,
+                fontSize = if (isLandscape) 11.sp else 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = AmberAccent
             )
@@ -375,19 +381,19 @@ private fun ExerciseStep(
             ) {
                 Text(
                     text = exercise.zone.displayName,
-                    fontSize = 11.sp,
+                    fontSize = if (isLandscape) 10.sp else 11.sp,
                     color = TextSecondary,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = if (isLandscape) 2.dp else 4.dp)
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(if (isLandscape) 3.dp else 10.dp))
 
         // Center visual: Looping video/animation from assets or clean fallback
         Box(
             modifier = Modifier
-                .size(200.dp)
+                .size(if (isLandscape) 80.dp else 200.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color(0xFF12141A))
                 .border(1.dp, CharcoalBorder, RoundedCornerShape(16.dp)),
@@ -396,50 +402,50 @@ private fun ExerciseStep(
             ExerciseMediaVisual(mediaFileName = exercise.mediaFileName, exercise = exercise)
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(if (isLandscape) 3.dp else 10.dp))
 
         // Exercise Name & Sets text
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = exercise.name,
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
+                style = if (isLandscape) MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Black) else MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
                 color = TextPrimary,
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(if (isLandscape) 1.dp else 4.dp))
             Text(
                 text = exercise.setsText,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                style = if (isLandscape) MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold) else MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = AmberAccent
             )
 
             if (sideText != null) {
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(if (isLandscape) 1.dp else 4.dp))
                 Text(
                     text = sideText,
-                    fontSize = 13.sp,
+                    fontSize = if (isLandscape) 11.sp else 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = if (sideText == "SWITCH SIDES") RoseAccent else CyanAccent
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(if (isLandscape) 2.dp else 6.dp))
 
         // Countdown timer
         Text(
             text = formatSeconds(secondsLeft),
-            fontSize = 38.sp,
+            fontSize = if (isLandscape) 22.sp else 38.sp,
             fontWeight = FontWeight.Black,
             fontFamily = FontFamily.Monospace,
             color = TextPrimary
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(if (isLandscape) 4.dp else 10.dp))
 
         // Action Buttons: Done / Skip / Skip all
         Row(
-            modifier = Modifier.fillMaxWidth(0.9f),
+            modifier = Modifier.fillMaxWidth(if (isLandscape) 0.7f else 0.9f),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Button(
@@ -448,10 +454,10 @@ private fun ExerciseStep(
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
                     .weight(1f)
-                    .height(46.dp)
+                    .height(if (isLandscape) 34.dp else 46.dp)
                     .testTag("exercise_done_button")
             ) {
-                Text("Done", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Done", fontWeight = FontWeight.Bold, fontSize = if (isLandscape) 12.sp else 14.sp)
             }
             OutlinedButton(
                 onClick = onSkip,
@@ -460,15 +466,15 @@ private fun ExerciseStep(
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
                     .weight(0.7f)
-                    .height(46.dp)
+                    .height(if (isLandscape) 34.dp else 46.dp)
                     .testTag("exercise_skip_button")
             ) {
-                Text("Skip", fontSize = 13.sp)
+                Text("Skip", fontSize = if (isLandscape) 12.sp else 13.sp)
             }
         }
 
         TextButton(onClick = onSkipAll) {
-            Text("Skip all", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+            Text("Skip all", color = Color.White.copy(alpha = 0.7f), fontSize = if (isLandscape) 11.sp else 12.sp)
         }
 
         // Disclaimer

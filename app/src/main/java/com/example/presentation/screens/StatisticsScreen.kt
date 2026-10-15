@@ -287,13 +287,13 @@ fun StatisticsScreen(
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(CircleShape)
-                                .background(if (isExisting) Color(0x2200B4FF) else tokens.chipFill),
+                                .background(if (isExisting || activeTheme == "Ultra Premium") Color(0x2200B4FF) else tokens.chipFill),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.WaterDrop,
                                 contentDescription = "Breaks",
-                                tint = if (isExisting) WaterAccent else tokens.accent,
+                                tint = if (isExisting || activeTheme == "Ultra Premium") WaterAccent else tokens.accent,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -314,7 +314,7 @@ fun StatisticsScreen(
                     Text(
                         text = "$breaksToday",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
-                        color = if (isExisting) WaterAccent else tokens.accent
+                        color = if (isExisting || activeTheme == "Ultra Premium") WaterAccent else tokens.accent
                     )
                 }
             }
