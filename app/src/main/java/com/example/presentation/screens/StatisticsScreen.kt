@@ -123,12 +123,13 @@ fun StatisticsScreen(
 
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val accent = if (activeTheme == "Classic") AmberAccent else tokens.accent
-    val textColor = if (activeTheme == "Classic") TextPrimary else tokens.text
-    val subTextColor = if (activeTheme == "Classic") TextSecondary else tokens.secondaryText
-    val tabContainer = if (activeTheme == "Classic") CharcoalCard else if (activeTheme == "Ultra Premium") Color.Transparent else tokens.cardFill
-    val progressColor = if (activeTheme == "Ultra Premium") Color(0xFFFF9D24) else accent
-    val trackColor = if (activeTheme == "Classic") CharcoalElevated else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.10f) else tokens.chipFill
+    val isExisting = isExistingTheme(activeTheme)
+    val accent = if (isExisting) (if (activeTheme == "Classic") AmberAccent else tokens.accent) else tokens.accent
+    val textColor = if (isExisting) TextPrimary else tokens.text
+    val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
+    val tabContainer = if (isExisting) CharcoalCard else Color.Transparent
+    val progressColor = if (isExisting) AmberAccent else tokens.accent
+    val trackColor = if (isExisting) CharcoalElevated else tokens.chipFill
 
     AppBackground(modifier = modifier) {
         LazyColumn(
@@ -144,7 +145,7 @@ fun StatisticsScreen(
                     fontWeight = FontWeight.Black,
                     letterSpacing = 1.sp
                 ),
-                color = accent
+                color = if (isExisting) accent else tokens.text
             )
         }
 
@@ -159,6 +160,9 @@ fun StatisticsScreen(
                         modifier = Modifier.tabIndicatorOffset(tabPositions[selectedFilterTab]),
                         color = accent
                     )
+                },
+                divider = {
+                    HorizontalDivider(color = if (isExisting) CharcoalBorder else tokens.divider)
                 }
             ) {
                 filterTabs.forEachIndexed { index, title ->
@@ -270,16 +274,11 @@ fun StatisticsScreen(
         // Breaks taken today (water + stretch count)
         item {
             val breaksToday = StretchBreakManager.getTodayBreakCount()
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+            ThemedCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -288,13 +287,13 @@ fun StatisticsScreen(
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(CircleShape)
-                                .background(Color(0x2200B4FF)),
+                                .background(if (isExisting) Color(0x2200B4FF) else tokens.chipFill),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.WaterDrop,
                                 contentDescription = "Breaks",
-                                tint = WaterAccent,
+                                tint = if (isExisting) WaterAccent else tokens.accent,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -303,19 +302,19 @@ fun StatisticsScreen(
                             Text(
                                 text = "Breaks taken today: $breaksToday",
                                 style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                color = TextPrimary
+                                color = textColor
                             )
                             Text(
                                 text = "Water + stretch health routine",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = TextSecondary
+                                color = subTextColor
                             )
                         }
                     }
                     Text(
                         text = "$breaksToday",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
-                        color = WaterAccent
+                        color = if (isExisting) WaterAccent else tokens.accent
                     )
                 }
             }
@@ -323,56 +322,55 @@ fun StatisticsScreen(
 
         // Secondary Metrics Grid
         item {
-            Card(
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+            ThemedCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        SmallMetricItem("Completed", "$completedSessionsCount / $totalSessionsCount")
-                        SmallMetricItem("Longest", formatSecsToHoursMins(longestSeconds))
-                        SmallMetricItem("Average", formatSecsToHoursMins(avgSeconds))
-                    }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    SmallMetricItem("Completed", "$completedSessionsCount / $totalSessionsCount")
+                    SmallMetricItem("Longest", formatSecsToHoursMins(longestSeconds))
+                    SmallMetricItem("Average", formatSecsToHoursMins(avgSeconds))
+                }
 
-                    Spacer(modifier = Modifier.height(14.dp))
-                    Divider(color = CharcoalBorder)
-                    Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(14.dp))
+                HorizontalDivider(color = if (isExisting) CharcoalBorder else tokens.divider)
+                Spacer(modifier = Modifier.height(14.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        SmallMetricItem("Eye Rests", "${totalEyeRestSeconds / 20} times")
-                        SmallMetricItem("Hydration", "$totalWaterBreaks logged")
-                        SmallMetricItem("Stretch breaks", "$totalStretchBreaks completed")
-                    }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    SmallMetricItem("Eye Rests", "${totalEyeRestSeconds / 20} times")
+                    SmallMetricItem("Hydration", "$totalWaterBreaks logged")
+                    SmallMetricItem("Stretch breaks", "$totalStretchBreaks completed")
                 }
             }
         }
 
         // Subject Breakdown Progress
         item {
-            Text("Subject/Task Distribution", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
+            Text(
+                "Subject/Task Distribution",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = if (isExisting) TextPrimary else tokens.text
+            )
         }
 
         item {
-            Card(
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+            ThemedCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     if (subjects.isEmpty() || totalProductiveSeconds == 0L) {
-                        Text("No recorded study data yet for this timeframe.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            "No recorded study data yet for this timeframe.",
+                            color = if (isExisting) TextMuted else tokens.secondaryText,
+                            style = MaterialTheme.typography.bodySmall
+                        )
                     } else {
                         subjects.forEach { subject ->
                             val subjectSessions = filteredSessions.filter { it.subjectName == subject.name }
@@ -385,8 +383,17 @@ fun StatisticsScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text(subject.name, fontWeight = FontWeight.SemiBold, color = TextPrimary, fontSize = 13.sp)
-                                    Text("${formatSecsToHoursMins(subSecs)} ($percent%)", color = AmberAccent, fontSize = 12.sp)
+                                    Text(
+                                        subject.name,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (isExisting) TextPrimary else tokens.text,
+                                        fontSize = 13.sp
+                                    )
+                                    Text(
+                                        "${formatSecsToHoursMins(subSecs)} ($percent%)",
+                                        color = AmberAccent,
+                                        fontSize = 12.sp
+                                    )
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 LinearProgressIndicator(
@@ -396,7 +403,7 @@ fun StatisticsScreen(
                                         .height(6.dp)
                                         .clip(RoundedCornerShape(3.dp)),
                                     color = AmberAccent,
-                                    trackColor = CharcoalElevated
+                                    trackColor = if (isExisting) CharcoalElevated else tokens.chipFill
                                 )
                             }
                         }
@@ -407,39 +414,53 @@ fun StatisticsScreen(
 
         // Recent Sessions Log
         item {
-            Text("Recent Sessions (${filteredSessions.size})", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
+            Text(
+                "Recent Sessions (${filteredSessions.size})",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = if (isExisting) TextPrimary else tokens.text
+            )
         }
 
         items(filteredSessions) { session ->
             val sdf = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
             val dateStr = sdf.format(Date(session.startTimestamp))
 
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-                border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+            ThemedCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier = Modifier.padding(14.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(session.subjectName, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Text(
+                                session.subjectName,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isExisting) TextPrimary else tokens.text
+                            )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("• ${session.topicName}", color = TextSecondary, fontSize = 13.sp)
+                            Text(
+                                "• ${session.topicName}",
+                                color = if (isExisting) TextSecondary else tokens.secondaryText,
+                                fontSize = 13.sp
+                            )
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "$dateStr • Productive: ${formatSecsToHoursMins(session.productiveStudySeconds)} • Breaks: ${session.breakSeconds + session.eyeRestSeconds + session.waterBreakSeconds}s",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextMuted
+                            color = if (isExisting) TextMuted else tokens.secondaryText
                         )
                     }
 
                     IconButton(onClick = { onDeleteSession(session.id) }) {
-                        Icon(Icons.Default.Delete, contentDescription = "Delete Session", tint = TextMuted, modifier = Modifier.size(18.dp))
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete Session",
+                            tint = if (isExisting) TextMuted else tokens.secondaryText,
+                            modifier = Modifier.size(18.dp)
+                        )
                     }
                 }
             }
@@ -458,7 +479,8 @@ fun MetricCard(
 ) {
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val subColor = if (activeTheme == "Classic") TextSecondary else tokens.secondaryText
+    val isExisting = isExistingTheme(activeTheme)
+    val subColor = if (isExisting) TextSecondary else tokens.secondaryText
 
     ThemedCard(
         cornerRadius = 14.dp,
@@ -471,7 +493,7 @@ fun MetricCard(
             fontSize = 24.sp,
             fontWeight = FontWeight.Black,
             fontFamily = FontFamily.Monospace,
-            color = accentColor
+            color = if (isExisting) accentColor else tokens.accent
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(subtitle, style = MaterialTheme.typography.bodySmall, color = subColor)
@@ -480,9 +502,15 @@ fun MetricCard(
 
 @Composable
 fun SmallMetricItem(label: String, value: String) {
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isExisting = isExistingTheme(activeTheme)
+    val subColor = if (isExisting) TextMuted else tokens.secondaryText
+    val valColor = if (isExisting) TextPrimary else tokens.text
+
     Column {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = TextMuted)
-        Text(value, fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = subColor)
+        Text(value, fontWeight = FontWeight.Bold, color = valColor, fontSize = 14.sp)
     }
 }
 

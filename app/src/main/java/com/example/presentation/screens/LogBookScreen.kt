@@ -46,6 +46,10 @@ fun LogBookScreen(
     var selectedLevel by remember { mutableStateOf<LogLevel?>(null) }
     var selectedFeature by remember { mutableStateOf<LogFeature?>(null) }
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isExisting = isExistingTheme(activeTheme)
+
     val filteredLogs = remember(logs, searchQuery, selectedLevel, selectedFeature) {
         logs.filter { entry ->
             val matchesLevel = selectedLevel == null || entry.level == selectedLevel
@@ -75,19 +79,19 @@ fun LogBookScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = if (isExisting) TextPrimary else tokens.secondaryText)
                 }
                 Spacer(modifier = Modifier.width(4.dp))
                 Column {
                     Text(
                         text = "DIAGNOSTIC LOG BOOK",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
-                        color = AmberAccent
+                        color = if (isExisting) AmberAccent else tokens.text
                     )
                     Text(
                         text = "${filteredLogs.size} of ${logs.size} records",
                         style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
+                        color = if (isExisting) TextSecondary else tokens.secondaryText
                     )
                 }
             }
@@ -102,7 +106,7 @@ fun LogBookScreen(
                     },
                     modifier = Modifier.testTag("copy_logs_button")
                 ) {
-                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = TextSecondary)
+                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = if (isExisting) TextSecondary else tokens.secondaryText)
                 }
 
                 IconButton(
@@ -117,14 +121,14 @@ fun LogBookScreen(
                     },
                     modifier = Modifier.testTag("share_logs_button")
                 ) {
-                    Icon(Icons.Default.Share, contentDescription = "Share", tint = TextSecondary)
+                    Icon(Icons.Default.Share, contentDescription = "Share", tint = if (isExisting) TextSecondary else tokens.secondaryText)
                 }
 
                 IconButton(
                     onClick = onClearLogs,
                     modifier = Modifier.testTag("clear_logs_button")
                 ) {
-                    Icon(Icons.Default.DeleteSweep, contentDescription = "Clear", tint = RoseAccent)
+                    Icon(Icons.Default.DeleteSweep, contentDescription = "Clear", tint = if (isExisting) RoseAccent else tokens.danger)
                 }
             }
         }
@@ -135,12 +139,12 @@ fun LogBookScreen(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Search event, session, timer, error...", color = TextMuted) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = TextMuted) },
+            placeholder = { Text("Search event, session, timer, error...", color = if (isExisting) TextMuted else tokens.secondaryText) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = if (isExisting) TextMuted else tokens.secondaryText) },
             trailingIcon = {
                 if (searchQuery.isNotEmpty()) {
                     IconButton(onClick = { searchQuery = "" }) {
-                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = TextMuted)
+                        Icon(Icons.Default.Close, contentDescription = "Clear", tint = if (isExisting) TextMuted else tokens.secondaryText)
                     }
                 }
             },
@@ -151,12 +155,14 @@ fun LogBookScreen(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = AmberAccent,
-                unfocusedBorderColor = CharcoalBorder,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary
+                focusedBorderColor = if (isExisting) AmberAccent else tokens.accent,
+                unfocusedBorderColor = if (isExisting) CharcoalBorder else tokens.divider,
+                focusedTextColor = if (isExisting) TextPrimary else tokens.text,
+                unfocusedTextColor = if (isExisting) TextPrimary else tokens.text,
+                focusedContainerColor = if (isExisting) Color.Transparent else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.05f) else tokens.cardFill,
+                unfocusedContainerColor = if (isExisting) Color.Transparent else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.05f) else tokens.cardFill
             ),
-            shape = RoundedCornerShape(10.dp)
+            shape = if (isExisting) RoundedCornerShape(10.dp) else RoundedCornerShape(14.dp)
         )
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -166,28 +172,47 @@ fun LogBookScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            val allSelected = selectedLevel == null
             FilterChip(
-                selected = selectedLevel == null,
+                selected = allSelected,
                 onClick = { selectedLevel = null },
-                label = { Text("ALL") }
+                label = { Text("ALL") },
+                colors = if (isExisting) FilterChipDefaults.filterChipColors() else FilterChipDefaults.filterChipColors(
+                    containerColor = if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.08f) else tokens.chipFill,
+                    labelColor = tokens.secondaryText,
+                    selectedContainerColor = tokens.accent,
+                    selectedLabelColor = tokens.textOnAccent
+                ),
+                border = if (isExisting) FilterChipDefaults.filterChipBorder(enabled = true, selected = allSelected) else null
             )
             listOf(LogLevel.INFO, LogLevel.WARNING, LogLevel.ERROR, LogLevel.CRITICAL).forEach { lvl ->
+                val isSelected = selectedLevel == lvl
                 FilterChip(
-                    selected = selectedLevel == lvl,
-                    onClick = { selectedLevel = if (selectedLevel == lvl) null else lvl },
+                    selected = isSelected,
+                    onClick = { selectedLevel = if (isSelected) null else lvl },
                     label = { Text(lvl.name) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = when (lvl) {
-                            LogLevel.ERROR, LogLevel.CRITICAL -> RoseSoft
-                            LogLevel.WARNING -> AmberSoft
-                            else -> CyanSoft
-                        },
-                        selectedLabelColor = when (lvl) {
-                            LogLevel.ERROR, LogLevel.CRITICAL -> RoseAccent
-                            LogLevel.WARNING -> AmberAccent
-                            else -> CyanAccent
-                        }
-                    )
+                    colors = if (isExisting) {
+                        FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = when (lvl) {
+                                LogLevel.ERROR, LogLevel.CRITICAL -> RoseSoft
+                                LogLevel.WARNING -> AmberSoft
+                                else -> CyanSoft
+                            },
+                            selectedLabelColor = when (lvl) {
+                                LogLevel.ERROR, LogLevel.CRITICAL -> RoseAccent
+                                LogLevel.WARNING -> AmberAccent
+                                else -> CyanAccent
+                            }
+                        )
+                    } else {
+                        FilterChipDefaults.filterChipColors(
+                            containerColor = if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.08f) else tokens.chipFill,
+                            labelColor = tokens.secondaryText,
+                            selectedContainerColor = tokens.accent,
+                            selectedLabelColor = tokens.textOnAccent
+                        )
+                    },
+                    border = if (isExisting) FilterChipDefaults.filterChipBorder(enabled = true, selected = isSelected) else null
                 )
             }
         }
@@ -211,7 +236,7 @@ fun LogBookScreen(
 fun LogEntryCard(entry: LogEntry) {
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
-    val isClassic = activeTheme == "Classic"
+    val isExisting = isExistingTheme(activeTheme)
 
     ThemedCard(
         cornerRadius = 8.dp,
@@ -229,10 +254,10 @@ fun LogEntryCard(entry: LogEntry) {
                         .clip(RoundedCornerShape(4.dp))
                         .background(
                             when (entry.level) {
-                                LogLevel.DEBUG -> if (isClassic) CharcoalElevated else tokens.chipFill
-                                LogLevel.INFO -> CyanSoft
-                                LogLevel.WARNING -> AmberSoft
-                                LogLevel.ERROR, LogLevel.CRITICAL -> RoseSoft
+                                LogLevel.DEBUG -> if (isExisting) CharcoalElevated else tokens.chipFill
+                                LogLevel.INFO -> if (isExisting) CyanSoft else tokens.chipFill
+                                LogLevel.WARNING -> if (isExisting) AmberSoft else tokens.chipFill
+                                LogLevel.ERROR, LogLevel.CRITICAL -> if (isExisting) RoseSoft else tokens.chipFill
                             }
                         )
                         .padding(horizontal = 6.dp, vertical = 2.dp)
@@ -242,10 +267,10 @@ fun LogEntryCard(entry: LogEntry) {
                         fontWeight = FontWeight.Bold,
                         fontSize = 10.sp,
                         color = when (entry.level) {
-                            LogLevel.DEBUG -> if (isClassic) TextMuted else tokens.secondaryText
-                            LogLevel.INFO -> CyanAccent
-                            LogLevel.WARNING -> AmberAccent
-                            LogLevel.ERROR, LogLevel.CRITICAL -> RoseAccent
+                            LogLevel.DEBUG -> if (isExisting) TextMuted else tokens.secondaryText
+                            LogLevel.INFO -> if (isExisting) CyanAccent else tokens.accent
+                            LogLevel.WARNING -> if (isExisting) AmberAccent else tokens.accent
+                            LogLevel.ERROR, LogLevel.CRITICAL -> if (isExisting) RoseAccent else tokens.danger
                         }
                     )
                 }
@@ -256,7 +281,7 @@ fun LogEntryCard(entry: LogEntry) {
                     text = entry.feature.name,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
-                    color = if (isClassic) AmberAccent else tokens.accent
+                    color = if (isExisting) AmberAccent else tokens.accent
                 )
             }
 
@@ -264,7 +289,7 @@ fun LogEntryCard(entry: LogEntry) {
                 text = entry.formattedTime(),
                 fontSize = 11.sp,
                 fontFamily = FontFamily.Monospace,
-                color = if (isClassic) TextMuted else tokens.secondaryText.copy(alpha = 0.8f)
+                color = if (isExisting) TextMuted else tokens.secondaryText
             )
         }
 
@@ -274,7 +299,7 @@ fun LogEntryCard(entry: LogEntry) {
             text = entry.event,
             fontWeight = FontWeight.SemiBold,
             fontSize = 13.sp,
-            color = if (isClassic) TextPrimary else tokens.text
+            color = if (isExisting) TextPrimary else tokens.text
         )
 
         if (!entry.details.isNullOrEmpty()) {
@@ -282,7 +307,7 @@ fun LogEntryCard(entry: LogEntry) {
             Text(
                 text = entry.details,
                 fontSize = 12.sp,
-                color = if (isClassic) TextSecondary else tokens.secondaryText
+                color = if (isExisting) TextSecondary else tokens.secondaryText
             )
         }
 
@@ -291,10 +316,10 @@ fun LogEntryCard(entry: LogEntry) {
             Spacer(modifier = Modifier.height(4.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 entry.sessionUid?.let {
-                    Text("Session: $it", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = if (isClassic) TextMuted else tokens.secondaryText)
+                    Text("Session: $it", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = if (isExisting) TextMuted else tokens.secondaryText)
                 }
                 entry.timerId?.let {
-                    Text("Timer: $it", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = if (isClassic) TextMuted else tokens.secondaryText)
+                    Text("Timer: $it", fontSize = 10.sp, fontFamily = FontFamily.Monospace, color = if (isExisting) TextMuted else tokens.secondaryText)
                 }
             }
         }
@@ -305,7 +330,7 @@ fun LogEntryCard(entry: LogEntry) {
                 text = "Exception: ${entry.exceptionMessage}",
                 fontSize = 11.sp,
                 fontFamily = FontFamily.Monospace,
-                color = RoseAccent
+                color = if (isExisting) RoseAccent else tokens.danger
             )
         }
     }

@@ -43,6 +43,10 @@ fun ManageSubjectsScreen(
 ) {
     BackHandler { onBack() }
 
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isExisting = isExistingTheme(activeTheme)
+
     var showAddSubjectDialog by remember { mutableStateOf(false) }
     var subjectToEdit by remember { mutableStateOf<SubjectEntity?>(null) }
     var subjectToDelete by remember { mutableStateOf<SubjectEntity?>(null) }
@@ -60,7 +64,9 @@ fun ManageSubjectsScreen(
                         text = "MANAGE SUBJECTS/TASKS",
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp,
-                        color = TextPrimary
+                        fontSize = 15.sp,
+                        maxLines = 1,
+                        color = if (isExisting) TextPrimary else tokens.text
                     )
                 },
                 navigationIcon = {
@@ -68,7 +74,7 @@ fun ManageSubjectsScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
-                            tint = AmberAccent
+                            tint = if (isExisting) AmberAccent else tokens.accent
                         )
                     }
                 },
@@ -77,7 +83,7 @@ fun ManageSubjectsScreen(
                         onClick = { showAddSubjectDialog = true },
                         modifier = Modifier.testTag("add_subject_button")
                     ) {
-                        Icon(Icons.Default.AddCircle, contentDescription = "Add Subject/Task", tint = AmberAccent)
+                        Icon(Icons.Default.AddCircle, contentDescription = "Add Subject/Task", tint = if (isExisting) AmberAccent else tokens.accent)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -95,7 +101,7 @@ fun ManageSubjectsScreen(
             Text(
                 text = "Add, edit, or delete subjects/tasks and topics/sub tasks. Changes sync across all timers and study planner.",
                 style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary,
+                color = if (isExisting) TextSecondary else tokens.secondaryText,
                 modifier = Modifier.padding(bottom = 12.dp)
             )
 
@@ -105,11 +111,14 @@ fun ManageSubjectsScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("No subjects/tasks found", color = TextSecondary)
+                        Text("No subjects/tasks found", color = if (isExisting) TextSecondary else tokens.secondaryText)
                         Spacer(modifier = Modifier.height(12.dp))
                         Button(
                             onClick = { showAddSubjectDialog = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isExisting) AmberAccent else tokens.accent,
+                                contentColor = if (isExisting) Color.Black else tokens.textOnAccent
+                            )
                         ) {
                             Text("+ Add First Subject/Task")
                         }
@@ -123,110 +132,106 @@ fun ManageSubjectsScreen(
                     items(subjects, key = { it.id }) { subject ->
                         val subjectTopics = topics.filter { it.subjectId == subject.id }
 
-                        Card(
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = CharcoalCard),
-                            border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+                        ThemedCard(
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
                                 ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(10.dp)
-                                                .clip(CircleShape)
-                                                .background(AmberAccent)
-                                        )
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Text(
-                                            text = subject.name,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 16.sp,
-                                            color = TextPrimary
-                                        )
-                                    }
-
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        IconButton(
-                                            onClick = { topicSubjectTarget = subject },
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(Icons.Default.Add, contentDescription = "Add Topic", tint = AmberAccent, modifier = Modifier.size(18.dp))
-                                        }
-                                        IconButton(
-                                            onClick = { subjectToEdit = subject },
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(Icons.Default.Edit, contentDescription = "Edit Subject", tint = TextMuted, modifier = Modifier.size(16.dp))
-                                        }
-                                        IconButton(
-                                            onClick = { subjectToDelete = subject },
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(Icons.Default.Delete, contentDescription = "Delete Subject", tint = TextMuted, modifier = Modifier.size(16.dp))
-                                        }
-                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(10.dp)
+                                            .clip(CircleShape)
+                                            .background(AmberAccent)
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = subject.name,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        color = if (isExisting) TextPrimary else tokens.text
+                                    )
                                 }
 
-                                Spacer(modifier = Modifier.height(8.dp))
-                                HorizontalDivider(color = CharcoalBorder)
-                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(
+                                        onClick = { topicSubjectTarget = subject },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(Icons.Default.Add, contentDescription = "Add Topic", tint = if (isExisting) AmberAccent else tokens.accent, modifier = Modifier.size(18.dp))
+                                    }
+                                    IconButton(
+                                        onClick = { subjectToEdit = subject },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(Icons.Default.Edit, contentDescription = "Edit Subject", tint = if (isExisting) TextMuted else tokens.secondaryText, modifier = Modifier.size(16.dp))
+                                    }
+                                    IconButton(
+                                        onClick = { subjectToDelete = subject },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete Subject", tint = if (isExisting) TextMuted else tokens.secondaryText, modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            }
 
-                                // Topics under subject
+                            Spacer(modifier = Modifier.height(8.dp))
+                            HorizontalDivider(color = if (isExisting) CharcoalBorder else tokens.divider)
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Topics under subject
+                            Text(
+                                text = "TOPICS (${subjectTopics.size})",
+                                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
+                                color = if (isExisting) TextMuted else tokens.text
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            if (subjectTopics.isEmpty()) {
                                 Text(
-                                    text = "TOPICS (${subjectTopics.size})",
-                                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
-                                    color = TextMuted
+                                    text = "No topics yet. Tap + to add a topic.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (isExisting) TextMuted else tokens.secondaryText,
+                                    modifier = Modifier.padding(vertical = 4.dp)
                                 )
-
-                                Spacer(modifier = Modifier.height(6.dp))
-
-                                if (subjectTopics.isEmpty()) {
-                                    Text(
-                                        text = "No topics yet. Tap + to add a topic.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = TextMuted,
-                                        modifier = Modifier.padding(vertical = 4.dp)
-                                    )
-                                } else {
-                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        subjectTopics.forEach { topic ->
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .clip(RoundedCornerShape(6.dp))
-                                                    .background(Color(0xFF1E1E1E))
-                                                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Text(
-                                                    text = topic.name,
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    color = TextPrimary,
-                                                    modifier = Modifier.weight(1f)
-                                                )
-                                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                                    IconButton(
-                                                        onClick = { topicToEdit = topic },
-                                                        modifier = Modifier.size(28.dp)
-                                                    ) {
-                                                        Icon(Icons.Default.Edit, contentDescription = "Edit Topic", tint = TextMuted, modifier = Modifier.size(14.dp))
-                                                    }
-                                                    IconButton(
-                                                        onClick = { topicToDelete = topic },
-                                                        modifier = Modifier.size(28.dp)
-                                                    ) {
-                                                        Icon(Icons.Default.Close, contentDescription = "Delete Topic", tint = TextMuted, modifier = Modifier.size(14.dp))
-                                                    }
+                            } else {
+                                val topicRowFill = if (isExisting) Color(0xFF1E1E1E) else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.05f) else tokens.chipFill
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    subjectTopics.forEach { topic ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(topicRowFill)
+                                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = topic.name,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = if (isExisting) TextPrimary else tokens.text,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                IconButton(
+                                                    onClick = { topicToEdit = topic },
+                                                    modifier = Modifier.size(28.dp)
+                                                ) {
+                                                    Icon(Icons.Default.Edit, contentDescription = "Edit Topic", tint = if (isExisting) TextMuted else tokens.secondaryText, modifier = Modifier.size(14.dp))
+                                                }
+                                                IconButton(
+                                                    onClick = { topicToDelete = topic },
+                                                    modifier = Modifier.size(28.dp)
+                                                ) {
+                                                    Icon(Icons.Default.Close, contentDescription = "Delete Topic", tint = if (isExisting) TextMuted else tokens.secondaryText, modifier = Modifier.size(14.dp))
                                                 }
                                             }
                                         }
@@ -245,14 +250,21 @@ fun ManageSubjectsScreen(
         var name by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showAddSubjectDialog = false },
-            title = { Text("Add Subject/Task", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("Add Subject/Task", color = if (isExisting) TextPrimary else tokens.text, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Subject/Task Name") },
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = if (isExisting) AmberAccent else tokens.accent,
+                        unfocusedBorderColor = if (isExisting) CharcoalBorder else tokens.divider,
+                        focusedTextColor = if (isExisting) TextPrimary else tokens.text,
+                        unfocusedTextColor = if (isExisting) TextPrimary else tokens.text,
+                        focusedLabelColor = if (isExisting) AmberAccent else tokens.accent,
+                        unfocusedLabelColor = if (isExisting) TextSecondary else tokens.secondaryText
+                    )
                 )
             },
             confirmButton = {
@@ -263,15 +275,18 @@ fun ManageSubjectsScreen(
                             showAddSubjectDialog = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isExisting) AmberAccent else tokens.accent,
+                        contentColor = if (isExisting) Color.Black else tokens.textOnAccent
+                    )
                 ) {
                     Text("ADD")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showAddSubjectDialog = false }) { Text("CANCEL", color = TextSecondary) }
+                TextButton(onClick = { showAddSubjectDialog = false }) { Text("CANCEL", color = if (isExisting) TextSecondary else tokens.secondaryText) }
             },
-            containerColor = CharcoalCard
+            containerColor = if (isExisting) CharcoalCard else tokens.cardFill
         )
     }
 
@@ -280,14 +295,21 @@ fun ManageSubjectsScreen(
         var name by remember { mutableStateOf(subjectToEdit!!.name) }
         AlertDialog(
             onDismissRequest = { subjectToEdit = null },
-            title = { Text("Rename Subject/Task", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("Rename Subject/Task", color = if (isExisting) TextPrimary else tokens.text, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Subject/Task Name") },
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = if (isExisting) AmberAccent else tokens.accent,
+                        unfocusedBorderColor = if (isExisting) CharcoalBorder else tokens.divider,
+                        focusedTextColor = if (isExisting) TextPrimary else tokens.text,
+                        unfocusedTextColor = if (isExisting) TextPrimary else tokens.text,
+                        focusedLabelColor = if (isExisting) AmberAccent else tokens.accent,
+                        unfocusedLabelColor = if (isExisting) TextSecondary else tokens.secondaryText
+                    )
                 )
             },
             confirmButton = {
@@ -298,15 +320,18 @@ fun ManageSubjectsScreen(
                             subjectToEdit = null
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isExisting) AmberAccent else tokens.accent,
+                        contentColor = if (isExisting) Color.Black else tokens.textOnAccent
+                    )
                 ) {
                     Text("SAVE")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { subjectToEdit = null }) { Text("CANCEL", color = TextSecondary) }
+                TextButton(onClick = { subjectToEdit = null }) { Text("CANCEL", color = if (isExisting) TextSecondary else tokens.secondaryText) }
             },
-            containerColor = CharcoalCard
+            containerColor = if (isExisting) CharcoalCard else tokens.cardFill
         )
     }
 
@@ -314,23 +339,26 @@ fun ManageSubjectsScreen(
     if (subjectToDelete != null) {
         AlertDialog(
             onDismissRequest = { subjectToDelete = null },
-            title = { Text("Delete Subject/Task?", color = TextPrimary, fontWeight = FontWeight.Bold) },
-            text = { Text("Are you sure you want to delete \"${subjectToDelete!!.name}\"? All topics/sub tasks under it will also be deleted.", color = TextSecondary) },
+            title = { Text("Delete Subject/Task?", color = if (isExisting) TextPrimary else tokens.text, fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to delete \"${subjectToDelete!!.name}\"? All topics/sub tasks under it will also be deleted.", color = if (isExisting) TextSecondary else tokens.secondaryText) },
             confirmButton = {
                 Button(
                     onClick = {
                         onDeleteSubject(subjectToDelete!!.id)
                         subjectToDelete = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red, contentColor = Color.White)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isExisting) Color.Red else tokens.danger,
+                        contentColor = Color.White
+                    )
                 ) {
                     Text("DELETE")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { subjectToDelete = null }) { Text("CANCEL", color = TextSecondary) }
+                TextButton(onClick = { subjectToDelete = null }) { Text("CANCEL", color = if (isExisting) TextSecondary else tokens.secondaryText) }
             },
-            containerColor = CharcoalCard
+            containerColor = if (isExisting) CharcoalCard else tokens.cardFill
         )
     }
 
@@ -339,14 +367,21 @@ fun ManageSubjectsScreen(
         var name by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { topicSubjectTarget = null },
-            title = { Text("Add Topic/Sub task to ${topicSubjectTarget!!.name}", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("Add Topic/Sub task to ${topicSubjectTarget!!.name}", color = if (isExisting) TextPrimary else tokens.text, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Topic/Sub task Name") },
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = if (isExisting) AmberAccent else tokens.accent,
+                        unfocusedBorderColor = if (isExisting) CharcoalBorder else tokens.divider,
+                        focusedTextColor = if (isExisting) TextPrimary else tokens.text,
+                        unfocusedTextColor = if (isExisting) TextPrimary else tokens.text,
+                        focusedLabelColor = if (isExisting) AmberAccent else tokens.accent,
+                        unfocusedLabelColor = if (isExisting) TextSecondary else tokens.secondaryText
+                    )
                 )
             },
             confirmButton = {
@@ -357,15 +392,18 @@ fun ManageSubjectsScreen(
                             topicSubjectTarget = null
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isExisting) AmberAccent else tokens.accent,
+                        contentColor = if (isExisting) Color.Black else tokens.textOnAccent
+                    )
                 ) {
                     Text("ADD")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { topicSubjectTarget = null }) { Text("CANCEL", color = TextSecondary) }
+                TextButton(onClick = { topicSubjectTarget = null }) { Text("CANCEL", color = if (isExisting) TextSecondary else tokens.secondaryText) }
             },
-            containerColor = CharcoalCard
+            containerColor = if (isExisting) CharcoalCard else tokens.cardFill
         )
     }
 
@@ -374,14 +412,21 @@ fun ManageSubjectsScreen(
         var name by remember { mutableStateOf(topicToEdit!!.name) }
         AlertDialog(
             onDismissRequest = { topicToEdit = null },
-            title = { Text("Rename Topic/Sub task", color = TextPrimary, fontWeight = FontWeight.Bold) },
+            title = { Text("Rename Topic/Sub task", color = if (isExisting) TextPrimary else tokens.text, fontWeight = FontWeight.Bold) },
             text = {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Topic/Sub task Name") },
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = if (isExisting) AmberAccent else tokens.accent,
+                        unfocusedBorderColor = if (isExisting) CharcoalBorder else tokens.divider,
+                        focusedTextColor = if (isExisting) TextPrimary else tokens.text,
+                        unfocusedTextColor = if (isExisting) TextPrimary else tokens.text,
+                        focusedLabelColor = if (isExisting) AmberAccent else tokens.accent,
+                        unfocusedLabelColor = if (isExisting) TextSecondary else tokens.secondaryText
+                    )
                 )
             },
             confirmButton = {
@@ -392,15 +437,18 @@ fun ManageSubjectsScreen(
                             topicToEdit = null
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = AmberAccent, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isExisting) AmberAccent else tokens.accent,
+                        contentColor = if (isExisting) Color.Black else tokens.textOnAccent
+                    )
                 ) {
                     Text("SAVE")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { topicToEdit = null }) { Text("CANCEL", color = TextSecondary) }
+                TextButton(onClick = { topicToEdit = null }) { Text("CANCEL", color = if (isExisting) TextSecondary else tokens.secondaryText) }
             },
-            containerColor = CharcoalCard
+            containerColor = if (isExisting) CharcoalCard else tokens.cardFill
         )
     }
 
@@ -408,23 +456,26 @@ fun ManageSubjectsScreen(
     if (topicToDelete != null) {
         AlertDialog(
             onDismissRequest = { topicToDelete = null },
-            title = { Text("Delete Topic/Sub task?", color = TextPrimary, fontWeight = FontWeight.Bold) },
-            text = { Text("Are you sure you want to delete \"${topicToDelete!!.name}\"?", color = TextSecondary) },
+            title = { Text("Delete Topic/Sub task?", color = if (isExisting) TextPrimary else tokens.text, fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to delete \"${topicToDelete!!.name}\"?", color = if (isExisting) TextSecondary else tokens.secondaryText) },
             confirmButton = {
                 Button(
                     onClick = {
                         onDeleteTopic(topicToDelete!!.id)
                         topicToDelete = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red, contentColor = Color.White)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isExisting) Color.Red else tokens.danger,
+                        contentColor = Color.White
+                    )
                 ) {
                     Text("DELETE")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { topicToDelete = null }) { Text("CANCEL", color = TextSecondary) }
+                TextButton(onClick = { topicToDelete = null }) { Text("CANCEL", color = if (isExisting) TextSecondary else tokens.secondaryText) }
             },
-            containerColor = CharcoalCard
+            containerColor = if (isExisting) CharcoalCard else tokens.cardFill
         )
     }
 }
