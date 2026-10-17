@@ -200,11 +200,11 @@ fun LandscapeRectangleTimerCard(
                     )
                 )
                 .drawBehind {
-                    // Soft orange glow at the bottom of the card
+                    // Soft glow at the bottom of the card following tokens.accent
                     drawRoundRect(
                         brush = Brush.verticalGradient(
                             0.55f to Color.Transparent,
-                            1.0f to Color(0x35FFA640)
+                            1.0f to tokens.accent.copy(alpha = 0.21f)
                         ),
                         size = size,
                         cornerRadius = CornerRadius(24.dp.toPx())
@@ -248,7 +248,7 @@ fun LandscapeRectangleTimerCard(
 
                 // 1. Border track along card border
                 val trackColor = when {
-                    isClassic -> if (useHomeStyle) Color(0x44FFA640) else Color(0xFF262626)
+                    isClassic -> if (useHomeStyle) tokens.accent.copy(alpha = 0.27f) else Color(0xFF262626)
                     isUltra -> Color(0x1AFFFFFF)
                     else -> tokens.track
                 }
@@ -365,7 +365,7 @@ fun LandscapeRectangleTimerCard(
                             modifier = Modifier
                                 .size(44.dp)
                                 .clip(CircleShape)
-                                .background(if (isRunning) Color(0x33FFA640) else accentColor)
+                                .background(if (isRunning) tokens.accent.copy(alpha = 0.2f) else tokens.accent)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
@@ -377,7 +377,7 @@ fun LandscapeRectangleTimerCard(
                             Icon(
                                 imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
                                 contentDescription = if (isRunning) "Pause" else "Start",
-                                tint = if (isRunning) accentColor else Color.Black,
+                                tint = if (isRunning) tokens.accent else Color.Black,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -387,12 +387,12 @@ fun LandscapeRectangleTimerCard(
                         if (isClassic) {
                             OutlinedButton(
                                 onClick = onSetTimer,
-                                border = BorderStroke(1.2.dp, StudyAccent.copy(alpha = 0.85f)),
+                                border = BorderStroke(1.2.dp, tokens.accent.copy(alpha = 0.85f)),
                                 shape = RoundedCornerShape(8.dp),
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     containerColor = Color.Transparent,
-                                    contentColor = StudyAccent
+                                    contentColor = tokens.accent
                                 ),
                                 modifier = Modifier
                                     .height(38.dp)
@@ -445,12 +445,12 @@ fun LandscapeRectangleTimerCard(
                             if (isRunning) {
                                 OutlinedButton(
                                     onClick = onQuietModeToggle,
-                                    border = BorderStroke(1.dp, AmberAccent.copy(alpha = 0.75f)),
+                                    border = BorderStroke(1.dp, tokens.accent.copy(alpha = 0.75f)),
                                     shape = RoundedCornerShape(8.dp),
                                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
                                     colors = ButtonDefaults.outlinedButtonColors(
-                                        containerColor = Color(0x22FFA640),
-                                        contentColor = AmberAccent
+                                        containerColor = tokens.accent.copy(alpha = 0.133f),
+                                        contentColor = tokens.accent
                                     ),
                                     modifier = Modifier
                                     .height(38.dp)
@@ -461,12 +461,12 @@ fun LandscapeRectangleTimerCard(
                             } else if (isQuietMode) {
                                 OutlinedButton(
                                     onClick = onQuietModeToggle,
-                                    border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.75f)),
+                                    border = BorderStroke(1.dp, tokens.accent.copy(alpha = 0.75f)),
                                     shape = RoundedCornerShape(8.dp),
                                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
                                     colors = ButtonDefaults.outlinedButtonColors(
-                                        containerColor = Color(0x2200D675),
-                                        contentColor = EmeraldAccent
+                                        containerColor = tokens.accent.copy(alpha = 0.133f),
+                                        contentColor = tokens.accent
                                     ),
                                     modifier = Modifier
                                         .height(38.dp)
@@ -490,13 +490,14 @@ fun LandscapeRectangleTimerCard(
                                 ThemedActionPill(
                                     text = "Quiet Mode",
                                     onClick = onQuietModeToggle,
-                                    textColor = AmberAccent,
+                                    textColor = tokens.accent,
                                     testTag = "landscape_quiet_mode"
                                 )
                             } else if (isQuietMode) {
                                 ThemedActionPill(
                                     text = "Resume",
                                     onClick = onQuietModeToggle,
+                                    textColor = tokens.accent,
                                     isFilled = true,
                                     testTag = "landscape_resume"
                                 )
@@ -512,7 +513,7 @@ fun LandscapeRectangleTimerCard(
                         modifier = Modifier
                             .size(44.dp)
                             .clip(CircleShape)
-                            .background(if (isRunning) Color(0x33FFA640) else accentColor)
+                            .background(if (isRunning) tokens.accent.copy(alpha = 0.2f) else tokens.accent)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
@@ -524,7 +525,7 @@ fun LandscapeRectangleTimerCard(
                         Icon(
                             imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (isRunning) "Pause" else "Start",
-                            tint = if (isRunning) accentColor else Color.Black,
+                            tint = if (isRunning) tokens.accent else Color.Black,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -575,7 +576,7 @@ fun LandscapeRectangleTimerCard(
                                 ) {
                                     Text("Reset", fontSize = 11.sp, fontWeight = FontWeight.Medium)
                                 }
-                                if (isActive) {
+                                if (isRunning) {
                                     OutlinedButton(
                                         onClick = onLap,
                                         border = BorderStroke(1.dp, CyanAccent.copy(alpha = 0.75f)),
@@ -603,7 +604,7 @@ fun LandscapeRectangleTimerCard(
                                     onClick = onReset,
                                     testTag = "landscape_sw_reset"
                                 )
-                                if (isActive) {
+                                if (isRunning) {
                                     ThemedActionPill(
                                         text = "Lap",
                                         onClick = onLap,
@@ -666,12 +667,12 @@ fun LandscapeRectangleTimerCard(
                             if (isClassic) {
                                 OutlinedButton(
                                     onClick = onQuietModeToggle,
-                                    border = BorderStroke(1.dp, AmberAccent.copy(alpha = 0.75f)),
+                                    border = BorderStroke(1.dp, tokens.accent.copy(alpha = 0.75f)),
                                     shape = RoundedCornerShape(12.dp),
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                                     colors = ButtonDefaults.outlinedButtonColors(
-                                        containerColor = Color(0x22FFA640),
-                                        contentColor = AmberAccent
+                                        containerColor = tokens.accent.copy(alpha = 0.133f),
+                                        contentColor = tokens.accent
                                     ),
                                     modifier = Modifier
                                         .height(32.dp)
@@ -683,7 +684,7 @@ fun LandscapeRectangleTimerCard(
                                 ThemedActionPill(
                                     text = "Quiet Mode",
                                     onClick = onQuietModeToggle,
-                                    textColor = AmberAccent,
+                                    textColor = tokens.accent,
                                     testTag = "landscape_quiet_mode"
                                 )
                             }
@@ -691,12 +692,12 @@ fun LandscapeRectangleTimerCard(
                             if (isClassic) {
                                 OutlinedButton(
                                     onClick = onQuietModeToggle,
-                                    border = BorderStroke(1.dp, EmeraldAccent.copy(alpha = 0.75f)),
+                                    border = BorderStroke(1.dp, tokens.accent.copy(alpha = 0.75f)),
                                     shape = RoundedCornerShape(12.dp),
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                                     colors = ButtonDefaults.outlinedButtonColors(
-                                        containerColor = Color(0x2200D675),
-                                        contentColor = EmeraldAccent
+                                        containerColor = tokens.accent.copy(alpha = 0.133f),
+                                        contentColor = tokens.accent
                                     ),
                                     modifier = Modifier
                                         .height(32.dp)
@@ -708,6 +709,7 @@ fun LandscapeRectangleTimerCard(
                                 ThemedActionPill(
                                     text = "Resume",
                                     onClick = onQuietModeToggle,
+                                    textColor = tokens.accent,
                                     isFilled = true,
                                     testTag = "landscape_resume"
                                 )
@@ -716,12 +718,12 @@ fun LandscapeRectangleTimerCard(
                             if (isClassic) {
                                 OutlinedButton(
                                     onClick = onSetTimer,
-                                    border = BorderStroke(1.dp, StudyAccent.copy(alpha = 0.8f)),
+                                    border = BorderStroke(1.dp, tokens.accent.copy(alpha = 0.8f)),
                                     shape = RoundedCornerShape(12.dp),
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                                     colors = ButtonDefaults.outlinedButtonColors(
                                         containerColor = Color.Transparent,
-                                        contentColor = StudyAccent
+                                        contentColor = tokens.accent
                                     ),
                                     modifier = Modifier
                                         .height(32.dp)

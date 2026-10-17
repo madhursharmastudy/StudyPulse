@@ -75,7 +75,7 @@ fun SettingsScreen(
     val isExisting = isExistingTheme(activeTheme)
     val textColor = if (isExisting) TextPrimary else themeTokens.text
     val subTextColor = if (isExisting) TextSecondary else themeTokens.secondaryText
-    val accentColor = if (isExisting) (if (settings.appTheme.equals("Blue", ignoreCase = true)) WaterAccent else StudyAccent) else themeTokens.accent
+    val accentColor = themeTokens.accent
     val dialogBg = if (isExisting) DarkCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else themeTokens.cardFill
     val dividerColor = if (isExisting) DarkBorder else themeTokens.divider
 

@@ -48,6 +48,8 @@ import com.example.presentation.components.AppBackground
 import com.example.presentation.components.LandscapeRectangleTimerCard
 import com.example.presentation.components.TimerDigitsDisplay
 import com.example.presentation.components.formatTimeToHHMMSS
+import com.example.presentation.components.AppNoticeDialog
+import android.widget.Toast
 import com.example.ui.theme.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.font.FontFamily
@@ -306,7 +308,7 @@ fun WatchScreen(
                     ThemedActionPill(
                         text = "Quiet Mode",
                         onClick = { TimerEngine.enterQuietMode() },
-                        textColor = AmberAccent,
+                        textColor = tokens.accent,
                         testTag = "watch_quiet_mode_button"
                     )
                 } else if (snapshot.isQuietMode) {
@@ -320,7 +322,7 @@ fun WatchScreen(
                     ThemedActionPill(
                         text = "Set Timer",
                         onClick = { showSetTimerDialog = true },
-                        textColor = if (isClassic) StudyAccent else tokens.accent,
+                        textColor = tokens.accent,
                         testTag = "watch_set_timer_button"
                     )
                 }
@@ -475,7 +477,9 @@ fun CircularStudyTimer(
     val textColor = if (isClassic) TextPrimary else tokens.text
     val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
     val ringTrackColor = if (isClassic) Color(0xFF161616) else tokens.chipFill
-    val ringActiveColor = if (isClassic) StudyAccent else tokens.accent
+    val ringActiveColor = tokens.accent
+    val context = LocalContext.current
+    var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     Box(
         contentAlignment = Alignment.Center,
@@ -568,17 +572,17 @@ fun CircularStudyTimer(
 
             // Play / Pause circular button (S3)
             val playBtnBg = if (isClassic) {
-                if (snapshot.state == TimerState.STUDYING) Color(0x33FFA640) else Color(0xFF1E1E1E)
+                if (snapshot.state == TimerState.STUDYING) tokens.accent.copy(alpha = 0.2f) else Color(0xFF1E1E1E)
             } else {
                 if (snapshot.state == TimerState.STUDYING) tokens.cardFill else tokens.accent
             }
             val playBtnBorder = if (isClassic) {
-                if (snapshot.state == TimerState.STUDYING) StudyAccent else Color(0xFF333333)
+                if (snapshot.state == TimerState.STUDYING) tokens.accent else Color(0xFF333333)
             } else {
                 if (snapshot.state == TimerState.STUDYING) tokens.accent else Color.Transparent
             }
             val playBtnTint = if (isClassic) {
-                if (snapshot.state == TimerState.STUDYING) StudyAccent else TextPrimary
+                if (snapshot.state == TimerState.STUDYING) tokens.accent else TextPrimary
             } else {
                 if (snapshot.state == TimerState.STUDYING) tokens.accent else tokens.textOnAccent
             }
@@ -599,21 +603,28 @@ fun CircularStudyTimer(
                             TimerState.IDLE -> {
                                 val selectedSub = subjects.firstOrNull { it.id == snapshot.subjectId }
                                     ?: subjects.firstOrNull()
-                                    ?: SubjectEntity(name = "English Literature")
-                                val selectedTop = topics.firstOrNull { it.subjectId == selectedSub.id }
-                                    ?: TopicEntity(subjectId = selectedSub.id, name = "Romantic Poetry")
-
-                                TimerEngine.startStudySession(
-                                    subjectId = selectedSub.id,
-                                    topicId = selectedTop.id,
-                                    subjectName = selectedSub.name,
-                                    topicName = selectedTop.name,
-                                    type = snapshot.timerType,
-                                    durationMinutes = defaultDurationMinutes
-                                )
+                                if (selectedSub == null) {
+                                    noticeMessage = "No subject found. Please add a subject in Manage Subjects, then press Play again."
+                                } else {
+                                    val selectedTop = topics.firstOrNull { it.subjectId == selectedSub.id }
+                                    if (selectedTop == null) {
+                                        noticeMessage = "No topic found. Please add a topic in Manage Subjects, then press Play again."
+                                    } else {
+                                        TimerEngine.startStudySession(
+                                            subjectId = selectedSub.id,
+                                            topicId = selectedTop.id,
+                                            subjectName = selectedSub.name,
+                                            topicName = selectedTop.name,
+                                            type = snapshot.timerType,
+                                            durationMinutes = defaultDurationMinutes
+                                        )
+                                    }
+                                }
                             }
                             TimerState.STOPPED, TimerState.COMPLETED -> TimerEngine.reset()
-                            else -> {}
+                            else -> {
+                                Toast.makeText(context, "This action is not available right now.", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
                 }
@@ -627,6 +638,12 @@ fun CircularStudyTimer(
                     modifier = Modifier.size(24.dp)
                 )
             }
+        }
+        if (noticeMessage != null) {
+            AppNoticeDialog(
+                message = noticeMessage!!,
+                onDismiss = { noticeMessage = null }
+            )
         }
     }
 }
@@ -911,9 +928,10 @@ fun SubjectPickerDialog(
     val isClassic = isExistingTheme(activeTheme)
     val textColor = if (isClassic) TextPrimary else tokens.text
     val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
-    val accentColor = if (isClassic) StudyAccent else tokens.accent
+    val accentColor = tokens.accent
     val dialogBg = if (isClassic) DarkCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
     val chipBg = if (isClassic) Color(0xFF1E1E1E) else if (activeTheme == "Ultra Premium") Color(0x1AFFFFFF) else tokens.chipFill
+    val context = LocalContext.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -962,7 +980,7 @@ fun SubjectPickerDialog(
                     Surface(
                         onClick = { selectedSubject = subject },
                         shape = RoundedCornerShape(10.dp),
-                        color = if (isSelected) (if (isClassic) Color(0x33FFA640) else tokens.accent.copy(alpha = 0.2f)) else (if (isClassic) Color(0xFF1A1A1A) else if (activeTheme == "Ultra Premium") Color(0x0DFFFFFF) else tokens.chipFill),
+                        color = if (isSelected) tokens.accent.copy(alpha = 0.2f) else (if (isClassic) Color(0xFF1A1A1A) else if (activeTheme == "Ultra Premium") Color(0x0DFFFFFF) else tokens.chipFill),
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp,
                             if (isSelected) accentColor else (if (isClassic) Color(0xFF282828) else Color.Transparent)
@@ -1051,7 +1069,7 @@ fun SubjectPickerDialog(
                         Surface(
                             onClick = { selectedTopic = topic },
                             shape = RoundedCornerShape(8.dp),
-                            color = if (isSelected) (if (isClassic) Color(0x33FFA640) else tokens.accent.copy(alpha = 0.2f)) else (if (isClassic) Color(0xFF181818) else if (activeTheme == "Ultra Premium") Color(0x0DFFFFFF) else tokens.chipFill),
+                            color = if (isSelected) tokens.accent.copy(alpha = 0.2f) else (if (isClassic) Color(0xFF181818) else if (activeTheme == "Ultra Premium") Color(0x0DFFFFFF) else tokens.chipFill),
                             border = androidx.compose.foundation.BorderStroke(
                                 1.dp,
                                 if (isSelected) accentColor else (if (isClassic) Color(0xFF242424) else Color.Transparent)
@@ -1247,6 +1265,8 @@ fun SubjectPickerDialog(
                                 dailyGoalTarget.toIntOrNull() ?: 60
                             )
                             showAddSubjectDialog = false
+                        } else {
+                            Toast.makeText(context, "Please fill the required fields.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent),
@@ -1289,9 +1309,11 @@ fun SubjectPickerDialog(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (newTopicName.isNotBlank()) {
+                        if (newTopicName.isNotBlank() && selectedSubject != null) {
                             onAddNewTopic(selectedSubject!!.id, newTopicName.trim())
                             showAddTopicDialog = false
+                        } else {
+                            Toast.makeText(context, "Please fill the required fields.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent),
@@ -1361,6 +1383,8 @@ fun SubjectPickerDialog(
                                 selectedSubject = updated
                             }
                             subjectToEdit = null
+                        } else {
+                            Toast.makeText(context, "Please fill the required fields.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent),
@@ -1393,12 +1417,16 @@ fun SubjectPickerDialog(
                 Button(
                     onClick = {
                         if (subjectToDelete != null) {
-                            onDeleteSubject(subjectToDelete!!.id)
-                            if (selectedSubject?.id == subjectToDelete!!.id) {
-                                val remaining = subjects.filter { it.id != subjectToDelete!!.id }
-                                selectedSubject = remaining.firstOrNull()
+                            try {
+                                onDeleteSubject(subjectToDelete!!.id)
+                                if (selectedSubject?.id == subjectToDelete!!.id) {
+                                    val remaining = subjects.filter { it.id != subjectToDelete!!.id }
+                                    selectedSubject = remaining.firstOrNull()
+                                }
+                                subjectToDelete = null
+                            } catch (_: Exception) {
+                                Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
                             }
-                            subjectToDelete = null
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red, contentColor = Color.White),
@@ -1448,6 +1476,8 @@ fun SubjectPickerDialog(
                                 selectedTopic = updated
                             }
                             topicToEdit = null
+                        } else {
+                            Toast.makeText(context, "Please fill the required fields.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent),
@@ -1480,12 +1510,16 @@ fun SubjectPickerDialog(
                 Button(
                     onClick = {
                         if (topicToDelete != null) {
-                            onDeleteTopic(topicToDelete!!.id)
-                            if (selectedTopic?.id == topicToDelete!!.id) {
-                                val remaining = filteredTopics.filter { it.id != topicToDelete!!.id }
-                                selectedTopic = remaining.firstOrNull()
+                            try {
+                                onDeleteTopic(topicToDelete!!.id)
+                                if (selectedTopic?.id == topicToDelete!!.id) {
+                                    val remaining = filteredTopics.filter { it.id != topicToDelete!!.id }
+                                    selectedTopic = remaining.firstOrNull()
+                                }
+                                topicToDelete = null
+                            } catch (_: Exception) {
+                                Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
                             }
-                            topicToDelete = null
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red, contentColor = Color.White),
@@ -1527,9 +1561,10 @@ fun SetTimerDialog(
     val isClassic = isExistingTheme(activeTheme)
     val textColor = if (isClassic) TextPrimary else tokens.text
     val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
-    val accentColor = if (isClassic) StudyAccent else tokens.accent
+    val accentColor = tokens.accent
     val dialogBg = if (isClassic) DarkCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
     val fieldBorder = if (isClassic) Color(0xFF333333) else tokens.divider
+    val context = LocalContext.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1663,13 +1698,17 @@ fun SetTimerDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val studyMinVal = studyMinutesStr.toIntOrNull() ?: settings.defaultStudyDurationMinutes
-                    val eyeIntVal = eyeIntervalStr.toIntOrNull() ?: settings.eyeStudyIntervalMinutes
-                    val eyeRestVal = eyeRestStr.toIntOrNull() ?: settings.eyeRestDurationSeconds
-                    val waterIntVal = waterIntervalStr.toIntOrNull() ?: settings.waterIntervalMinutes
-                    val waterBreakVal = waterBreakStr.toIntOrNull() ?: (settings.waterBreakDurationSeconds / 60)
+                    val studyMinVal = studyMinutesStr.toIntOrNull()
+                    if (studyMinVal == null || studyMinVal <= 0) {
+                        Toast.makeText(context, "Please enter a valid number of minutes.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        val eyeIntVal = eyeIntervalStr.toIntOrNull() ?: settings.eyeStudyIntervalMinutes
+                        val eyeRestVal = eyeRestStr.toIntOrNull() ?: settings.eyeRestDurationSeconds
+                        val waterIntVal = waterIntervalStr.toIntOrNull() ?: settings.waterIntervalMinutes
+                        val waterBreakVal = waterBreakStr.toIntOrNull() ?: (settings.waterBreakDurationSeconds / 60)
 
-                    onSave(studyMinVal, eyeIntVal, eyeRestVal, waterIntVal, waterBreakVal)
+                        onSave(studyMinVal, eyeIntVal, eyeRestVal, waterIntVal, waterBreakVal)
+                    }
                 },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = accentColor,
@@ -1715,7 +1754,9 @@ fun LandscapeWatchScreen(
     onSubjectClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-
+    val tokens = LocalAppThemeTokens.current
+    val context = LocalContext.current
+    var noticeMessage by remember { mutableStateOf<String?>(null) }
     val activeDisplay = if (snapshot.state == TimerState.IDLE) {
         val h = settings.defaultStudyDurationMinutes / 60
         val m = settings.defaultStudyDurationMinutes % 60
@@ -1743,20 +1784,28 @@ fun LandscapeWatchScreen(
             isRunning = snapshot.state == TimerState.STUDYING,
             isPaused = snapshot.state == TimerState.PAUSED,
             isQuietMode = snapshot.isQuietMode,
-            accentColor = StudyAccent,
+            accentColor = tokens.accent,
             useHomeStyle = true,
             onPlayPause = {
                 when (snapshot.state) {
                     TimerState.IDLE -> {
                         val sub = subjects.firstOrNull { it.name == currentSubjectName } ?: subjects.firstOrNull()
-                        val top = topics.firstOrNull { it.name == currentTopicName } ?: topics.firstOrNull()
-                        if (sub != null && top != null) {
-                            TimerEngine.startStudySession(sub.id, top.id, sub.name, top.name, TimerType.STUDY_SESSION, settings.defaultStudyDurationMinutes)
+                        if (sub == null) {
+                            noticeMessage = "No subject found. Please add a subject in Manage Subjects, then press Play again."
+                        } else {
+                            val top = topics.firstOrNull { it.name == currentTopicName } ?: topics.firstOrNull()
+                            if (top == null) {
+                                noticeMessage = "No topic found. Please add a topic in Manage Subjects, then press Play again."
+                            } else {
+                                TimerEngine.startStudySession(sub.id, top.id, sub.name, top.name, TimerType.STUDY_SESSION, settings.defaultStudyDurationMinutes)
+                            }
                         }
                     }
                     TimerState.STUDYING -> TimerEngine.pause()
                     TimerState.PAUSED -> TimerEngine.resume()
-                    else -> {}
+                    else -> {
+                        Toast.makeText(context, "This action is not available right now.", Toast.LENGTH_SHORT).show()
+                    }
                 }
             },
             onEndSession = { TimerEngine.stop() },
@@ -1820,6 +1869,12 @@ fun LandscapeWatchScreen(
             )
         }
     }
+    if (noticeMessage != null) {
+        AppNoticeDialog(
+            message = noticeMessage!!,
+            onDismiss = { noticeMessage = null }
+        )
+    }
 }
 
 /**
@@ -1834,6 +1889,9 @@ fun LandscapeAnalogWatch(
     modifier: Modifier = Modifier
 ) {
     val progress = snapshot.progressFraction
+    val tokens = LocalAppThemeTokens.current
+    val context = LocalContext.current
+    var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     BoxWithConstraints(
         modifier = modifier,
@@ -1860,7 +1918,7 @@ fun LandscapeAnalogWatch(
                     val isBold = i % 5 == 0
                     val tickLen = if (isBold) 8.dp.toPx() else 3.5.dp.toPx()
                     val tickWidth = if (isBold) 2.dp.toPx() else 1.dp.toPx()
-                    val tickColor = if (isBold) StudyAccent else Color(0xFF4A4E5C)
+                    val tickColor = if (isBold) tokens.accent else Color(0xFF4A4E5C)
 
                     val startX = cx + ((radius - tickLen) * Math.cos(angleRad)).toFloat()
                     val startY = cy + ((radius - tickLen) * Math.sin(angleRad)).toFloat()
@@ -1879,7 +1937,7 @@ fun LandscapeAnalogWatch(
                 // Thin progress ring in accent color
                 val ringRadius = radius - 11.dp.toPx()
                 drawArc(
-                    color = Color(0x22FFA640),
+                    color = tokens.accent.copy(alpha = 0.133f),
                     startAngle = -90f,
                     sweepAngle = 360f,
                     useCenter = false,
@@ -1889,7 +1947,7 @@ fun LandscapeAnalogWatch(
                 )
                 if (progress > 0f) {
                     drawArc(
-                        color = StudyAccent,
+                        color = tokens.accent,
                         startAngle = -90f,
                         sweepAngle = progress * 360f,
                         useCenter = false,
@@ -1906,13 +1964,13 @@ fun LandscapeAnalogWatch(
                 val hy = cy + (handLen * Math.sin(handAngleRad)).toFloat()
 
                 drawLine(
-                    color = StudyAccent,
+                    color = tokens.accent,
                     start = Offset(cx, cy),
                     end = Offset(hx, hy),
                     strokeWidth = 2.5.dp.toPx(),
                     cap = StrokeCap.Round
                 )
-                drawCircle(color = StudyAccent, radius = 4.dp.toPx(), center = Offset(cx, cy))
+                drawCircle(color = tokens.accent, radius = 4.dp.toPx(), center = Offset(cx, cy))
             }
 
             // Center Content: Mode label, Digital remaining time HH:MM:SS, Play/Pause button
@@ -1925,7 +1983,7 @@ fun LandscapeAnalogWatch(
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.sp,
-                    color = if (snapshot.isQuietMode) AmberAccent else TextSecondary
+                    color = if (snapshot.isQuietMode) tokens.accent else TextSecondary
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
@@ -1933,7 +1991,7 @@ fun LandscapeAnalogWatch(
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Black,
                     fontFamily = FontFamily.Monospace,
-                    color = if (snapshot.isQuietMode) AmberAccent else TextPrimary
+                    color = if (snapshot.isQuietMode) tokens.accent else TextPrimary
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 val isStudying = snapshot.state == TimerState.STUDYING
@@ -1946,30 +2004,46 @@ fun LandscapeAnalogWatch(
                                 TimerState.STUDYING -> TimerEngine.pause()
                                 TimerState.PAUSED -> TimerEngine.resume()
                                 TimerState.IDLE -> {
-                                    val sub = subjects.firstOrNull { it.id == snapshot.subjectId } ?: subjects.firstOrNull() ?: SubjectEntity(name = "English Literature")
-                                    val top = topics.firstOrNull { it.subjectId == sub.id } ?: TopicEntity(subjectId = sub.id, name = "Romantic Poetry")
-                                    TimerEngine.startStudySession(sub.id, top.id, sub.name, top.name, TimerType.STUDY_SESSION, settings.defaultStudyDurationMinutes)
+                                    val sub = subjects.firstOrNull { it.id == snapshot.subjectId } ?: subjects.firstOrNull()
+                                    if (sub == null) {
+                                        noticeMessage = "No subject found. Please add a subject in Manage Subjects, then press Play again."
+                                    } else {
+                                        val top = topics.firstOrNull { it.subjectId == sub.id }
+                                        if (top == null) {
+                                            noticeMessage = "No topic found. Please add a topic in Manage Subjects, then press Play again."
+                                        } else {
+                                            TimerEngine.startStudySession(sub.id, top.id, sub.name, top.name, TimerType.STUDY_SESSION, settings.defaultStudyDurationMinutes)
+                                        }
+                                    }
                                 }
-                                else -> {}
+                                else -> {
+                                    Toast.makeText(context, "This action is not available right now.", Toast.LENGTH_SHORT).show()
+                                }
                             }
                         }
                     },
                     shape = CircleShape,
-                    color = if (isStudying) Color(0x33FFA640) else Color(0xFF1E212A),
-                    border = BorderStroke(1.dp, if (isStudying) StudyAccent else CharcoalBorder),
+                    color = if (isStudying) tokens.accent.copy(alpha = 0.2f) else Color(0xFF1E212A),
+                    border = BorderStroke(1.dp, if (isStudying) tokens.accent else CharcoalBorder),
                     modifier = Modifier.size(36.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = if (isStudying) Icons.Default.Pause else Icons.Default.PlayArrow,
                             contentDescription = if (isStudying) "Pause" else "Play",
-                            tint = if (isStudying) StudyAccent else TextPrimary,
+                            tint = if (isStudying) tokens.accent else TextPrimary,
                             modifier = Modifier.size(18.dp)
                         )
                     }
                 }
             }
         }
+    }
+    if (noticeMessage != null) {
+        AppNoticeDialog(
+            message = noticeMessage!!,
+            onDismiss = { noticeMessage = null }
+        )
     }
 }
 
@@ -2021,13 +2095,13 @@ fun LandscapeCurrentClockCard(
                 )
             )
             .border(
-                BorderStroke(1.dp, Color(0x66FFA640)),
+                BorderStroke(1.dp, tokens.accent.copy(alpha = 0.4f)),
                 shape = RoundedCornerShape(16.dp)
             )
             .drawBehind {
                 drawRoundRect(
                     brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                        colors = listOf(Color(0x28FFA640), Color.Transparent),
+                        colors = listOf(tokens.accent.copy(alpha = 0.16f), Color.Transparent),
                         radius = size.maxDimension * 0.9f
                     ),
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
@@ -2056,13 +2130,13 @@ fun LandscapeCurrentClockCard(
                 modifier = Modifier
                     .size(34.dp)
                     .clip(CircleShape)
-                    .background(if (isClassic) Color(0x33FFA640) else tokens.chipFill),
+                    .background(if (isClassic) tokens.accent.copy(alpha = 0.2f) else tokens.chipFill),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Schedule,
                     contentDescription = "Clock",
-                    tint = if (isClassic) AmberAccent else tokens.accent,
+                    tint = tokens.accent,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -2102,7 +2176,7 @@ fun LandscapeCurrentClockCard(
                             text = amPm,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (isClassic) AmberAccent else tokens.accent,
+                            color = tokens.accent,
                             maxLines = 1,
                             softWrap = false,
                             modifier = Modifier.padding(bottom = 2.dp)
@@ -2395,13 +2469,13 @@ fun LandscapeBottomStrip(
                 )
             )
             .border(
-                BorderStroke(1.dp, Color(0x66FFA640)),
+                BorderStroke(1.dp, tokens.accent.copy(alpha = 0.4f)),
                 shape = RoundedCornerShape(16.dp)
             )
             .drawBehind {
                 drawRoundRect(
                     brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                        colors = listOf(Color(0x28FFA640), Color.Transparent),
+                        colors = listOf(tokens.accent.copy(alpha = 0.16f), Color.Transparent),
                         radius = size.maxDimension * 0.9f
                     ),
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
@@ -2417,7 +2491,7 @@ fun LandscapeBottomStrip(
 
     val textColor = if (isClassic) TextPrimary else tokens.text
     val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
-    val accentColor = if (isClassic) StudyAccent else tokens.accent
+    val accentColor = tokens.accent
     val trackCol = if (isClassic) Color(0xFF26190E) else if (isUltra) Color.White.copy(alpha = 0.10f) else tokens.chipFill
 
     Box(
@@ -2441,7 +2515,7 @@ fun LandscapeBottomStrip(
                     modifier = Modifier
                         .size(34.dp)
                         .clip(CircleShape)
-                        .background(if (isClassic) Color(0x33FFA640) else tokens.chipFill),
+                        .background(if (isClassic) tokens.accent.copy(alpha = 0.2f) else tokens.chipFill),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(

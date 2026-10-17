@@ -18,6 +18,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -318,6 +320,7 @@ fun TodayTab(
     val textColor = if (isExisting) TextPrimary else tokens.text
     val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
     val accent = if (isExisting) AmberAccent else tokens.accent
+    val context = LocalContext.current
 
     if (items.isEmpty()) {
         Box(
@@ -494,8 +497,12 @@ fun TodayTab(
             title = "Delete Study Block?",
             message = "Are you sure you want to delete this study block for \"${planToDelete!!.subjectName}\"?",
             onConfirm = {
-                onDeleteStudyPlan(planToDelete!!.id)
-                planToDelete = null
+                try {
+                    onDeleteStudyPlan(planToDelete!!.id)
+                    planToDelete = null
+                } catch (_: Exception) {
+                    Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
+                }
             },
             onDismiss = { planToDelete = null }
         )
@@ -517,8 +524,12 @@ fun TodayTab(
             title = "Delete Spaced Review?",
             message = "Are you sure you want to delete this spaced review item for \"${revisionToDelete!!.subjectName}\"?",
             onConfirm = {
-                onDeleteRevision(revisionToDelete!!.id)
-                revisionToDelete = null
+                try {
+                    onDeleteRevision(revisionToDelete!!.id)
+                    revisionToDelete = null
+                } catch (_: Exception) {
+                    Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
+                }
             },
             onDismiss = { revisionToDelete = null }
         )
@@ -542,6 +553,7 @@ fun ExamsTab(
     val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
     val accent = if (isExisting) AmberAccent else tokens.accent
     val trackCol = if (isExisting) CharcoalElevated else if (activeTheme == "Ultra Premium") Color.White.copy(alpha = 0.10f) else tokens.chipFill
+    val context = LocalContext.current
 
     if (exams.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -643,8 +655,12 @@ fun ExamsTab(
             title = "Delete Target Exam?",
             message = "Are you sure you want to delete the exam \"${examToDelete!!.title}\"?",
             onConfirm = {
-                onDelete(examToDelete!!.id)
-                examToDelete = null
+                try {
+                    onDelete(examToDelete!!.id)
+                    examToDelete = null
+                } catch (_: Exception) {
+                    Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
+                }
             },
             onDismiss = { examToDelete = null }
         )
@@ -667,6 +683,7 @@ fun AssignmentsTab(
     val textColor = if (isExisting) TextPrimary else tokens.text
     val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
     val accent = if (isExisting) AmberAccent else tokens.accent
+    val context = LocalContext.current
 
     if (assignments.isEmpty()) {
         Box(
@@ -781,8 +798,12 @@ fun AssignmentsTab(
             title = "Delete Assignment / Task?",
             message = "Are you sure you want to delete \"${taskToDelete!!.title}\"?",
             onConfirm = {
-                onDelete(taskToDelete!!.id)
-                taskToDelete = null
+                try {
+                    onDelete(taskToDelete!!.id)
+                    taskToDelete = null
+                } catch (_: Exception) {
+                    Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
+                }
             },
             onDismiss = { taskToDelete = null }
         )
@@ -808,6 +829,7 @@ fun SubjectPickerDropdown(
     val subTextColor = if (isExisting) TextSecondary else tokens.secondaryText
     val accent = if (isExisting) AmberAccent else tokens.accent
     val borderColor = if (isExisting) CharcoalBorder else tokens.divider
+    val context = LocalContext.current
 
     Box(modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
@@ -888,6 +910,8 @@ fun SubjectPickerDropdown(
                             onQuickAddSubject(newSubjectName.trim())
                             onSubjectNameSelected(newSubjectName.trim())
                             showNewSubjectDialog = false
+                        } else {
+                            Toast.makeText(context, "Please fill the required fields.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = if (isExisting) Color.Black else tokens.textOnAccent)

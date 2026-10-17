@@ -130,12 +130,12 @@ fun StudyWatchRootApp() {
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     val activeTheme = settings.theme
-    val classicAccent = if (settings.appTheme.equals("Blue", ignoreCase = true)) WaterAccent else StudyAccent
 
     StudyWatchTheme(
         activeTheme = activeTheme
     ) {
         val themeTokens = LocalAppThemeTokens.current
+        val classicAccent = themeTokens.accent
         AppBackground {
             Scaffold(
                 modifier = Modifier.fillMaxSize(),

@@ -47,6 +47,7 @@ fun SubjectTopicPicker(
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
     val isExisting = isExistingTheme(activeTheme)
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     val filteredTopics = remember(topics, selectedSubject) {
         if (selectedSubject != null && selectedSubject.id > 0) {
@@ -292,6 +293,8 @@ fun SubjectTopicPicker(
                         if (newSubjectName.isNotBlank()) {
                             onQuickAddSubject(newSubjectName.trim())
                             showNewSubjectDialog = false
+                        } else {
+                            android.widget.Toast.makeText(context, "Please fill the required fields.", android.widget.Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -340,6 +343,8 @@ fun SubjectTopicPicker(
                             onQuickAddTopic(subjectId, newTopicName.trim())
                             onTopicSelected(newTopicName.trim())
                             showNewTopicDialog = false
+                        } else {
+                            android.widget.Toast.makeText(context, "Please fill the required fields.", android.widget.Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -359,3 +364,49 @@ fun SubjectTopicPicker(
         )
     }
 }
+
+@Composable
+fun AppNoticeDialog(
+    message: String,
+    onDismiss: () -> Unit
+) {
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isExisting = isExistingTheme(activeTheme)
+
+    val containerColor = if (isExisting) DarkCard else if (activeTheme == "Ultra Premium") Color(0xFF0E2340) else tokens.cardFill
+    val titleColor = if (isExisting) TextPrimary else tokens.text
+    val bodyColor = if (isExisting) TextSecondary else tokens.secondaryText
+    val okBtnColor = tokens.accent
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Action needed",
+                fontWeight = FontWeight.Bold,
+                color = titleColor
+            )
+        },
+        text = {
+            Text(
+                text = message,
+                color = bodyColor,
+                fontSize = 14.sp
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = okBtnColor,
+                    contentColor = if (isExisting) Color.Black else tokens.textOnAccent
+                )
+            ) {
+                Text("OK", fontWeight = FontWeight.Bold)
+            }
+        },
+        containerColor = containerColor
+    )
+}
+

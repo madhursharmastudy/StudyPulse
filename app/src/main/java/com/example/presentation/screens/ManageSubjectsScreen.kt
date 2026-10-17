@@ -22,6 +22,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import com.example.data.db.SubjectEntity
 import com.example.data.db.TopicEntity
 import com.example.presentation.components.AppBackground
@@ -46,6 +48,7 @@ fun ManageSubjectsScreen(
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
     val isExisting = isExistingTheme(activeTheme)
+    val context = LocalContext.current
 
     var showAddSubjectDialog by remember { mutableStateOf(false) }
     var subjectToEdit by remember { mutableStateOf<SubjectEntity?>(null) }
@@ -273,6 +276,8 @@ fun ManageSubjectsScreen(
                         if (name.isNotBlank()) {
                             onAddSubject(name.trim(), "book", "#E5A93C", 60)
                             showAddSubjectDialog = false
+                        } else {
+                            Toast.makeText(context, "Please fill the required fields.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -318,6 +323,8 @@ fun ManageSubjectsScreen(
                         if (name.isNotBlank()) {
                             onUpdateSubject(subjectToEdit!!.copy(name = name.trim()))
                             subjectToEdit = null
+                        } else {
+                            Toast.makeText(context, "Please fill the required fields.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -344,8 +351,12 @@ fun ManageSubjectsScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        onDeleteSubject(subjectToDelete!!.id)
-                        subjectToDelete = null
+                        try {
+                            onDeleteSubject(subjectToDelete!!.id)
+                            subjectToDelete = null
+                        } catch (_: Exception) {
+                            Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isExisting) Color.Red else tokens.danger,
@@ -390,6 +401,8 @@ fun ManageSubjectsScreen(
                         if (name.isNotBlank()) {
                             onAddTopic(topicSubjectTarget!!.id, name.trim())
                             topicSubjectTarget = null
+                        } else {
+                            Toast.makeText(context, "Please fill the required fields.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -435,6 +448,8 @@ fun ManageSubjectsScreen(
                         if (name.isNotBlank()) {
                             onUpdateTopic(topicToEdit!!.copy(name = name.trim()))
                             topicToEdit = null
+                        } else {
+                            Toast.makeText(context, "Please fill the required fields.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -461,8 +476,12 @@ fun ManageSubjectsScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        onDeleteTopic(topicToDelete!!.id)
-                        topicToDelete = null
+                        try {
+                            onDeleteTopic(topicToDelete!!.id)
+                            topicToDelete = null
+                        } catch (_: Exception) {
+                            Toast.makeText(context, "Something went wrong. Please try again.", Toast.LENGTH_SHORT).show()
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isExisting) Color.Red else tokens.danger,

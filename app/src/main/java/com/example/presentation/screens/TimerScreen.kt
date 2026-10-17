@@ -40,9 +40,12 @@ import com.example.core.timer.*
 import com.example.data.db.SubjectEntity
 import com.example.data.db.TopicEntity
 import com.example.presentation.components.AppBackground
+import com.example.presentation.components.AppNoticeDialog
 import com.example.presentation.components.LandscapeRectangleTimerCard
 import com.example.presentation.components.TimerDigitsDisplay
 import com.example.presentation.components.formatTimeToHHMMSS
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import com.example.ui.theme.*
 
 /**
@@ -117,6 +120,8 @@ fun TimerScreen(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
+    val context = LocalContext.current
+    var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     AppBackground(modifier = modifier) {
         if (isLandscape) {
@@ -376,18 +381,26 @@ fun TimerScreen(
                             accentColor = if (isExistingTheme(activeTheme)) AmberAccent else tokens.accent,
                             onPlayPause = {
                                 if (!isSessionRunning) {
-                                    TimerEngine.startStudySession(
-                                        subjectId = currentSubject?.id ?: 0L,
-                                        topicId = currentTopic?.id ?: 0L,
-                                        subjectName = currentSubject?.name ?: "General Study",
-                                        topicName = currentTopic?.name ?: "Deep Focus",
-                                        type = TimerType.STUDY_SESSION,
-                                        durationMinutes = sessionDurationMinutes
-                                    )
+                                    if (subjects.isEmpty() || currentSubject == null) {
+                                        noticeMessage = "No subject found. Please add a subject in Manage Subjects, then press Play again."
+                                    } else if (filteredTopics.isEmpty() || currentTopic == null) {
+                                        noticeMessage = "No topic found. Please add a topic in Manage Subjects, then press Play again."
+                                    } else {
+                                        TimerEngine.startStudySession(
+                                            subjectId = currentSubject.id,
+                                            topicId = currentTopic.id,
+                                            subjectName = currentSubject.name,
+                                            topicName = currentTopic.name,
+                                            type = TimerType.STUDY_SESSION,
+                                            durationMinutes = sessionDurationMinutes
+                                        )
+                                    }
                                 } else if (snapshot.state == TimerState.STUDYING) {
                                     TimerEngine.pause()
                                 } else if (snapshot.state == TimerState.PAUSED) {
                                     TimerEngine.resume()
+                                } else {
+                                    Toast.makeText(context, "This action is not available right now.", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         )
@@ -443,22 +456,30 @@ fun TimerScreen(
                             accentColor = AmberAccent,
                             onPlayPause = {
                                 if (!isPomoRunning) {
-                                    TimerEngine.startStudySession(
-                                        subjectId = currentSubject?.id ?: 0L,
-                                        topicId = currentTopic?.id ?: 0L,
-                                        subjectName = currentSubject?.name ?: "Pomodoro Study",
-                                        topicName = currentTopic?.name ?: "Interval Focus",
-                                        type = TimerType.POMODORO,
-                                        pomodoroSettings = PomodoroSettings(
-                                            studyMinutes = pomodoroStudyMinutes,
-                                            shortBreakMinutes = pomodoroBreakMinutes,
-                                            cycles = pomodoroCycles
+                                    if (subjects.isEmpty() || currentSubject == null) {
+                                        noticeMessage = "No subject found. Please add a subject in Manage Subjects, then press Play again."
+                                    } else if (filteredTopics.isEmpty() || currentTopic == null) {
+                                        noticeMessage = "No topic found. Please add a topic in Manage Subjects, then press Play again."
+                                    } else {
+                                        TimerEngine.startStudySession(
+                                            subjectId = currentSubject.id,
+                                            topicId = currentTopic.id,
+                                            subjectName = currentSubject.name,
+                                            topicName = currentTopic.name,
+                                            type = TimerType.POMODORO,
+                                            pomodoroSettings = PomodoroSettings(
+                                                studyMinutes = pomodoroStudyMinutes,
+                                                shortBreakMinutes = pomodoroBreakMinutes,
+                                                cycles = pomodoroCycles
+                                            )
                                         )
-                                    )
+                                    }
                                 } else if (snapshot.state == TimerState.STUDYING || snapshot.state.isBreak) {
                                     TimerEngine.pause()
                                 } else if (snapshot.state == TimerState.PAUSED) {
                                     TimerEngine.resume()
+                                } else {
+                                    Toast.makeText(context, "This action is not available right now.", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         )
@@ -513,20 +534,28 @@ fun TimerScreen(
                             accentColor = AmberAccent,
                             onPlayPause = {
                                 if (!isCdRunning) {
-                                    val safeSecs = if (totalSecs > 0) totalSecs else 1800
-                                    TimerEngine.startStudySession(
-                                        subjectId = currentSubject?.id ?: 0L,
-                                        topicId = currentTopic?.id ?: 0L,
-                                        subjectName = currentSubject?.name ?: "General Task",
-                                        topicName = currentTopic?.name ?: "Countdown Focus",
-                                        type = TimerType.COUNTDOWN,
-                                        durationMinutes = (safeSecs / 60).coerceAtLeast(1),
-                                        durationSeconds = safeSecs
-                                    )
+                                    if (subjects.isEmpty() || currentSubject == null) {
+                                        noticeMessage = "No subject found. Please add a subject in Manage Subjects, then press Play again."
+                                    } else if (filteredTopics.isEmpty() || currentTopic == null) {
+                                        noticeMessage = "No topic found. Please add a topic in Manage Subjects, then press Play again."
+                                    } else {
+                                        val safeSecs = if (totalSecs > 0) totalSecs else 1800
+                                        TimerEngine.startStudySession(
+                                            subjectId = currentSubject.id,
+                                            topicId = currentTopic.id,
+                                            subjectName = currentSubject.name,
+                                            topicName = currentTopic.name,
+                                            type = TimerType.COUNTDOWN,
+                                            durationMinutes = (safeSecs / 60).coerceAtLeast(1),
+                                            durationSeconds = safeSecs
+                                        )
+                                    }
                                 } else if (snapshot.state == TimerState.STUDYING) {
                                     TimerEngine.pause()
                                 } else if (snapshot.state == TimerState.PAUSED) {
                                     TimerEngine.resume()
+                                } else {
+                                    Toast.makeText(context, "This action is not available right now.", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         )
@@ -577,16 +606,24 @@ fun TimerScreen(
                             isStopwatch = true,
                             onPlayPause = {
                                 if (!stopwatchSnapshot.isRunning && !stopwatchSnapshot.isPaused) {
-                                    StopwatchEngine.start(
-                                        subjectId = currentSubject?.id ?: 0L,
-                                        subjectName = currentSubject?.name ?: "Stopwatch",
-                                        topicId = currentTopic?.id ?: 0L,
-                                        topicName = currentTopic?.name ?: "Open Study"
-                                    )
+                                    if (subjects.isEmpty() || currentSubject == null) {
+                                        noticeMessage = "No subject found. Please add a subject in Manage Subjects, then press Play again."
+                                    } else if (filteredTopics.isEmpty() || currentTopic == null) {
+                                        noticeMessage = "No topic found. Please add a topic in Manage Subjects, then press Play again."
+                                    } else {
+                                        StopwatchEngine.start(
+                                            subjectId = currentSubject.id,
+                                            subjectName = currentSubject.name,
+                                            topicId = currentTopic.id,
+                                            topicName = currentTopic.name
+                                        )
+                                    }
                                 } else if (stopwatchSnapshot.isRunning) {
                                     StopwatchEngine.pause()
-                                } else {
+                                } else if (stopwatchSnapshot.isPaused) {
                                     StopwatchEngine.resume()
+                                } else {
+                                    Toast.makeText(context, "This action is not available right now.", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         )
@@ -620,7 +657,13 @@ fun TimerScreen(
                                             Text("Reset", color = TextSecondary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                         }
                                         TextButton(
-                                            onClick = { StopwatchEngine.recordLap() },
+                                            onClick = {
+                                                if (stopwatchSnapshot.isRunning) {
+                                                    StopwatchEngine.recordLap()
+                                                } else {
+                                                    Toast.makeText(context, "This action is not available right now.", Toast.LENGTH_SHORT).show()
+                                                }
+                                            },
                                             modifier = Modifier.testTag("stopwatch_lap_button")
                                         ) {
                                             Text("Lap", color = CyanAccent, fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -645,7 +688,13 @@ fun TimerScreen(
                                         )
                                         ThemedActionPill(
                                             text = "Lap",
-                                            onClick = { StopwatchEngine.recordLap() },
+                                            onClick = {
+                                                if (stopwatchSnapshot.isRunning) {
+                                                    StopwatchEngine.recordLap()
+                                                } else {
+                                                    Toast.makeText(context, "This action is not available right now.", Toast.LENGTH_SHORT).show()
+                                                }
+                                            },
                                             textColor = CyanAccent,
                                             testTag = "stopwatch_lap_button"
                                         )
@@ -711,7 +760,13 @@ fun TimerScreen(
                                 isStopwatch = false,
                                 showPlayButton = true,
                                 onPlayPause = {
-                                    if (snapshot.state == TimerState.PAUSED) TimerEngine.resume() else TimerEngine.pause()
+                                    if (snapshot.state == TimerState.PAUSED) {
+                                        TimerEngine.resume()
+                                    } else if (snapshot.state.isBreak) {
+                                        TimerEngine.pause()
+                                    } else {
+                                        Toast.makeText(context, "This action is not available right now.", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             )
 
@@ -824,6 +879,12 @@ fun TimerScreen(
                 }
             )
         }
+    }
+    if (noticeMessage != null) {
+        AppNoticeDialog(
+            message = noticeMessage!!,
+            onDismiss = { noticeMessage = null }
+        )
     }
 }
 }
@@ -1154,6 +1215,7 @@ fun SubjectTopicBottomSheetContent(
     val cardBg = if (isClassic) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0x1AFFFFFF) else tokens.cardFill
     val borderColor = if (isClassic) CharcoalBorder else tokens.divider
     val dialogBg = if (isClassic) CharcoalCard else if (activeTheme == "Ultra Premium") Color(0xFF171D26) else tokens.cardFill
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -1418,6 +1480,8 @@ fun SubjectTopicBottomSheetContent(
                         if (newSubName.isNotBlank()) {
                             onQuickAddSubject(newSubName.trim())
                             showAddSubjectDialog = false
+                        } else {
+                            Toast.makeText(context, "Please fill the required fields.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent)
@@ -1455,6 +1519,8 @@ fun SubjectTopicBottomSheetContent(
                         if (editName.isNotBlank()) {
                             onUpdateSubject(sub.copy(name = editName.trim()))
                             subjectToEdit = null
+                        } else {
+                            Toast.makeText(context, "Please fill the required fields.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent)
@@ -1492,6 +1558,8 @@ fun SubjectTopicBottomSheetContent(
                         if (newTopName.isNotBlank()) {
                             onQuickAddTopic(selectedSubject.id, newTopName.trim())
                             showAddTopicDialog = false
+                        } else {
+                            Toast.makeText(context, "Please fill the required fields.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent)
@@ -1529,6 +1597,8 @@ fun SubjectTopicBottomSheetContent(
                         if (editTopName.isNotBlank()) {
                             onUpdateTopic(top.copy(name = editTopName.trim()))
                             topicToEdit = null
+                        } else {
+                            Toast.makeText(context, "Please fill the required fields.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = accentColor, contentColor = if (isClassic) Color.Black else tokens.textOnAccent)
@@ -1668,6 +1738,7 @@ fun SetSessionTimerDialog(
     val titleColor = if (isClassic) TextPrimary else tokens.text
     val bodyColor = if (isClassic) TextSecondary else tokens.secondaryText
     val accentCol = if (isClassic) AmberAccent else tokens.accent
+    val context = LocalContext.current
 
     val presetChips = listOf(15, 25, 30, 45, 50, 60, 90)
     var customText by remember { mutableStateOf(currentMinutes.toString()) }
@@ -1723,8 +1794,12 @@ fun SetSessionTimerDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val mins = customText.toIntOrNull() ?: 50
-                    onApply(mins.coerceIn(1, 1440))
+                    val mins = customText.toIntOrNull()
+                    if (mins == null || mins <= 0) {
+                        Toast.makeText(context, "Please enter a valid number of minutes.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        onApply(mins.coerceIn(1, 1440))
+                    }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = accentCol, contentColor = if (isClassic) Color.Black else tokens.textOnAccent)
             ) {
@@ -1836,6 +1911,7 @@ fun SetCountdownTimerDialog(
     val titleColor = if (isClassic) TextPrimary else tokens.text
     val bodyColor = if (isClassic) TextSecondary else tokens.secondaryText
     val accentCol = if (isClassic) AmberAccent else tokens.accent
+    val context = LocalContext.current
 
     var hoursText by remember { mutableStateOf(currentH.toString()) }
     var minutesText by remember { mutableStateOf(currentM.toString()) }
@@ -1884,7 +1960,12 @@ fun SetCountdownTimerDialog(
                     val h = (hoursText.toIntOrNull() ?: 0).coerceIn(0, 99)
                     val m = (minutesText.toIntOrNull() ?: 0).coerceIn(0, 59)
                     val s = (secondsText.toIntOrNull() ?: 0).coerceIn(0, 59)
-                    onApply(h, m, s)
+                    val totalSecs = (h * 3600) + (m * 60) + s
+                    if (totalSecs <= 0) {
+                        Toast.makeText(context, "Please enter a valid number of minutes.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        onApply(h, m, s)
+                    }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = accentCol, contentColor = if (isClassic) Color.Black else tokens.textOnAccent)
             ) {
@@ -1950,6 +2031,8 @@ fun LandscapeTimerScreen(
 ) {
     val activeTheme = LocalActiveTheme.current
     val tokens = LocalAppThemeTokens.current
+    val context = LocalContext.current
+    var noticeMessage by remember { mutableStateOf<String?>(null) }
     val totalCdSecs = (countdownHours * 3600) + (countdownMinutes * 60) + countdownSeconds
 
     // Tab labels and metadata
@@ -1988,18 +2071,26 @@ fun LandscapeTimerScreen(
                     accentColor = if (isExistingTheme(activeTheme)) AmberAccent else tokens.accent,
                     onPlayPause = {
                         if (!isSessionRunning) {
-                            TimerEngine.startStudySession(
-                                subjectId = currentSubject?.id ?: 0L,
-                                topicId = currentTopic?.id ?: 0L,
-                                subjectName = currentSubject?.name ?: "General Study",
-                                topicName = currentTopic?.name ?: "Deep Focus",
-                                type = TimerType.STUDY_SESSION,
-                                durationMinutes = sessionDurationMinutes
-                            )
+                            if (currentSubject == null) {
+                                noticeMessage = "No subject found. Please add a subject in Manage Subjects, then press Play again."
+                            } else if (currentTopic == null) {
+                                noticeMessage = "No topic found. Please add a topic in Manage Subjects, then press Play again."
+                            } else {
+                                TimerEngine.startStudySession(
+                                    subjectId = currentSubject.id,
+                                    topicId = currentTopic.id,
+                                    subjectName = currentSubject.name,
+                                    topicName = currentTopic.name,
+                                    type = TimerType.STUDY_SESSION,
+                                    durationMinutes = sessionDurationMinutes
+                                )
+                            }
                         } else if (snapshot.state == TimerState.STUDYING) {
                             TimerEngine.pause()
                         } else if (snapshot.state == TimerState.PAUSED) {
                             TimerEngine.resume()
+                        } else {
+                            Toast.makeText(context, "This action is not available right now.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     onEndSession = { TimerEngine.stop() },
@@ -2036,22 +2127,30 @@ fun LandscapeTimerScreen(
                     accentColor = AmberAccent,
                     onPlayPause = {
                         if (!isPomoRunning) {
-                            TimerEngine.startStudySession(
-                                subjectId = currentSubject?.id ?: 0L,
-                                topicId = currentTopic?.id ?: 0L,
-                                subjectName = currentSubject?.name ?: "Pomodoro Study",
-                                topicName = currentTopic?.name ?: "Interval Focus",
-                                type = TimerType.POMODORO,
-                                pomodoroSettings = PomodoroSettings(
-                                    studyMinutes = pomodoroStudyMinutes,
-                                    shortBreakMinutes = pomodoroBreakMinutes,
-                                    cycles = pomodoroCycles
+                            if (currentSubject == null) {
+                                noticeMessage = "No subject found. Please add a subject in Manage Subjects, then press Play again."
+                            } else if (currentTopic == null) {
+                                noticeMessage = "No topic found. Please add a topic in Manage Subjects, then press Play again."
+                            } else {
+                                TimerEngine.startStudySession(
+                                    subjectId = currentSubject.id,
+                                    topicId = currentTopic.id,
+                                    subjectName = currentSubject.name,
+                                    topicName = currentTopic.name,
+                                    type = TimerType.POMODORO,
+                                    pomodoroSettings = PomodoroSettings(
+                                        studyMinutes = pomodoroStudyMinutes,
+                                        shortBreakMinutes = pomodoroBreakMinutes,
+                                        cycles = pomodoroCycles
+                                    )
                                 )
-                            )
+                            }
                         } else if (snapshot.state == TimerState.STUDYING || snapshot.state.isBreak) {
                             TimerEngine.pause()
                         } else if (snapshot.state == TimerState.PAUSED) {
                             TimerEngine.resume()
+                        } else {
+                            Toast.makeText(context, "This action is not available right now.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     onEndSession = { TimerEngine.stop() },
@@ -2082,20 +2181,28 @@ fun LandscapeTimerScreen(
                     accentColor = AmberAccent,
                     onPlayPause = {
                         if (!isCdRunning) {
-                            val safeSecs = if (totalCdSecs > 0) totalCdSecs else 1800
-                            TimerEngine.startStudySession(
-                                subjectId = currentSubject?.id ?: 0L,
-                                topicId = currentTopic?.id ?: 0L,
-                                subjectName = currentSubject?.name ?: "General Task",
-                                topicName = currentTopic?.name ?: "Countdown Focus",
-                                type = TimerType.COUNTDOWN,
-                                durationMinutes = (safeSecs / 60).coerceAtLeast(1),
-                                durationSeconds = safeSecs
-                            )
+                            if (currentSubject == null) {
+                                noticeMessage = "No subject found. Please add a subject in Manage Subjects, then press Play again."
+                            } else if (currentTopic == null) {
+                                noticeMessage = "No topic found. Please add a topic in Manage Subjects, then press Play again."
+                            } else {
+                                val safeSecs = if (totalCdSecs > 0) totalCdSecs else 1800
+                                TimerEngine.startStudySession(
+                                    subjectId = currentSubject.id,
+                                    topicId = currentTopic.id,
+                                    subjectName = currentSubject.name,
+                                    topicName = currentTopic.name,
+                                    type = TimerType.COUNTDOWN,
+                                    durationMinutes = (safeSecs / 60).coerceAtLeast(1),
+                                    durationSeconds = safeSecs
+                                )
+                            }
                         } else if (snapshot.state == TimerState.STUDYING) {
                             TimerEngine.pause()
                         } else if (snapshot.state == TimerState.PAUSED) {
                             TimerEngine.resume()
+                        } else {
+                            Toast.makeText(context, "This action is not available right now.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     onEndSession = { TimerEngine.stop() },
@@ -2126,21 +2233,35 @@ fun LandscapeTimerScreen(
                     accentColor = CyanAccent,
                     onPlayPause = {
                         if (!stopwatchSnapshot.isRunning && !stopwatchSnapshot.isPaused) {
-                            StopwatchEngine.start(
-                                subjectId = currentSubject?.id ?: 0L,
-                                subjectName = currentSubject?.name ?: "Stopwatch",
-                                topicId = currentTopic?.id ?: 0L,
-                                topicName = currentTopic?.name ?: "Open Study"
-                            )
+                            if (currentSubject == null) {
+                                noticeMessage = "No subject found. Please add a subject in Manage Subjects, then press Play again."
+                            } else if (currentTopic == null) {
+                                noticeMessage = "No topic found. Please add a topic in Manage Subjects, then press Play again."
+                            } else {
+                                StopwatchEngine.start(
+                                    subjectId = currentSubject.id,
+                                    subjectName = currentSubject.name,
+                                    topicId = currentTopic.id,
+                                    topicName = currentTopic.name
+                                )
+                            }
                         } else if (stopwatchSnapshot.isRunning) {
                             StopwatchEngine.pause()
-                        } else {
+                        } else if (stopwatchSnapshot.isPaused) {
                             StopwatchEngine.resume()
+                        } else {
+                            Toast.makeText(context, "This action is not available right now.", Toast.LENGTH_SHORT).show()
                         }
                     },
                     onEndSession = { StopwatchEngine.stop() },
                     onReset = { StopwatchEngine.reset() },
-                    onLap = { StopwatchEngine.recordLap() },
+                    onLap = {
+                        if (stopwatchSnapshot.isRunning) {
+                            StopwatchEngine.recordLap()
+                        } else {
+                            Toast.makeText(context, "This action is not available right now.", Toast.LENGTH_SHORT).show()
+                        }
+                    },
                     modifier = Modifier
                         .weight(0.57f)
                         .fillMaxHeight()
@@ -2166,7 +2287,9 @@ fun LandscapeTimerScreen(
                     accentColor = EmeraldAccent,
                     onPlayPause = {
                         if (isBreakRunning) {
-                            if (snapshot.state == TimerState.PAUSED) TimerEngine.resume() else TimerEngine.pause()
+                            if (snapshot.state == TimerState.PAUSED) TimerEngine.resume()
+                            else if (snapshot.state.isBreak) TimerEngine.pause()
+                            else Toast.makeText(context, "This action is not available right now.", Toast.LENGTH_SHORT).show()
                         } else {
                             TimerEngine.startBreak(BreakType.SHORT_BREAK, 5)
                         }
@@ -2510,5 +2633,11 @@ fun LandscapeTimerScreen(
                 }
             }
         }
+    }
+    if (noticeMessage != null) {
+        AppNoticeDialog(
+            message = noticeMessage!!,
+            onDismiss = { noticeMessage = null }
+        )
     }
 }
