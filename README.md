@@ -2,7 +2,7 @@
 
 **FOCUS. REST. HYDRATE. REPEAT.**
 
-StudyPulse is a premium, minimalist AMOLED desk watch and productivity companion built for focused study sessions, healthy eye care, and regular hydration.
+DeskPulse is a premium, minimalist AMOLED desk watch and productivity companion built for focused study sessions, healthy eye care, and regular hydration.
 
 ## Features
 
@@ -17,7 +17,7 @@ StudyPulse is a premium, minimalist AMOLED desk watch and productivity companion
 
 ## Brand Identity
 
-- **Name**: StudyPulse
+- **Name**: DeskPulse
 - **Tagline**: FOCUS. REST. HYDRATE. REPEAT.
 - **Icon**: An open book emblem nestled inside a glowing circular dial with hour tick marks, dynamic heartbeat pulse wave, and revitalizing green leaf.
 

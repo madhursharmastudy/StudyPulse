@@ -637,7 +637,7 @@ fun StudyWatchRootApp() {
                                     coroutineScope.launch {
                                         val json = app.repository.exportAllDataToJson()
                                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                        clipboard.setPrimaryClip(ClipData.newPlainText("StudyPulseBackup", json))
+                                        clipboard.setPrimaryClip(ClipData.newPlainText("DeskPulseBackup", json))
                                         Toast.makeText(context, "Exported JSON copied to clipboard", Toast.LENGTH_SHORT).show()
                                     }
                                 },
@@ -645,7 +645,7 @@ fun StudyWatchRootApp() {
                                     coroutineScope.launch {
                                         val csv = app.repository.exportSessionsToCsv()
                                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                        clipboard.setPrimaryClip(ClipData.newPlainText("StudyPulseCSV", csv))
+                                        clipboard.setPrimaryClip(ClipData.newPlainText("DeskPulseCSV", csv))
                                         Toast.makeText(context, "Exported CSV copied to clipboard", Toast.LENGTH_SHORT).show()
                                     }
                                 },
@@ -653,7 +653,7 @@ fun StudyWatchRootApp() {
                                     coroutineScope.launch {
                                         val txt = app.repository.exportDataToTxt()
                                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                        clipboard.setPrimaryClip(ClipData.newPlainText("StudyPulseReport", txt))
+                                        clipboard.setPrimaryClip(ClipData.newPlainText("DeskPulseReport", txt))
                                         Toast.makeText(context, "Exported Study Report copied to clipboard", Toast.LENGTH_SHORT).show()
                                     }
                                 },

@@ -243,7 +243,7 @@ class StudyWatchRepository(private val dao: StudyWatchDao) {
         val root = JSONObject()
         root.put("version", 1)
         root.put("exportTimestamp", System.currentTimeMillis())
-        root.put("appName", "StudyPulse")
+        root.put("appName", "DeskPulse")
 
         val subjectsArray = JSONArray()
         dao.getAllSubjectsList().forEach { s ->
@@ -330,7 +330,7 @@ class StudyWatchRepository(private val dao: StudyWatchDao) {
     suspend fun exportDataToTxt(): String {
         val sb = StringBuilder()
         sb.append("====================================================\n")
-        sb.append("           STUDYPULSE STUDY REPORT & EXPORT        \n")
+        sb.append("           DESKPULSE STUDY REPORT & EXPORT         \n")
         sb.append("====================================================\n\n")
         val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
         sb.append("Generated at: ${sdf.format(Date())}\n\n")

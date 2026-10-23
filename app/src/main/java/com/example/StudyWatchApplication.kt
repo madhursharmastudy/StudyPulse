@@ -33,7 +33,7 @@ class StudyWatchApplication : Application() {
         super.onCreate()
         instance = this
 
-        AppLogger.i(LogFeature.Diagnostics, "StudyPulse application starting...")
+        AppLogger.i(LogFeature.Diagnostics, "DeskPulse application starting...")
 
         database = AppDatabase.getDatabase(this)
         repository = StudyWatchRepository(database.studyWatchDao())
@@ -44,7 +44,7 @@ class StudyWatchApplication : Application() {
         // Bind TimerEngine events to database and notifications
         setupTimerEngineCallbacks()
 
-        AppLogger.i(LogFeature.Diagnostics, "StudyPulse initialized successfully")
+        AppLogger.i(LogFeature.Diagnostics, "DeskPulse initialized successfully")
     }
 
     private fun setupTimerEngineCallbacks() {

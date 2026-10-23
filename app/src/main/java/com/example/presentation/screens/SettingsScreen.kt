@@ -393,7 +393,7 @@ fun SettingsScreen(
             item {
                 SettingsCard(
                     title = "THEME",
-                    subtitle = "Choose how StudyPulse looks"
+                    subtitle = "Choose how DeskPulse looks"
                 ) {
                     val isCurrentClassic = isExistingTheme(activeTheme)
 
@@ -533,7 +533,7 @@ fun SettingsScreen(
             item {
                 SettingsCard(
                     title = "ABOUT",
-                    subtitle = "About StudyPulse"
+                    subtitle = "About DeskPulse"
                 ) {
                     var showDevTools by remember { mutableStateOf(false) }
 
@@ -544,13 +544,13 @@ fun SettingsScreen(
                     ) {
                         Image(
                             painter = painterResource(id = R.drawable.ic_studypulse_logo),
-                            contentDescription = "StudyPulse Logo",
+                            contentDescription = "DeskPulse Logo",
                             modifier = Modifier
                                 .size(64.dp)
                                 .clip(CircleShape)
                         )
                         Text(
-                            text = "StudyPulse",
+                            text = "DeskPulse",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 1.sp

@@ -195,7 +195,7 @@ fun WatchScreen(
                 Column {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "StudyPulse",
+                            text = "DeskPulse",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 0.5.sp
@@ -205,7 +205,7 @@ fun WatchScreen(
                         Spacer(modifier = Modifier.width(6.dp))
                         Icon(
                             imageVector = Icons.Default.Spa,
-                            contentDescription = "StudyPulse Icon",
+                            contentDescription = "DeskPulse Icon",
                             tint = EyeCareAccent,
                             modifier = Modifier.size(18.dp)
                         )

@@ -117,7 +117,7 @@ fun LogBookScreen(
                             putExtra(Intent.EXTRA_TEXT, txt)
                             type = "text/plain"
                         }
-                        context.startActivity(Intent.createChooser(sendIntent, "Share StudyPulse Logs"))
+                        context.startActivity(Intent.createChooser(sendIntent, "Share DeskPulse Logs"))
                     },
                     modifier = Modifier.testTag("share_logs_button")
                 ) {
