@@ -1,4 +1,4 @@
-# StudyPulse
+# DeskPulse
 
 **FOCUS. REST. HYDRATE. REPEAT.**
 
