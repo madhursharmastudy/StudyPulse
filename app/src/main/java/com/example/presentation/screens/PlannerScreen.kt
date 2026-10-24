@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.text.KeyboardOptions
+import com.example.StudyWatchApplication
 import com.example.data.db.*
 import com.example.presentation.components.AppBackground
 import com.example.ui.theme.*
@@ -69,13 +70,28 @@ fun PlannerScreen(
     modifier: Modifier = Modifier
 ) {
     var selectedTab by remember { mutableStateOf(0) }
-    val tabs = listOf("TODAY", "TASKS", "EXAMS")
+    val tabs = listOf("TODAY", "TASKS", "EXAMS", "REMINDERS")
 
     var showAddPlanDialog by remember { mutableStateOf(false) }
     var showAddExamDialog by remember { mutableStateOf(false) }
     var showAddAssignmentDialog by remember { mutableStateOf(false) }
     var showAddRevisionDialog by remember { mutableStateOf(false) }
     var showAddChooser by remember { mutableStateOf(false) }
+
+    // Reminders (stored on the phone, not in the database)
+    val reminderRepository = (LocalContext.current.applicationContext as? StudyWatchApplication)?.reminderRepository
+    val reminders = reminderRepository?.reminders?.collectAsState()?.value ?: emptyList()
+    var showReminderDialog by remember { mutableStateOf(false) }
+    var reminderToEdit by remember { mutableStateOf<com.example.core.reminder.Reminder?>(null) }
+    var showReminderDefaultsDialog by remember { mutableStateOf(false) }
+    var reminderDefaults by remember {
+        mutableStateOf(
+            Pair(
+                reminderRepository?.defaultMinutes() ?: com.example.core.reminder.ReminderPlanner.DEFAULT_REPEAT_MINUTES,
+                reminderRepository?.defaultTimes() ?: com.example.core.reminder.ReminderPlanner.DEFAULT_REPEAT_TIMES
+            )
+        )
+    }
 
     val todayEnd = remember(revisionItems) {
         Calendar.getInstance().apply {
@@ -188,6 +204,15 @@ fun PlannerScreen(
                                 showAddRevisionDialog = true
                             }
                         )
+                        DropdownMenuItem(
+                            text = { Text("Reminder", color = if (isExisting) TextPrimary else tokens.text, fontWeight = FontWeight.Medium) },
+                            onClick = {
+                                showAddChooser = false
+                                selectedTab = 3
+                                reminderToEdit = null
+                                showReminderDialog = true
+                            }
+                        )
                     }
                 }
             }
@@ -246,7 +271,64 @@ fun PlannerScreen(
                 onUpdate = onUpdateExam,
                 onAddClick = { showAddExamDialog = true }
             )
+            3 -> RemindersTab(
+                reminders = reminders,
+                defaultMinutes = reminderDefaults.first,
+                defaultTimes = reminderDefaults.second,
+                onAddClick = {
+                    reminderToEdit = null
+                    showReminderDialog = true
+                },
+                onEdit = {
+                    reminderToEdit = it
+                    showReminderDialog = true
+                },
+                onToggle = { reminder, enabled -> reminderRepository?.setEnabled(reminder.id, enabled) },
+                onDelete = { reminderRepository?.delete(it.id) },
+                onEditDefaults = { showReminderDefaultsDialog = true }
+            )
         }
+    }
+
+    if (showReminderDialog && reminderRepository != null) {
+        val editing = reminderToEdit
+        ReminderDialog(
+            initial = editing,
+            defaultMinutes = reminderDefaults.first,
+            defaultTimes = reminderDefaults.second,
+            onDismiss = { showReminderDialog = false },
+            onSave = { text, triggerAt, daily, minutes, times, untilDone ->
+                if (editing == null) {
+                    reminderRepository.add(text, triggerAt, daily, minutes, times, untilDone)
+                } else {
+                    reminderRepository.update(
+                        editing.copy(
+                            text = text,
+                            triggerAtMillis = triggerAt,
+                            repeatDaily = daily,
+                            repeatEveryMinutes = minutes,
+                            repeatTimes = times,
+                            untilDone = untilDone,
+                            enabled = true
+                        )
+                    )
+                }
+                showReminderDialog = false
+            }
+        )
+    }
+
+    if (showReminderDefaultsDialog && reminderRepository != null) {
+        ReminderDefaultsDialog(
+            defaultMinutes = reminderDefaults.first,
+            defaultTimes = reminderDefaults.second,
+            onDismiss = { showReminderDefaultsDialog = false },
+            onSave = { minutes, times ->
+                reminderRepository.setDefaults(minutes, times)
+                reminderDefaults = Pair(reminderRepository.defaultMinutes(), reminderRepository.defaultTimes())
+                showReminderDefaultsDialog = false
+            }
+        )
     }
 
     if (showAddPlanDialog) {

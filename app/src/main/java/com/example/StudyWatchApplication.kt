@@ -3,6 +3,7 @@ package com.example
 import android.app.Application
 import com.example.core.logging.AppLogger
 import com.example.core.logging.LogFeature
+import com.example.core.reminder.ReminderRepository
 import com.example.core.timer.TimerEngine
 import com.example.core.timer.TimerStateStore
 import com.example.data.db.AppDatabase
@@ -26,6 +27,8 @@ class StudyWatchApplication : Application() {
     lateinit var settingsRepository: SettingsRepository
         private set
     lateinit var notificationManager: StudyNotificationManager
+
+    lateinit var reminderRepository: ReminderRepository
         private set
 
     private val appScope = CoroutineScope(Dispatchers.Default)
@@ -43,6 +46,8 @@ class StudyWatchApplication : Application() {
         notificationManager = StudyNotificationManager(this)
 
         // Bind TimerEngine events to database and notifications
+        reminderRepository = ReminderRepository(this)
+        reminderRepository.rescheduleAll()
         TimerEngine.stateStore = TimerStateStore(this)
         setupTimerEngineCallbacks()
 
