@@ -271,7 +271,7 @@ private fun WaterBreakStep(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(onClick = onSkip) {
-                    Text("Skip", color = TextSecondary, fontSize = 13.sp)
+                    Text("Skip", color = subTextColor, fontSize = 13.sp)
                 }
                 TextButton(onClick = onSkipAll) {
                     Text("Skip all", color = TextMuted, fontSize = 13.sp)
@@ -319,6 +319,11 @@ private fun ExerciseStep(
     onSkip: () -> Unit,
     onSkipAll: () -> Unit
 ) {
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = isExistingTheme(activeTheme)
+    val textColor = if (isClassic) TextPrimary else tokens.text
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
     var secondsLeft by remember(exercise.id) { mutableIntStateOf(exercise.durationSeconds) }
     val totalSeconds = exercise.durationSeconds
 
@@ -409,7 +414,7 @@ private fun ExerciseStep(
             Text(
                 text = exercise.name,
                 style = if (isLandscape) MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Black) else MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
-                color = TextPrimary,
+                color = textColor,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(if (isLandscape) 1.dp else 4.dp))
@@ -438,7 +443,7 @@ private fun ExerciseStep(
             fontSize = if (isLandscape) 22.sp else 38.sp,
             fontWeight = FontWeight.Black,
             fontFamily = FontFamily.Monospace,
-            color = TextPrimary
+            color = textColor
         )
 
         Spacer(modifier = Modifier.height(if (isLandscape) 4.dp else 10.dp))
@@ -461,7 +466,7 @@ private fun ExerciseStep(
             }
             OutlinedButton(
                 onClick = onSkip,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = subTextColor),
                 border = BorderStroke(1.dp, CharcoalBorder),
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier
@@ -474,7 +479,7 @@ private fun ExerciseStep(
         }
 
         TextButton(onClick = onSkipAll) {
-            Text("Skip all", color = Color.White.copy(alpha = 0.7f), fontSize = if (isLandscape) 11.sp else 12.sp)
+            Text("Skip all", color = subTextColor, fontSize = if (isLandscape) 11.sp else 12.sp)
         }
 
         // Disclaimer
@@ -623,6 +628,11 @@ private fun ShabashStep(
     totalElapsedMillis: Long,
     onDismiss: () -> Unit
 ) {
+    val activeTheme = LocalActiveTheme.current
+    val tokens = LocalAppThemeTokens.current
+    val isClassic = isExistingTheme(activeTheme)
+    val textColor = if (isClassic) TextPrimary else tokens.text
+    val subTextColor = if (isClassic) TextSecondary else tokens.secondaryText
     // 5-second countdown to auto-close or button click
     var countdownSeconds by remember { mutableIntStateOf(5) }
 
@@ -714,7 +724,7 @@ private fun ShabashStep(
         Text(
             text = "Break completed: $breakDurationStr",
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = TextPrimary
+            color = textColor
         )
 
         Spacer(modifier = Modifier.height(4.dp))

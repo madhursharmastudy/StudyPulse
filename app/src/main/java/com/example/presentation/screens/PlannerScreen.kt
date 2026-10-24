@@ -240,7 +240,9 @@ fun PlannerScreen(
                             text = title,
                             fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
                             color = if (selectedTab == index) accent else subColor,
-                            fontSize = 12.sp
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            softWrap = false
                         )
                     }
                 )

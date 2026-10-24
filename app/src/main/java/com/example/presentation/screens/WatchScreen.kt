@@ -524,6 +524,11 @@ fun CircularStudyTimer(
             }
         }
 
+        // Idle timer text in HH:MM:SS, so 60 minutes shows 01:00:00 (not 00:60:00)
+        val idleDurationText = String.format(
+            Locale.getDefault(), "%02d:%02d:00", defaultDurationMinutes / 60, defaultDurationMinutes % 60
+        )
+
         // Inner Timer Display and Controls
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -548,7 +553,7 @@ fun CircularStudyTimer(
                 )
             } else {
                 val displayStr = if (snapshot.state == TimerState.IDLE) {
-                    String.format(Locale.getDefault(), "%02d:00", defaultDurationMinutes)
+                    idleDurationText
                 } else {
                     snapshot.formattedActiveDisplay()
                 }
@@ -562,7 +567,13 @@ fun CircularStudyTimer(
             }
 
             Text(
-                text = if (snapshot.isQuietMode) "PAUSED IN QUIET MODE" else "/ ${snapshot.formatPlanned()}",
+                text = if (snapshot.isQuietMode) {
+                    "PAUSED IN QUIET MODE"
+                } else if (snapshot.state == TimerState.IDLE) {
+                    "/ $idleDurationText"
+                } else {
+                    "/ ${snapshot.formatPlanned()}"
+                },
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 color = if (snapshot.isQuietMode) ringActiveColor else subTextColor
