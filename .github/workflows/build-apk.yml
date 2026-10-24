@@ -98,12 +98,19 @@ jobs:
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/release.jks"
 
       - name: Build Signed Release APK
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee gradle-release.log
         env:
           KEYSTORE_PATH: ${{ runner.temp }}/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Show Release Build Errors
+        if: failure()
+        run: |
+          { grep -E "^e: " gradle-release.log; grep -E "Lint found|Error:|What went wrong|Execution failed" -A2 gradle-release.log; } | head -10 | while IFS= read -r line; do echo "::error::${line}"; done || true
 
       - name: Build Signed Release AAB
         run: ./gradlew bundleRelease --no-daemon --stacktrace
