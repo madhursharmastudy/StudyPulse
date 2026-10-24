@@ -4,6 +4,7 @@ import android.app.Application
 import com.example.core.logging.AppLogger
 import com.example.core.logging.LogFeature
 import com.example.core.timer.TimerEngine
+import com.example.core.timer.TimerStateStore
 import com.example.data.db.AppDatabase
 import com.example.data.repository.LogRepository
 import com.example.data.repository.SettingsRepository
@@ -42,7 +43,11 @@ class StudyWatchApplication : Application() {
         notificationManager = StudyNotificationManager(this)
 
         // Bind TimerEngine events to database and notifications
+        TimerEngine.stateStore = TimerStateStore(this)
         setupTimerEngineCallbacks()
+
+        // If Android closed the app while a timer was running, rebuild that timer now
+        TimerEngine.restoreFromStore()
 
         AppLogger.i(LogFeature.Diagnostics, "DeskPulse initialized successfully")
     }
@@ -112,6 +117,7 @@ class StudyWatchApplication : Application() {
             appScope.launch {
                 try {
                     notificationManager.updateRunningTimerNotification(snapshot)
+                    notificationManager.rescheduleAlarms(snapshot)
                     StudyWatchWidgetProvider.updateWidget(this@StudyWatchApplication, snapshot)
                 } catch (t: Throwable) {
                     AppLogger.e(LogFeature.TimerEngine, "Failed on state changed callback", null, null, null, null, t)

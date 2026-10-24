@@ -3,57 +3,52 @@ package com.example.notifications
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import com.example.StudyWatchApplication
 import com.example.core.logging.AppLogger
 import com.example.core.logging.LogFeature
-import com.example.core.timer.BreakType
 import com.example.core.timer.TimerEngine
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
- * AlarmReceiver: Receives exact alarm triggers from AlarmManager.
- * Delivers timely notifications and alert tones even when app is in background or screen is off.
+ * AlarmReceiver: wakes the app when a phone-clock alarm fires (eye break, water break,
+ * break end or session end) while the app is in the background or the screen is off.
+ *
+ * The app class has already rebuilt the running timer before this runs. Here the timer
+ * catches up, and it posts the same notifications it would have posted if the app
+ * had been open. A stale alarm (timer already paused or stopped) does nothing.
  */
 class AlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent?) {
-        if (intent == null) return
+        if (intent?.action != ACTION_ALARM_ALERT) return
 
-        // If Quiet Mode is active or master Notifications is disabled, suppress all alerts
-        if (TimerEngine.isQuietMode || !TimerEngine.notificationsEnabled) {
-            AppLogger.i(LogFeature.NotificationManager, "Alarm received but silenced due to Quiet Mode or Notifications disabled")
-            return
-        }
+        val slot = intent.getStringExtra(EXTRA_SLOT) ?: "UNKNOWN"
+        val pendingResult = goAsync()
 
-        val notificationManager = StudyNotificationManager(context.applicationContext)
-        val alertType = intent.getStringExtra(EXTRA_ALERT_TYPE) ?: return
+        CoroutineScope(Dispatchers.Default).launch {
+            try {
+                AppLogger.i(LogFeature.NotificationManager, "Alarm received: $slot")
+                TimerEngine.catchUp()
 
-        when (alertType) {
-            TYPE_SESSION_START -> {
-                notificationManager.playAlertToneAndVibrate()
-            }
-            TYPE_SESSION_END -> {
-                notificationManager.showSessionCompletedNotification(TimerEngine.snapshot.value)
-            }
-            TYPE_BREAK_START -> {
-                val breakTypeName = intent.getStringExtra(EXTRA_BREAK_NAME) ?: BreakType.EYE_REST.name
-                val breakType = try { BreakType.valueOf(breakTypeName) } catch (_: Exception) { BreakType.EYE_REST }
-                notificationManager.showBreakStartAlert(breakType)
-            }
-            TYPE_BREAK_END -> {
-                val breakTypeName = intent.getStringExtra(EXTRA_BREAK_NAME) ?: BreakType.EYE_REST.name
-                val breakType = try { BreakType.valueOf(breakTypeName) } catch (_: Exception) { BreakType.EYE_REST }
-                notificationManager.showBreakEndAlert(breakType)
+                // If the alarm fired a little early, plan the next alarm from the current state
+                val app = context.applicationContext as? StudyWatchApplication
+                app?.notificationManager?.rescheduleAlarms(TimerEngine.snapshot.value)
+
+                // Keep the process alive briefly so the notification can be posted
+                delay(2500)
+            } catch (t: Throwable) {
+                AppLogger.e(LogFeature.NotificationManager, "Alarm handling failed: ${t.message}")
+            } finally {
+                pendingResult.finish()
             }
         }
     }
 
     companion object {
         const val ACTION_ALARM_ALERT = "com.example.action.ALARM_ALERT"
-        const val EXTRA_ALERT_TYPE = "extra_alert_type"
-        const val EXTRA_BREAK_NAME = "extra_break_name"
-
-        const val TYPE_SESSION_START = "TYPE_SESSION_START"
-        const val TYPE_SESSION_END = "TYPE_SESSION_END"
-        const val TYPE_BREAK_START = "TYPE_BREAK_START"
-        const val TYPE_BREAK_END = "TYPE_BREAK_END"
+        const val EXTRA_SLOT = "extra_alarm_slot"
     }
 }

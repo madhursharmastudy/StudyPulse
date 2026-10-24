@@ -20,7 +20,10 @@ import com.example.MainActivity
 import com.example.R
 import com.example.core.logging.AppLogger
 import com.example.core.logging.LogFeature
+import com.example.core.timer.AlarmPlanner
+import com.example.core.timer.AlarmSlot
 import com.example.core.timer.BreakType
+import com.example.core.timer.PlannedAlarm
 import com.example.core.timer.TimerEngine
 import com.example.core.timer.TimerSnapshot
 import com.example.core.timer.TimerState
@@ -247,40 +250,82 @@ class StudyNotificationManager(private val context: Context) {
     }
 
     /**
-     * Schedules an exact alarm so alerts reach user when screen is off or another app is open.
+     * Puts the phone-clock alarms in line with the current timer state, so eye, water,
+     * break-end and session-end alerts still arrive when the app is in the background
+     * or the screen is off. Old alarms are always removed first.
      */
-    fun scheduleExactAlarm(triggerAtMillis: Long, alertType: String, breakType: BreakType? = null) {
-        if (TimerEngine.isQuietMode || !TimerEngine.notificationsEnabled) return
+    fun rescheduleAlarms(snapshot: TimerSnapshot) {
+        cancelScheduledAlarms()
+        val plans = AlarmPlanner.plan(
+            snapshot = snapshot,
+            nowWallMillis = System.currentTimeMillis(),
+            pauseBreaksUntilMillis = TimerEngine.pauseBreaksUntilTimestamp,
+            notificationsEnabled = TimerEngine.notificationsEnabled,
+            quietMode = TimerEngine.isQuietMode
+        )
+        plans.forEach { scheduleAlarm(it) }
+    }
 
+    private fun alarmIntent(slot: AlarmSlot): Intent =
+        Intent(context, AlarmReceiver::class.java).apply {
+            action = AlarmReceiver.ACTION_ALARM_ALERT
+            putExtra(AlarmReceiver.EXTRA_SLOT, slot.name)
+        }
+
+    private fun alarmRequestCode(slot: AlarmSlot): Int = ALARM_REQUEST_BASE + slot.ordinal
+
+    private fun scheduleAlarm(plan: PlannedAlarm) {
         try {
-            val intent = Intent(context, AlarmReceiver::class.java).apply {
-                action = AlarmReceiver.ACTION_ALARM_ALERT
-                putExtra(AlarmReceiver.EXTRA_ALERT_TYPE, alertType)
-                breakType?.let { putExtra(AlarmReceiver.EXTRA_BREAK_NAME, it.name) }
-            }
             val pendingIntent = PendingIntent.getBroadcast(
                 context,
-                "$alertType:${breakType?.name.orEmpty()}".hashCode(),
-                intent,
+                alarmRequestCode(plan.slot),
+                alarmIntent(plan.slot),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            // If the exact-alarm permission is missing, fall back to a normal alarm instead of failing
+            val canUseExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+                alarmManager.canScheduleExactAlarms()
+            if (canUseExact) {
                 alarmManager.setExactAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,
-                    triggerAtMillis,
+                    plan.triggerAtMillis,
                     pendingIntent
                 )
             } else {
-                alarmManager.setExact(
+                alarmManager.setAndAllowWhileIdle(
                     AlarmManager.RTC_WAKEUP,
-                    triggerAtMillis,
+                    plan.triggerAtMillis,
                     pendingIntent
                 )
             }
-            AppLogger.i(LogFeature.NotificationManager, "Scheduled exact alarm: $alertType at $triggerAtMillis")
+            AppLogger.i(
+                LogFeature.NotificationManager,
+                "Scheduled ${if (canUseExact) "exact" else "inexact"} alarm: ${plan.slot} at ${plan.triggerAtMillis}"
+            )
         } catch (e: Exception) {
-            AppLogger.e(LogFeature.NotificationManager, "Failed to schedule exact alarm: ${e.message}")
+            AppLogger.e(LogFeature.NotificationManager, "Failed to schedule alarm ${plan.slot}: ${e.message}")
+        }
+    }
+
+    /**
+     * Removes every background alarm this app has scheduled.
+     */
+    fun cancelScheduledAlarms() {
+        AlarmSlot.values().forEach { slot ->
+            try {
+                val pendingIntent = PendingIntent.getBroadcast(
+                    context,
+                    alarmRequestCode(slot),
+                    alarmIntent(slot),
+                    PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+                )
+                if (pendingIntent != null) {
+                    alarmManager.cancel(pendingIntent)
+                    pendingIntent.cancel()
+                }
+            } catch (e: Exception) {
+                AppLogger.e(LogFeature.NotificationManager, "Failed to cancel alarm $slot: ${e.message}")
+            }
         }
     }
 
@@ -333,5 +378,6 @@ class StudyNotificationManager(private val context: Context) {
         const val NOTIFICATION_COMPLETED_ID = 1004
         const val NOTIFICATION_BREAK_ID = 1005
         const val NOTIFICATION_BREAK_END_ID = 1006
+        private const val ALARM_REQUEST_BASE = 7100
     }
 }

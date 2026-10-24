@@ -144,6 +144,7 @@ class SettingsRepository(private val context: Context) {
         TimerEngine.vibrationEnabled = vibrationOn
         TimerEngine.notificationsEnabled = notificationsOn
         TimerEngine.isQuietMode = quietActive
+        TimerEngine.onConfigChanged()
 
         AppSettings(
             use24HourFormat = prefs[Keys.USE_24_HOUR] ?: false,

@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 import java.util.UUID
 
 object TimerEngine {
@@ -963,7 +965,211 @@ object TimerEngine {
         )
     }
 
+    // ------------------------------------------------------------------
+    // Background support: remember the running timer and catch up later
+    // ------------------------------------------------------------------
+
+    @Volatile
+    var stateStore: TimerStateStore? = null
+
+    private const val MAX_RESTORE_AGE_MILLIS = 12 * 60 * 60 * 1000L
+
+    /**
+     * Called by a background alarm (or after settings change) so the timer checks
+     * right now whether an eye, water or session-end event is due.
+     */
+    fun catchUp() {
+        handleTick()
+    }
+
+    /** Settings changed while a timer is active: refresh saved state and alarms. */
+    @Synchronized
+    fun onConfigChanged() {
+        if (!currentState.isActive) return
+        updateSnapshot()
+        notifyStateChange()
+    }
+
+    private fun persistState() {
+        val store = stateStore ?: return
+        try {
+            if (!currentState.isActive) {
+                store.clear()
+                return
+            }
+            val nowMono = SystemClock.elapsedRealtime()
+            val running = currentState == TimerState.STUDYING || currentState.isBreak
+            val segmentElapsed = if (running) (nowMono - segmentStartMonotonicMillis).coerceAtLeast(0L) else 0L
+            val queue = JSONArray()
+            breakQueue.forEach { queue.put(it.name) }
+
+            val o = JSONObject()
+            o.put("savedAtWall", System.currentTimeMillis())
+            o.put("state", currentState.name)
+            o.put("type", currentType.name)
+            o.put("timerId", timerId)
+            o.put("sessionUid", sessionUid)
+            o.put("subjectId", subjectId)
+            o.put("topicId", topicId)
+            o.put("subjectName", subjectName)
+            o.put("topicName", topicName)
+            o.put("notes", sessionNotes)
+            o.put("plannedDurationMillis", plannedDurationMillis)
+            o.put("segmentTotalDurationMillis", segmentTotalDurationMillis)
+            o.put("sessionStartWall", sessionStartWallTimestamp)
+            o.put("segmentElapsed", segmentElapsed)
+            o.put("accStudy", accumulatedProductiveStudyMillis)
+            o.put("accEye", accumulatedEyeRestMillis)
+            o.put("accWater", accumulatedWaterBreakMillis)
+            o.put("accOther", accumulatedOtherBreakMillis)
+            o.put("lastEyeMark", productiveStudyMillisAtLastEyeRest)
+            o.put("lastWaterMark", productiveStudyMillisAtLastWaterPrompt)
+            o.put("interruptions", interruptionCount)
+            o.put("pomoCycle", currentPomodoroCycle)
+            o.put("pomoTotal", totalPomodoroCycles)
+            o.put("pomoShort", pomodoroShortBreakMillis)
+            o.put("pomoLong", pomodoroLongBreakMillis)
+            o.put("pomoFreq", pomodoroLongBreakFrequency)
+            o.put("breakQueue", queue)
+
+            o.put("eyeCareEnabled", eyeCareEnabled)
+            o.put("eyeStudyIntervalSeconds", eyeStudyIntervalSeconds)
+            o.put("eyeRestDurationSeconds", eyeRestDurationSeconds)
+            o.put("eyeAutoResumeEnabled", eyeAutoResumeEnabled)
+            o.put("waterReminderEnabled", waterReminderEnabled)
+            o.put("waterIntervalSeconds", waterIntervalSeconds)
+            o.put("waterBreakDurationSeconds", waterBreakDurationSeconds)
+            o.put("waterAutoResumeEnabled", waterAutoResumeEnabled)
+            o.put("waterRemindLaterSeconds", waterRemindLaterSeconds)
+            o.put("stretchBreakEnabled", stretchBreakEnabled)
+            o.put("sharedBreakIntervalSeconds", sharedBreakIntervalSeconds)
+            o.put("shortModeEnabled", shortModeEnabled)
+            o.put("includeStandingExercises", includeStandingExercises)
+            o.put("pauseBreaksUntil", pauseBreaksUntilTimestamp)
+            o.put("soundEnabled", soundEnabled)
+            o.put("vibrationEnabled", vibrationEnabled)
+            o.put("notificationsEnabled", notificationsEnabled)
+            o.put("quietMode", isQuietMode)
+
+            store.save(o.toString())
+        } catch (t: Throwable) {
+            AppLogger.e(LogFeature.TimerEngine, "Failed to save timer state: ${t.message}")
+        }
+    }
+
+    /**
+     * Rebuilds a timer that was running when Android closed the app.
+     * Time that passed while the app was closed is counted, so the timer shows the real remaining time.
+     */
+    @Synchronized
+    fun restoreFromStore(): Boolean {
+        val store = stateStore ?: return false
+        if (currentState != TimerState.IDLE) return false
+        val raw = store.load() ?: return false
+        try {
+            val o = JSONObject(raw)
+            val restoredState = TimerState.valueOf(o.getString("state"))
+            val awayMillis = (System.currentTimeMillis() - o.getLong("savedAtWall")).coerceAtLeast(0L)
+            if (!restoredState.isActive || awayMillis > MAX_RESTORE_AGE_MILLIS) {
+                store.clear()
+                return false
+            }
+
+            // Engine settings as they were when the timer was saved
+            eyeCareEnabled = o.optBoolean("eyeCareEnabled", eyeCareEnabled)
+            eyeStudyIntervalSeconds = o.optLong("eyeStudyIntervalSeconds", eyeStudyIntervalSeconds)
+            eyeRestDurationSeconds = o.optLong("eyeRestDurationSeconds", eyeRestDurationSeconds)
+            eyeAutoResumeEnabled = o.optBoolean("eyeAutoResumeEnabled", eyeAutoResumeEnabled)
+            waterReminderEnabled = o.optBoolean("waterReminderEnabled", waterReminderEnabled)
+            waterIntervalSeconds = o.optLong("waterIntervalSeconds", waterIntervalSeconds)
+            waterBreakDurationSeconds = o.optLong("waterBreakDurationSeconds", waterBreakDurationSeconds)
+            waterAutoResumeEnabled = o.optBoolean("waterAutoResumeEnabled", waterAutoResumeEnabled)
+            waterRemindLaterSeconds = o.optLong("waterRemindLaterSeconds", waterRemindLaterSeconds)
+            stretchBreakEnabled = o.optBoolean("stretchBreakEnabled", stretchBreakEnabled)
+            sharedBreakIntervalSeconds = o.optLong("sharedBreakIntervalSeconds", sharedBreakIntervalSeconds)
+            shortModeEnabled = o.optBoolean("shortModeEnabled", shortModeEnabled)
+            includeStandingExercises = o.optBoolean("includeStandingExercises", includeStandingExercises)
+            pauseBreaksUntilTimestamp = o.optLong("pauseBreaksUntil", pauseBreaksUntilTimestamp)
+            soundEnabled = o.optBoolean("soundEnabled", soundEnabled)
+            vibrationEnabled = o.optBoolean("vibrationEnabled", vibrationEnabled)
+            notificationsEnabled = o.optBoolean("notificationsEnabled", notificationsEnabled)
+            isQuietMode = o.optBoolean("quietMode", isQuietMode)
+
+            // Session details
+            currentType = TimerType.valueOf(o.getString("type"))
+            timerId = o.getString("timerId")
+            sessionUid = o.getString("sessionUid")
+            subjectId = o.getLong("subjectId")
+            topicId = o.getLong("topicId")
+            subjectName = o.getString("subjectName")
+            topicName = o.getString("topicName")
+            sessionNotes = o.optString("notes", "")
+            plannedDurationMillis = o.getLong("plannedDurationMillis")
+            segmentTotalDurationMillis = o.getLong("segmentTotalDurationMillis")
+            sessionStartWallTimestamp = o.getLong("sessionStartWall")
+            accumulatedProductiveStudyMillis = o.getLong("accStudy")
+            accumulatedEyeRestMillis = o.getLong("accEye")
+            accumulatedWaterBreakMillis = o.getLong("accWater")
+            accumulatedOtherBreakMillis = o.getLong("accOther")
+            productiveStudyMillisAtLastEyeRest = o.getLong("lastEyeMark")
+            productiveStudyMillisAtLastWaterPrompt = o.getLong("lastWaterMark")
+            interruptionCount = o.optInt("interruptions", 0)
+            currentPomodoroCycle = o.optInt("pomoCycle", 1)
+            totalPomodoroCycles = o.optInt("pomoTotal", 4)
+            pomodoroShortBreakMillis = o.optLong("pomoShort", pomodoroShortBreakMillis)
+            pomodoroLongBreakMillis = o.optLong("pomoLong", pomodoroLongBreakMillis)
+            pomodoroLongBreakFrequency = o.optInt("pomoFreq", pomodoroLongBreakFrequency)
+
+            breakQueue.clear()
+            val queue = o.optJSONArray("breakQueue")
+            if (queue != null) {
+                for (i in 0 until queue.length()) {
+                    try {
+                        breakQueue.add(BreakType.valueOf(queue.getString(i)))
+                    } catch (_: Exception) {
+                        // Ignore unknown break names
+                    }
+                }
+            }
+            lapsList.clear()
+            lastLapTotalMillis = 0L
+
+            val nowMono = SystemClock.elapsedRealtime()
+            val running = restoredState == TimerState.STUDYING || restoredState.isBreak
+            currentState = restoredState
+            if (running) {
+                segmentStartMonotonicMillis = nowMono - (o.getLong("segmentElapsed") + awayMillis)
+                segmentPausedMonotonicMillis = 0L
+            } else {
+                segmentStartMonotonicMillis = nowMono
+                segmentPausedMonotonicMillis = nowMono
+            }
+
+            AppLogger.i(
+                LogFeature.TimerEngine,
+                "Timer restored after app restart",
+                "State: ${restoredState.name}, away: ${awayMillis / 1000}s",
+                currentState.name,
+                sessionUid,
+                timerId,
+                subjectName,
+                topicName
+            )
+
+            updateSnapshot()
+            if (running) startTicker()
+            notifyStateChange()
+            return true
+        } catch (t: Throwable) {
+            AppLogger.e(LogFeature.TimerEngine, "Failed to restore timer state: ${t.message}")
+            currentState = TimerState.IDLE
+            store.clear()
+            return false
+        }
+    }
+
     private fun notifyStateChange() {
+        persistState()
         onStateChangedCallback?.invoke(_snapshot.value)
     }
 }
